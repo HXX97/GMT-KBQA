@@ -1,0 +1,9 @@
+Cheatsheet for test
+
+1. CWQ generation 5 epochs
+train: CUDA_VISIBLE_DEVICES=1 sh test_scripts/run_t5_generation_5epochs_CWQ.sh train t5_generation_5epochs False
+evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/test/CWQ_t5_generation_5epochs/beam_50_top_k_predictions.json
+
+2. WebQSP entity concat 10 epochs
+train: CUDA_VISIBLE_DEVICES=2 sh test_scripts/run_t5_entity_concat_add_prefix_warmup5_10epochs_WebQSP.sh train entity_concat_add_prefix_warmup5_10epochs False 
+evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/test/WebQSP_entity_concat_add_prefix_warmup5_10epochs/beam_50_top_k_predictions.json --dataset WebQSP

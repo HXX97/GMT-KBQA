@@ -127,3 +127,33 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
+# Relation Retrieval
+Relation_retrieval/bi-encoder/data
+Relation_retrieval/cross-encoder/data
+Relation_retrieval/logs
+
+# Generation
+Generation/cache
+Generation/exps
+Generation/feature_cache
+Generation/test_scripts
+
+# CWQ data
+Data/CWQ/generation/ablation
+Data/CWQ/generation/label_maps
+Data/CWQ/generation/merged
+Data/CWQ/generation/exps
+Data/CWQ/relation_retrieval/bi-encoder
+Data/CWQ/relation_retrieval/cross-encoder
+Data/CWQ/entity_retrieval/luo_linking_results
+
+
+# WEBQSP data
+Data/WEBQSP/generation/ablation
+Data/WEBQSP/generation/label_maps
+Data/WEBQSP/generation/merged
+Data/WEBQSP/generation/exps
+Data/WEBQSP/relation_retrieval/bi-encoder
+Data/WEBQSP/relation_retrieval/cross-encoder
