@@ -21,7 +21,7 @@ def cwq_evaluate_valid_results(args):
     """Compute P, R and F1 for CWQ"""
     pred_data = load_json(args.pred_file)
     # origin dataset
-    dataset_data = load_json(f'../CWQ/data/merged/CWQ_{args.split}.json')
+    dataset_data = load_json(f'../Data/CWQ/generation/merged/CWQ_{args.split}.json')
     
     dataset_dict = {x["ID"]:x for x in dataset_data}
 

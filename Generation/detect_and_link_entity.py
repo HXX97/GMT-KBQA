@@ -1,11 +1,13 @@
 # from typing import final
+import sys
+sys.path.append('..')
 from tqdm import tqdm
 import json
 import argparse
 from executor.sparql_executor import get_freebase_mid_from_wikiID, get_wikipage_id_from_dbpedia_uri
-from common.entity_linker.aqqu_entity_linker import IdentifiedEntity
-from entity_linker import surface_index_memory
-from entity_linker.bert_entity_linker import BertEntityLinker
+from Entity_retrieval.aqqu_entity_linker import IdentifiedEntity
+from Entity_retrieval import surface_index_memory
+from Entity_retrieval.bert_entity_linker import BertEntityLinker
 from components.utils import dump_json, load_json, clean_str
 import requests
 from nltk.tokenize import word_tokenize

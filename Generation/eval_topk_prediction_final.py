@@ -13,7 +13,7 @@ from executor.logic_form_util import lisp_to_sparql
 import re
 import json
 import os
-from entity_linker import surface_index_memory
+from Entity_retrieval import surface_index_memory
 import difflib
 
 def is_value_tok(t):
@@ -315,12 +315,12 @@ def execute_normed_s_expr_from_label_maps(normed_expr,
 def aggressive_top_k_eval_new(split, predict_file, dataset):
     """Run top k predictions, using linear origin map"""
     if dataset == "CWQ":
-        train_gen_dataset = load_json('../CWQ/data/merged/CWQ_train.json')
-        test_gen_dataset = load_json('../CWQ/data/merged/CWQ_test.json')
-        dev_gen_dataset = load_json('../CWQ/data/merged/CWQ_dev.json')
+        train_gen_dataset = load_json('../Data/CWQ/generation/merged/CWQ_train.json')
+        test_gen_dataset = load_json('../Data/CWQ/generation/merged/CWQ_test.json')
+        dev_gen_dataset = load_json('../Data/CWQ/generation/merged/CWQ_dev.json')
     elif dataset == "WebQSP":
-        train_gen_dataset = load_json('../WebQSP/data/merged/WebQSP_train.json')
-        test_gen_dataset = load_json('../WebQSP/data/merged/WebQSP_test.json')
+        train_gen_dataset = load_json('../Data/WEBQSP/generation/merged/WebQSP_train.json')
+        test_gen_dataset = load_json('../Data/WEBQSP/generation/merged/WebQSP_test.json')
         dev_gen_dataset = None
     
     predictions = load_json(predict_file)
@@ -345,12 +345,12 @@ def aggressive_top_k_eval_new(split, predict_file, dataset):
     print('use_goldRel: {}'.format(use_goldRel))
 
     if dataset == "CWQ":
-        gold_label_maps = load_json(f"../CWQ/data/label_maps/CWQ_{split}_label_maps.json")    
-        train_entity_map = load_json(f"../CWQ/data/label_maps/CWQ_train_entity_label_map.json")
+        gold_label_maps = load_json(f"../Data/CWQ/generation/label_maps/CWQ_{split}_label_maps.json")    
+        train_entity_map = load_json(f"../Data/CWQ/generation/label_maps/CWQ_train_entity_label_map.json")
         train_entity_map = {l.lower():e for e,l in train_entity_map.items()}
     elif dataset == "WebQSP":
-        gold_label_maps = load_json(f"../WebQSP/data/label_maps/WebQSP_{split}_label_maps.json")
-        train_entity_map = load_json(f"../WebQSP/data/label_maps/WebQSP_train_entity_label_map.json")
+        gold_label_maps = load_json(f"../Data/WEBQSP/generation/label_maps/WebQSP_{split}_label_maps.json")
+        train_entity_map = load_json(f"../Data/WEBQSP/generation/label_maps/WebQSP_train_entity_label_map.json")
         train_entity_map = {l.lower():e for e,l in train_entity_map.items()}
 
     if not use_goldEnt:
@@ -359,27 +359,27 @@ def aggressive_top_k_eval_new(split, predict_file, dataset):
             if os.path.exists(os.path.join(dirname, 'CWQ_candidate_entity_map.json')):
                 candidate_entity_map = load_json(os.path.join(dirname, 'CWQ_candidate_entity_map.json'))
             else:
-                candidate_entity_map = load_json('/home2/xxhu/QDT2SExpr/CWQ/data/linking_results/merged_CWQ_test_linking_results.json')
-                print('loading: /home2/xxhu/QDT2SExpr/CWQ/data/linking_results/merged_CWQ_test_linking_results.json')
+                candidate_entity_map = load_json(f'../Data/CWQ/entity_retrieval/linking_results/merged_CWQ_{split}_linking_results.json')
+                print(f'loading: ../Data/CWQ/entity_retrieval/linking_results/merged_CWQ_{split}_linking_results.json')
                 use_linking_results = True
-            train_type_map = load_json(f"../CWQ/data/label_maps/CWQ_train_type_label_map.json")
+            train_type_map = load_json(f"../Data/CWQ/generation/label_maps/CWQ_train_type_label_map.json")
             train_type_map = {l.lower():t for t,l in train_type_map.items()}
         elif dataset == "WebQSP":
             if os.path.exists(os.path.join(dirname, "WebQSP_candidate_entity_map.json")):
                 candidate_entity_map = load_json(os.path.join(dirname, "WebQSP_candidate_entity_map.json"))
             else:
-                candidate_entity_map = load_json('/home2/xxhu/QDT2SExpr/CWQ/data/linking_results/merged_WebQSP_test_linking_results.json')
-                print('loading home2/xxhu/QDT2SExpr/CWQ/data/linking_results/merged_WebQSP_test_linking_results.json')
+                candidate_entity_map = load_json(f'../Data/WEBQSP/entity_retrieval/linking_results/merged_WebQSP_{split}_linking_results.json')
+                print(f'loading ../Data/WEBQSP/entity_retrieval/linking_results/merged_WebQSP_{split}_linking_results.json')
                 use_linking_results = True
-            train_type_map = load_json(f"../WebQSP/data/label_maps/WebQSP_train_type_label_map.json")
+            train_type_map = load_json(f"../Data/WEBQSP/generation/label_maps/WebQSP_train_type_label_map.json")
             train_type_map = {l.lower():t for t,l in train_type_map.items()}
         
     if not use_goldRel:
         if dataset == "CWQ":
-            train_relation_map = load_json(f"../CWQ/data/label_maps/CWQ_train_relation_label_map.json")
+            train_relation_map = load_json(f"../Data/CWQ/generation/label_maps/CWQ_train_relation_label_map.json")
             train_relation_map = {l.lower():r for r,l in train_relation_map.items()}
         elif dataset == "WebQSP":
-            train_relation_map = load_json(f"../WebQSP/data/label_maps/WebQSP_train_relation_label_map.json")
+            train_relation_map = load_json(f"../Data/WEBQSP/generation/label_maps/WebQSP_train_relation_label_map.json")
             train_relation_map = {l.lower():r for r,l in train_relation_map.items()}
     
     # load FACC1 Index
@@ -387,8 +387,8 @@ def aggressive_top_k_eval_new(split, predict_file, dataset):
     
     
     surface_index = surface_index_memory.EntitySurfaceIndexMemory(
-        "entity_linker/data/entity_list_file_freebase_complete_all_mention", "entity_linker/data/surface_map_file_freebase_complete_all_mention",
-        "entity_linker/data/freebase_complete_all_mention")
+        "../Data/common_data/facc1/entity_list_file_freebase_complete_all_mention", "../Data/common_data/facc1/surface_map_file_freebase_complete_all_mention",
+        "../Data/common_data/facc1/freebase_complete_all_mention")
     
     ex_cnt = 0
     top_hit = 0
@@ -432,7 +432,7 @@ def aggressive_top_k_eval_new(split, predict_file, dataset):
             rel_label_map = {l.lower():r for r,l in rel_label_map.items()}
 
         # found_executable = False
-        executable_index = None # 更进一步，记录最终执行了哪个 logical form
+        executable_index = None # index of LF being executed
 
         # find the first executable lf
         for rank, p in enumerate(pred['predictions']):

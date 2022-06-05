@@ -157,3 +157,6 @@ Data/WEBQSP/generation/merged
 Data/WEBQSP/generation/exps
 Data/WEBQSP/relation_retrieval/bi-encoder
 Data/WEBQSP/relation_retrieval/cross-encoder
+
+# common data
+Data/common_data/facc1

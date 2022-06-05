@@ -22,7 +22,7 @@ def webqsp_evaluate_valid_results(args):
     pred_data = load_json(args.pred_file)
 
     # origin dataset
-    dataset_data = load_json(f'../WebQSP/data/merged/WebQSP_{args.split}.json')
+    dataset_data = load_json(f'../Data/WEBQSP/generation/merged/WebQSP_{args.split}.json')
     
     dataset_dict = {x["ID"]:x for x in dataset_data}
 
