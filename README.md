@@ -1,7 +1,7 @@
 GMT-KBQA
 ==============================
 
-Project Organization
+<!-- Project Organization
 ------------
 
     ├── LICENSE
@@ -33,17 +33,25 @@ Project Organization
         ├── saved_models                  <- saved models of relation_detection_and_linking on WebQSP
 --------
 
-<p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience</small></p>
+<p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience</small></p> -->
 
-# Logical Form Generation via Multi-task Learning for Complex Question Answering over Knowledge Bases
 
-This is an original implementation of the following paper.
+
+<!-- ### Logical Form Generation via Multi-task Learning for Complex Question Answering over Knowledge Bases -->
+
+This is an original implementation of paper "Logical Form Generation via Multi-task Learning for Complex Question Answering over Knowledge Bases"
 [[Paper PDF](TODO:)]
 
+## Citation
+---
 
 ```
 TODO: cite
 ```
+
+## Abstract
+---
+TODO: Brief introduction to GMT-KBQA
 
 ## Model Description
 
@@ -59,6 +67,22 @@ TODO:
 The code for question answering is mainly in  `common`.
 
 The code for candidate relations retrieval is mainly in `relation_detection_and_linking`.
+
+
+## Reproducing the Results on CWQ
+(1) **Prepare dataset and pretrained checkpoints**
+
+Download the CWQ dataset and put them under `data/CWQ/origin`. The dataset files should be named as `ComplexWebQuestions_test[train,dev].json`.
+
+(2) **Parse SPARQL queries to S-expressions**
+
+As stated in the paper, we generate S-expressions which are not provided by the original dataset.
+Here we provide the scripts to parse SPARQL queries 
+
+Run `python parse_sparql_cwq.py`, and it will augment the original dataset files with s-expressions. 
+The augmented dataset files are saved as `data/CWQ/sexpr/CWQ.test[train,dev].json`.
+
+(3) 
 
 ## Candidate relation retrieval
 all codes are under relation_detection_and_linking/ folder

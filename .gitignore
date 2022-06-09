@@ -140,6 +140,13 @@ Generation/exps
 Generation/feature_cache
 Generation/test_scripts
 
+
+# data
+data/common_data
+data/CWQ
+data/WEBQSP
+
+
 # CWQ data
 Data/CWQ/generation/ablation
 Data/CWQ/generation/label_maps
