@@ -1,19 +1,21 @@
 #!/bin/bash
 
-DATA_DIR="data/CWQ/entity_retrieval/candidate_entities"
+
 dataset=${1:-"CWQ"}
 ACTION=${2:-none}
+
+exp_prefix="entity_retrieval/entity_disamb_${dataset}"
+DATA_DIR="data/${dataset}/entity_retrieval/candidate_entities"
+
 if [ "$ACTION" = "train" ]; then
     
-    exp_prefix="entity_retrieval/entity_disamb_${dataset}"
-
     if [ -d ${exp_prefix} ]; then
     echo "${exp_prefix} already exists"
     else
     mkdir ${exp_prefix}
     fi
 
-    cp scripts/run_entity_disamb_CWQ.sh "${exp_prefix}run_entity_disamb_CWQ.sh"
+    cp scripts/run_entity_disamb.sh "${exp_prefix}run_entity_disamb.sh"
     git rev-parse HEAD > "${exp_prefix}commitid.log"
 
     # --overwrite_cache \
@@ -42,7 +44,6 @@ if [ "$ACTION" = "train" ]; then
 
 elif [ "$ACTION" = "predict" ]; then
     
-    exp_prefix="entity_retrieval/entity_disamb_${dataset}"
     model=${exp_prefix}/output
     split=${3:-test}
 

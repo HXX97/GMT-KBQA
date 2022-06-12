@@ -27,19 +27,18 @@ def _parse_args():
 
 
 def combine_entities_from_FACC1_and_elq(dataset, split, sample_size=10):
+    """ Combine the linking results from FACC1 and ELQ """
+    entity_dir = f'data/{dataset}/entity_retrieval/candidate_entities'
 
-    entity_dir = 'data/CWQ/entity_retrieval/candidate_entities'
-
-    facc1_disamb_res = load_json(f'{entity_dir}/CWQ_{split}_cand_entities_facc1.json')
-    elq_res = load_json(f'{entity_dir}/CWQ_{split}_cand_entities_elq.json')
+    facc1_disamb_res = load_json(f'{entity_dir}/{dataset}_{split}_cand_entities_facc1.json')
+    elq_res = load_json(f'{entity_dir}/{dataset}_{split}_cand_entities_elq.json')
 
     print('lens: {}'.format(len(elq_res.keys())))
 
     combined_res = dict()
-    # train_entities_elq = load_json('CWQ_unique_train_entities_elq.json')
 
     train_entities_elq = {}
-    elq_res_train = load_json(f'{entity_dir}/CWQ_train_cand_entities_elq.json')
+    elq_res_train = load_json(f'{entity_dir}/{dataset}_train_cand_entities_elq.json')
     for qid,cand_ents in elq_res_train.items():
         for ent in cand_ents:
             train_entities_elq[ent['id']] = ent['label']
@@ -81,7 +80,7 @@ def combine_entities_from_FACC1_and_elq(dataset, split, sample_size=10):
         combined_res[qid] = list(cur.values())
 
     
-    merged_file_path = f'{entity_dir}/CWQ_{split}_merged_cand_entities_elq_FACC1.json'
+    merged_file_path = f'{entity_dir}/{dataset}_{split}_merged_cand_entities_elq_facc1.json'
     print(f'Writing merged candidate entities to {merged_file_path}')
     dump_json(combined_res, merged_file_path, indent=4)
 
@@ -94,5 +93,5 @@ if __name__=='__main__':
     if action.lower()=='merge_entity':
         combine_entities_from_FACC1_and_elq(dataset=args.dataset, split=args.split)
     else:
-        print('Usage: python data_process.py <action> --dataset CWQ --split test')
+        print('Usage: python data_process.py <action> --dataset CWQ[WebQSP] --split test[train,dev]')
 

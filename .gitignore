@@ -129,10 +129,15 @@ dmypy.json
 .pyre/
 
 
+# VSCode settings
+.vscode/
+
+
 # Relation Retrieval
 Relation_retrieval/bi-encoder/data
 Relation_retrieval/cross-encoder/data
 Relation_retrieval/logs
+
 
 # Generation
 Generation/cache
@@ -165,6 +170,7 @@ Data/WebQSP/generation/exps
 Data/WebQSP/relation_retrieval/bi-encoder
 Data/WebQSP/relation_retrieval/cross-encoder
 
+
 # common data
 Data/common_data/facc1
 
@@ -174,8 +180,11 @@ entity_retrieval/BERT_NER/trained_ner_model/
 entity_retrieval/entity_disamb_CWQ/
 entity_retrieval/entity_disamb_WebQSP/
 
+
 # huggingface cache
 hfcache/
 
+
 # feature cache
 feature_cache
+

@@ -93,11 +93,13 @@ If you want to retrieve the candidate entities from scratch, take the following 
 
 2. Retrieve candidate entities from FACC1. Firstly run
 `python detect_and_link_entity.py --dataset CWQ --split test[train,dev] --linker facc1` to retrieve candidate entities.
-Then run `sh scripts/run_entity_disamb_CWQ.sh CWQ predict test[train,dev]` to rank the candidates by a BertRanker. The ranked results will be saved as `data/CWQ/entity_retrieval/candidate_entities/CWQ_test[train,dev]_cand_entities_facc1.json`.
+Then run `sh scripts/run_entity_disamb.sh CWQ predict test[train,dev]` to rank the candidates by a BertRanker. The ranked results will be saved as `data/CWQ/entity_retrieval/candidate_entities/CWQ_test[train,dev]_cand_entities_facc1.json`.
 
-3. Finally, merge the linking results of ELQ and FACC1 by running `python data_process.py merge_entity --dataset CWQ --split test[train,dev]`, and the final entity retrieval results are saved as `data/CWQ/entity_retrieval/candidate_entities/CWQ_test[train,dev]_merged_cand_entities_elq_FACC1.json`.
+3. Finally, merge the linking results of ELQ and FACC1 by running `python data_process.py merge_entity --dataset CWQ --split test[train,dev]`, and the final entity retrieval results are saved as `data/CWQ/entity_retrieval/candidate_entities/CWQ_test[train,dev]_merged_cand_entities_elq_facc1.json`.
 
-(4) **Retrieve Candidate Celations**
+(4) **Retrieve Candidate Relations**
+
+This step can also be ***skipped*** , as we've provided the candidate relations
 
 
 (5) **Generate Logical Forms through multi-task learning**

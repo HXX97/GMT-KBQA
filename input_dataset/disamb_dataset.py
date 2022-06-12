@@ -199,8 +199,9 @@ def read_disamb_instances_from_entity_candidates(dataset_file, candidate_file):
     """
     # origin dataset
     dataset = load_json(dataset_file)
-    if 'webqsp' in dataset_file.lower():
-        dataset = dataset['Questions']
+    # print(dataset_file)
+    # if 'webqsp' in dataset_file.lower():
+    #     dataset = dataset['Questions']
     
     # entity linking candidate dataset
     entity_linking_results = load_json(candidate_file)
