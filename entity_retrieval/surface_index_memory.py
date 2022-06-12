@@ -24,8 +24,8 @@ import marshal
 # import globals
 # from common.globals_args import fn_cwq_file
 # from common.hand_files import write_set
-from Entity_retrieval import aqqu_entity_linker
-from Entity_retrieval.aqqu_util import normalize_entity_name
+from entity_retrieval import aqqu_entity_linker
+from entity_retrieval.aqqu_util import normalize_entity_name
 import collections
 
 logger = logging.getLogger(__name__)

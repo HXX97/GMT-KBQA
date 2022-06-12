@@ -9,8 +9,8 @@ import logging
 import re
 import time
 # import stanfordnlp
-from Entity_retrieval import surface_index_memory
-from Entity_retrieval.aqqu_util import normalize_entity_name, remove_prefixes_from_name, remove_suffixes_from_name
+from entity_retrieval import surface_index_memory
+from entity_retrieval.aqqu_util import normalize_entity_name, remove_prefixes_from_name, remove_suffixes_from_name
 
 logger = logging.getLogger(__name__)
 
@@ -475,6 +475,7 @@ class EntityLinker:
             maximal_sets.append(maximal_set)
 
 
+"""
 if __name__ == '__main__':
     # Using stanford CoreNLP with nltk: https://github.com/nltk/nltk/wiki/Stanford-CoreNLP-API-in-NLTK
     surface_index = surface_index_memory.EntitySurfaceIndexMemory(
@@ -504,3 +505,4 @@ if __name__ == '__main__':
         popularity = el.score
         perfect_match = el.perfect_match
         print(surfacename, mention, mid, score, popularity, perfect_match)
+"""

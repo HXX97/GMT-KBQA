@@ -18,10 +18,10 @@ import json
 from tqdm import tqdm
 from pathlib import Path
 # from entity_linking.google_kg_api import get_entity_from_surface
-from Entity_retrieval.BERT_NER.bert import Ner
-from Entity_retrieval import surface_index_memory
-from Entity_retrieval.aqqu_entity_linker import IdentifiedEntity
-from Entity_retrieval.aqqu_util import normalize_entity_name, remove_prefixes_from_name, remove_suffixes_from_name
+from entity_retrieval.BERT_NER.bert import Ner
+from entity_retrieval import surface_index_memory
+from entity_retrieval.aqqu_entity_linker import IdentifiedEntity
+from entity_retrieval.aqqu_util import normalize_entity_name, remove_prefixes_from_name, remove_suffixes_from_name
 
 
 path = str(Path(__file__).parent.absolute())
@@ -36,9 +36,6 @@ class BertEntityLinker:
                  # Better name it max_entities_per_surface
                  max_entities_per_tokens=4,
                  model_path="/BERT_NER/out_base_gq/",
-                 # model_path= "/BERT_NER/out_base_gq2_www",
-                 # model_path= "/BERT_NER/out_base_gq1/",
-                 # model_path= "/BERT_NER/out_base_web/",
                  device="cuda:0"
                  ):
         self.surface_index = surface_index

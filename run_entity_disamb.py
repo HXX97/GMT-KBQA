@@ -8,9 +8,8 @@ from functools import partial
 from torch.utils.data import DataLoader, RandomSampler, SequentialSampler, TensorDataset
 from torch.utils.data.distributed import DistributedSampler
 from tqdm import trange, tqdm
-from components.config import load_untrained_model, register_args
-from components.config import set_seed
-from components.utils import mkdir_p, dump_json
+from config import load_untrained_model, register_args, set_seed
+from components.utils import load_json, mkdir_p, dump_json
 from transformers import (
     AdamW,
     get_linear_schedule_with_warmup,
@@ -19,8 +18,9 @@ from transformers import (
 )
 import sys
 import numpy as np
-from components.config import get_model_class
+from config import get_model_class
 import logging
+from executor.sparql_executor import get_label_with_odbc
 logger = logging.getLogger(__name__)
 
 try:
@@ -28,7 +28,7 @@ try:
 except ImportError:
     from tensorboardX import SummaryWriter
 
-from inputDataset.disamb_dataset import load_and_cache_disamb_examples
+from input_dataset.disamb_dataset import load_and_cache_disamb_examples
 
 
 def train(args, train_dataset, model, tokenizer):
@@ -247,7 +247,9 @@ def evaluate(args, model, tokenizer, output_prediction=False):
     start_time = timeit.default_timer()
 
     all_pred_indexes = []
+    all_pred_logits = []
     all_labels = []
+    
 
     for batch in tqdm(eval_dataloader, desc="Evaluating"):
         model.eval()
@@ -264,11 +266,13 @@ def evaluate(args, model, tokenizer, output_prediction=False):
             if args.model_type in ["xlm", "roberta", "distilbert", "camembert", "bart"]:
                 del inputs["token_type_ids"]
             
-            logits = model(**inputs)[1]
+            logits = model(**inputs)[1] # len of candidate entities
             pred_indexes = torch.argmax(logits, 1).detach().cpu()
+            
 
         all_pred_indexes.append(pred_indexes)
         all_labels.append(batch[4].cpu())
+        all_pred_logits.extend(logits.cpu().numpy().tolist())
 
     all_pred_indexes = torch.cat(all_pred_indexes).numpy()
     all_labels = torch.cat(all_labels).numpy()
@@ -278,15 +282,55 @@ def evaluate(args, model, tokenizer, output_prediction=False):
     logger.info("  Evaluation done in total %f secs (%f sec per example)", evalTime, evalTime / len(dataset))
     coverage = coverage_evaluation(examples, dataset, all_pred_indexes)
     results = {'num problem': len(all_pred_indexes), 'acc': acc, 'cov': coverage}
+    # results = {}
 
-    saving = OrderedDict([(feat.pid, pred) for feat, pred in zip(dataset, all_pred_indexes.tolist())])
+    saving_predictions = OrderedDict([(feat.pid, pred) for feat, pred in zip(dataset, all_pred_indexes.tolist())])
+    saving_logits = OrderedDict([(feat.pid, pred_logits) for feat, pred_logits in zip(dataset,all_pred_logits)])
 
     # print(saving)
     if output_prediction:
-        dump_json(saving, os.path.join(args.output_dir, 'predictions.json'))
+        dump_json(saving_predictions, os.path.join(args.output_dir, 'predictions.json'))
+        dump_json(saving_logits, os.path.join(args.output_dir, 'predict_logits.json'))
+
+        split_file = args.predict_file if evaluate else args.train_file
+        dataset_id = os.path.basename(split_file).split('_')[0]
+        split_id = os.path.basename(split_file).split('_')[1]
+        
+        # rank the candidate entities with predicted logits
+        get_candidate_entity_linking_with_logits(dataset_id, split_id)
+
     return results
+
+
+def get_candidate_entity_linking_with_logits(dataset, split):
+    print(f'Preparing candidate entity linking results with logits for {dataset}_{split}')
+    logits_bank = load_json(f'data/{dataset}/entity_retrieval/candidate_entities/disamb_results/{dataset}_{split}/predict_logits.json')
+    candidate_bank = load_json(f'data/{dataset}/entity_retrieval/candidate_entities/{dataset}_{split}_entities_facc1_unranked.json')
+    res = OrderedDict()
     
-            
+    for qid,data in tqdm(candidate_bank.items(),total=len(candidate_bank),desc=f'Processing {split}'):
+        problem_num = len(data)
+        if problem_num ==0:
+            res[qid]=[]
+        entity_list = []
+
+        problem_id = -1
+        for problem in data:
+            problem_id+=1
+            logits = logits_bank.get(qid+'#'+str(problem_id),[1.0]*len(problem))
+            for idx,cand_ent in enumerate(problem):
+                logit = logits[idx]
+                # cand_ent['label'] = get_label_with_odbc(cand_ent['id'])
+                cand_ent['logit'] = logit
+                entity_list.append(cand_ent)
+
+        entity_list.sort(key=lambda x:x['logit'],reverse=True)
+
+        res[qid] = entity_list
+    
+    dump_json(res,f'data/{dataset}/entity_retrieval/candidate_entities/{dataset}_{split}_cand_entities_facc1.json',indent=4,ensure_ascii=False)
+
+ 
 def coverage_evaluation(instances, valid_features, predicted_indexes):
     # build result index
     indexed_pred = dict([(feat.pid, pred) for feat, pred in zip(valid_features,predicted_indexes)])
@@ -381,15 +425,15 @@ def main():
             )
         )
 
-    args.server_ip = '0.0.0.0'
-    args.server_port = '12345'
+    # args.server_ip = '0.0.0.0'
+    # args.server_port = '12346'
 
     # Setup distant debugging if needed
     if args.server_ip and args.server_port:
         # Distant debugging - see https://code.visualstudio.com/docs/python/debugging#_attach-to-a-local-script
         import ptvsd
-        print("Waiting for debugger attach")
-        ptvsd.enable_attach(address=(args.server_ip, args.server_port), redirect_output=True)
+        print("Waiting for debugger attach", flush=True)
+        ptvsd.enable_attach(address=(args.server_ip, args.server_port))
         ptvsd.wait_for_attach()
 
 
@@ -495,6 +539,7 @@ def main():
 
             result = dict((k + ("_{}".format(global_step) if global_step else ""), v) for k, v in result.items())
             results.update(result)
+
     logger.info("Results: {}".format(results))        
 
     return results

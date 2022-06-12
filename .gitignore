@@ -144,7 +144,7 @@ Generation/test_scripts
 # data
 data/common_data
 data/CWQ
-data/WEBQSP
+data/WebQSP
 
 
 # CWQ data
@@ -157,13 +157,25 @@ Data/CWQ/relation_retrieval/cross-encoder
 Data/CWQ/entity_retrieval/luo_linking_results
 
 
-# WEBQSP data
-Data/WEBQSP/generation/ablation
-Data/WEBQSP/generation/label_maps
-Data/WEBQSP/generation/merged
-Data/WEBQSP/generation/exps
-Data/WEBQSP/relation_retrieval/bi-encoder
-Data/WEBQSP/relation_retrieval/cross-encoder
+# WebQSP data
+Data/WebQSP/generation/ablation
+Data/WebQSP/generation/label_maps
+Data/WebQSP/generation/merged
+Data/WebQSP/generation/exps
+Data/WebQSP/relation_retrieval/bi-encoder
+Data/WebQSP/relation_retrieval/cross-encoder
 
 # common data
 Data/common_data/facc1
+
+
+# BERT NER model for entity mention detection
+entity_retrieval/BERT_NER/trained_ner_model/
+entity_retrieval/entity_disamb_CWQ/
+entity_retrieval/entity_disamb_WebQSP/
+
+# huggingface cache
+hfcache/
+
+# feature cache
+feature_cache

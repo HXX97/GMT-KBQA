@@ -40,7 +40,7 @@ try:
 except ImportError:
     from tensorboardX import SummaryWriter
 
-from components.config import set_seed, to_list, register_args, validate_args, load_untrained_model, get_model_class
+from config import set_seed, to_list, register_args, validate_args, load_untrained_model, get_model_class
 from components.rank_dataset_manager import load_and_cache_rank_examples
 from components.rank_dataset import (
     eval_iteretor_for_single_instance,

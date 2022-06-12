@@ -16,13 +16,13 @@ from transformers import (
     AutoTokenizer,
     AutoConfig,
 )
-from models.BertRanker import BertForCandidateRanking
-from models.RobertaRanker import RobertaForCandidateRanking
-from models.BertClassifer import BertForClassification
+
+
+from entity_retrieval.bert_ranker import BertForCandidateRanking
+
+
 MODEL_TYPE_DICT = {
     'bert': BertForCandidateRanking,
-    'roberta': RobertaForCandidateRanking,
-    'bert-classify':BertForClassification
 }
 
 def set_seed(args):

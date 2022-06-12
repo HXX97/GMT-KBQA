@@ -1,0 +1,1 @@
+06/11/2022 16:27:56 - WARNING - __main__ -   Process rank: -1, device: cuda, n_gpu: 1, distributed training: False
