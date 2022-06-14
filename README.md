@@ -86,7 +86,7 @@ The augmented dataset files are saved as `data/CWQ/sexpr/CWQ.test[train,dev].jso
 
 This step can be ***skipped***, as we've provided the entity retrieval retuls in `data/CWQ/entity_retrieval/candidate_entities/CWQ_test[train,dev]_merged_cand_entities_elq_FACC1.json`.
 
-If you want to retrieve the candidate entities from scratch, take the following steps:
+If you want to retrieve the candidate entities from scratch, follow the steps below:
 
 1. Obtain the linking results from ELQ. Firstly you should deploy our tailored [ELQ](). Then run `python detect_and_link_entity.py --dataset CWQ --split test[train,dev] --linker elq` to get candidate entities linked by ELQ. The results will be saved as `data/CWQ/entity_retrieval/candidate_entities/CWQ_test[train,dev]_cand_entities_elq.json`.
 
@@ -99,10 +99,20 @@ Then run `sh scripts/run_entity_disamb.sh CWQ predict test[train,dev]` to rank t
 
 (4) **Retrieve Candidate Relations**
 
-This step can also be ***skipped*** , as we've provided the candidate relations
+This step can also be ***skipped*** , as we've provided the candidate relations in `data/CWQ/relation_retrieval/`
 
+If you want to retrive the candidate relations from scratch, follow the steps below:
+
+1. Train the bi-encoder to encode questions and relations, and build the index of encoded relations. //TODO `complete the running commands`
+2. Retrieve relations by dense search over the index. //TODO `complete the running commands`
+3. Train the cross-encoder to rank retrieved relations. //TODO `complete the running commands`
+4. Merge the logits with relations to get sorted relations for each question by running `python data_process.py merge_relation --dataset CWQ --split test[train,dev]`. The sorted relations will be saved as `data/CWQ/relation_retrieval/candidate_relations/CWQ_test[train,dev]_cand_rels_sorted.json`
 
 (5) **Generate Logical Forms through multi-task learning**
+1. Run `python data_process.py --merge_all --dataset CWQ --split test[train,dev]` prepare all the input data for logical form generation and the two auxiliary tasks (entity disambiguation and relation classification).
+2. 
+
+
 
 
 ## Candidate relation retrieval

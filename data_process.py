@@ -9,17 +9,24 @@
 @Desc    :    
 '''
 
+from collections import defaultdict
 import random
+
+from sklearn import datasets
 from components.utils import load_json, dump_json
 import argparse
 from tqdm import tqdm
+import os
+import torch
+import pandas as pd
+
 
 def _parse_args():
     parser = argparse.ArgumentParser()
     
     parser.add_argument('action',type=str,help='Action to operate')
-    parser.add_argument('--dataset', default='CWQ', help='dataset to perform entity linking, should be CWQ or WebQSP')
-    parser.add_argument('--split', required=True, help='split to operate on') # the split file: ['dev','test','train']
+    parser.add_argument('--dataset', required=True, default='CWQ', help='dataset to perform entity linking, should be CWQ or WebQSP')
+    parser.add_argument('--split', required=True, default='test', help='split to operate on') # the split file: ['dev','test','train']
     
     
 
@@ -85,13 +92,132 @@ def combine_entities_from_FACC1_and_elq(dataset, split, sample_size=10):
     dump_json(combined_res, merged_file_path, indent=4)
 
 
+def make_sorted_relation_dataset_from_logits(dataset, split):
+
+    assert dataset in ['CWQ','WebQSP']
+    if dataset == 'WebQSP':
+        assert split in ['test','train']
+    else:
+        assert split in ['test','train','dev']
+
+    output_dir = f'data/{dataset}/relation_retrieval/candidate_relations'
+    logits_file = f'data/{dataset}/relation_retrieval/cross-encoder/saved_models/final/{split}/logits.pt'
+    
+    if dataset=='CWQ':
+        tsv_file = f'data/CWQ/relation_retrieval/cross-encoder/CWQ.{split}.biEncoder.train_all.maskMention.crossEncoder.2hopValidation.maskMention.richRelation.top100.tsv'
+    elif dataset=='WebQSP':
+        tsv_file = f'data/WebQSP/relation_retrieval/cross-encoder/WebQSP.{split}.biEncoder.train_all.richRelation.crossEncoder.train_all.richRelation.2hopValidation.richEntity.top100.1parse.tsv'
+
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    logits = torch.load(logits_file,map_location=torch.device('cpu'))
+
+    # print(logits)
+    # print(len(logits))
+    logits_list = list(logits.squeeze().numpy())
+    print('Logits len:',len(logits_list))
+
+    tsv_df = pd.read_csv(tsv_file, delimiter='\t',dtype={"id":int, "question":str, "relation":str, 'label':int})
+                            #quoting=csv.QUOTE_NONE,
+                            
+
+    print('Tsv len:', len(tsv_df))
+    # print(tsv_df.head())
+    print('Question Num:',len(tsv_df['question'].unique()))
+
+    # the length of predicted logits must match the num of input examples
+    assert(len(logits_list)==len(tsv_df))
+
+    
+    # if dataset.lower()=='webqsp':
+    #     split_dataset = load_json(f'data/WebQSP/origin/WebQSP.{split}.json')
+    # else:
+    #     split_dataset = load_json(f'data/CWQ/sexpr/ComplexWebQuestions_{split}.json')
+
+    split_dataset = load_json(f'data/{dataset}/sexpr/{dataset}.{split}.expr.json')
+    # question2id = {x['question']:x['ID'] for x in split_dataset}
+
+
+    rowid2qid = {} # map rowid to qid
+    ''
+
+    if dataset=='CWQ':
+        idmap = load_json(f'data/CWQ/relation_retrieval/cross-encoder/CWQ.{split}.biEncoder.train_all.maskMention.crossEncoder.2hopValidation.maskMention.richRelation.top100_CWQid_index_map.json')
+    elif dataset=='WebQSP':
+        idmap = load_json(f'data/WebQSP/relation_retrieval/cross-encoder/WebQSP.{split}.biEncoder.train_all.richRelation.crossEncoder.train_all.richRelation.2hopValidation.richEntity.top100.1parse_WebQSPid_index_map.json')
+
+    for qid in idmap:
+        rowid_start = idmap[qid]['start']
+        rowid_end = idmap[qid]['end']
+        #rowid2qid[rowid]=qid
+        for i in range(rowid_start,rowid_end+1):
+           rowid2qid[i]=qid
+
+
+    # cand_rel_bank = {} # Dict[Question, Dict[Relation:logit]]
+    cand_rel_bank = defaultdict(dict)
+    for idx,logit in tqdm(enumerate(logits_list),total=len(logits_list),desc=f'Reading logits of {split}'):
+        logit = float(logit[1])
+        row_id = tsv_df.loc[idx]['id']
+        question = tsv_df.loc[idx]['question']
+        rel = tsv_df.loc[idx]['relation'].split("|")[0]
+        #cwq_id = question2id.get(question,None)
+        qid = rowid2qid[row_id]
+
+        if not qid:
+            print(question)
+            cand_rel_bank[qid]= {}
+        else:
+            cand_rel_bank[qid][rel]=logit
+
+    cand_rel_logit_map = {}
+    for qid in tqdm(cand_rel_bank,total=len(cand_rel_bank),desc='Sorting rels...'):
+        cand_rel_maps = cand_rel_bank[qid]
+        cand_rel_list = [(rel,logit) for rel,logit in cand_rel_maps.items()]
+        cand_rel_list.sort(key=lambda x:x[1],reverse=True)
+        
+        cand_rel_logit_map[qid]=cand_rel_list
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    dump_json(cand_rel_logit_map,os.path.join(output_dir,f'{dataset}_{split}_cand_rel_logits.json'),indent=4)
+
+    final_candRel_map = defaultdict(list) # Dict[Question,List[Rel]]   sorted by logits
+
+    for ori_data in tqdm(split_dataset,total=len(split_dataset),desc=f'{split} Dumping... '):
+        if dataset=='CWQ':
+            qid = ori_data['ID']
+        else:
+            qid = ori_data['QuestionId']
+        # cand_rel_map = cand_rel_bank.get(qid,None)
+        cand_rel_list = cand_rel_logit_map.get(qid,None)
+        if not cand_rel_list:
+            final_candRel_map[qid]=[]
+        else:
+            # cand_rel_list = list(cand_rel_map.keys())
+            # cand_rel_list.sort(key=lambda x:float(cand_rel_map[x]),reverse=True)
+            final_candRel_map[qid]=[x[0] for x in cand_rel_list]
+
+    sorted_cand_rel_name = os.path.join(output_dir,f'{dataset}_{split}_cand_rels_sorted.json')
+    dump_json(final_candRel_map,sorted_cand_rel_name,indent=4)   
+
+
+
+
 if __name__=='__main__':
+    
     
     args = _parse_args()
     action = args.action
 
     if action.lower()=='merge_entity':
         combine_entities_from_FACC1_and_elq(dataset=args.dataset, split=args.split)
+    elif action.lower()=='merge_relation':
+        make_sorted_relation_dataset_from_logits(dataset=args.dataset, split=args.split)
+    elif action.lower()=='merge_all':
+        pass
     else:
-        print('Usage: python data_process.py <action> --dataset CWQ[WebQSP] --split test[train,dev]')
-
+        print('usage: data_process.py action [--dataset DATASET] --split SPLIT ')
