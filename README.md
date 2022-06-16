@@ -109,7 +109,7 @@ If you want to retrive the candidate relations from scratch, follow the steps be
 4. Merge the logits with relations to get sorted relations for each question by running `python data_process.py merge_relation --dataset CWQ --split test[train,dev]`. The sorted relations will be saved as `data/CWQ/relation_retrieval/candidate_relations/CWQ_test[train,dev]_cand_rels_sorted.json`
 
 (5) **Generate Logical Forms through multi-task learning**
-1. Run `python data_process.py --merge_all --dataset CWQ --split test[train,dev]` prepare all the input data for logical form generation and the two auxiliary tasks (entity disambiguation and relation classification).
+1. Run `python data_process.py --merge_all --dataset CWQ --split test[train,dev]` prepare all the input data for logical form generation and the two auxiliary tasks (entity disambiguation and relation classification). The merged data file will be saved as `data/CWQ/generation/merged/CWQ_test[train,dev].json`
 2. 
 
 

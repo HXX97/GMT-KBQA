@@ -1312,6 +1312,47 @@ def get_out_relations_with_odbc(entity: str) -> str:
 
     return out_relations
 
+
+def get_1hop_relations_with_odbc(entity):
+    # build connection
+    global odbc_conn
+    if odbc_conn == None:
+        initialize_odbc_connection()
+    
+    relations = set()
+
+    query = ("""SPARQL
+            PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX : <http://rdf.freebase.com/ns/> 
+            SELECT (?x0 AS ?value) WHERE {
+            SELECT DISTINCT ?x0  WHERE {
+            """
+              '{ ?x1 ?x0 ' + ':' + entity + ' }'
+              + ' UNION '
+              + '{ :' + entity + ' ?x0 ?x1 ' + '}'
+                                          """
+     FILTER regex(?x0, "http://rdf.freebase.com/ns/")
+     }
+     }
+     """)
+
+
+    try:
+        with odbc_conn.cursor() as cursor:
+            cursor.execute(query)
+            rows = cursor.fetchall()
+    except Exception:
+        print(f"Query Execution Failed:{query}")
+        exit(0)
+    
+
+    for row in rows:
+        relations.add(row[0].replace('http://rdf.freebase.com/ns/', ''))
+
+    return relations
+
+
 def get_wikipage_id_from_dbpedia_uri(dbpedia_uri: str):
     # build connection
     global odbc_dbpedia_conn

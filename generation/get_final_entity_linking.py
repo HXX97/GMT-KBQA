@@ -11,8 +11,7 @@
 
 # here put the import lib
 
-from components.utils import dump_json, load_json
-from components.grail_utils import extract_mentioned_entities_from_sparql, extract_mentioned_relations_from_sparql
+from components.utils import dump_json, load_json, extract_mentioned_entities_from_sparql, extract_mentioned_relations_from_sparql
 from executor.sparql_executor import execute_query_with_odbc, get_label, get_label_with_odbc, get_types, get_types_with_odbc
 import os
 

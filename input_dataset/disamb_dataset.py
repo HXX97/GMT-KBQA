@@ -17,9 +17,7 @@ import torch
 import os
 from torch.utils.data import Dataset
 from tqdm import tqdm
-from components.utils import load_json
-from components.grail_utils import extract_mentioned_entities
-from components.grail_utils import extract_mentioned_entities_from_sparql
+from components.utils import load_json, extract_mentioned_entities_from_sexpr, extract_mentioned_entities_from_sparql
 from executor.sparql_executor import get_in_relations_with_odbc, get_label_with_odbc, get_out_relations_with_odbc
 from nltk.tokenize import word_tokenize
 
@@ -105,11 +103,10 @@ def proc_instance_cwq(ex,linking_results, cutoff=10):
         sparql = ex['sparql']
         entities_in_gt = set(extract_mentioned_entities_from_sparql(sparql))
     
-
     if 'SExpr' in ex:
         s_expr = ex['SExpr']
         if len(entities_in_gt)==0:
-            entities_in_gt = set(extract_mentioned_entities(s_expr))
+            entities_in_gt = set(extract_mentioned_entities_from_sexpr(s_expr))
     
     ranking_problems = []
 

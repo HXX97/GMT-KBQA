@@ -19,7 +19,6 @@ from tqdm import tqdm
 from collections import Counter
 
 from components.utils import *
-from components.grail_utils import extract_mentioned_entities
 from executor.sparql_executor import get_label, execute_query, get_in_relations, get_out_relations
 from executor.logic_form_util import lisp_to_sparql
 from nltk.tokenize import word_tokenize
@@ -85,7 +84,7 @@ def proc_instance(ex, linking_results, cutoff = 10):
     # extract ground truth entities
     if 's_expression' in ex:
         s_expr = ex['s_expression']
-        entities_in_gt = set(extract_mentioned_entities(s_expr))
+        entities_in_gt = set(extract_mentioned_entities_from_sexpr(s_expr))
     else:
         s_expr = 'null'
         entities_in_gt = set()

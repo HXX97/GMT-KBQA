@@ -17,7 +17,7 @@ from functools import reduce
 import torch
 from tqdm import tqdm
 from torch.utils.data import Dataset
-from components.grail_utils import extract_mentioned_entities_from_sparql, extract_mentioned_relations_from_sparql
+from components.utils import extract_mentioned_entities_from_sparql, extract_mentioned_relations_from_sparql
 from components.utils import load_json
 from executor.sparql_executor import get_label, get_label_with_odbc
 from transformers import (BartTokenizer)
