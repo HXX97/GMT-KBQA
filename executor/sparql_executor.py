@@ -188,7 +188,7 @@ def get_types_with_odbc(entity: str)  -> List[str]:
             rows = cursor.fetchall()
     except Exception:
         print(f"Query Execution Failed:{query}")
-        exit(0)
+        # exit(0)
     
 
     for row in rows:

@@ -310,8 +310,7 @@ def merge_all_data_for_logical_form_generation(dataset, split):
     in_out_rels_map = get_entities_in_out_relations(dataset, unique_cand_entities)
     # disambiguated entities
     disamb_ent_map = get_merged_disambiguated_entities(dataset,split)
-    
-
+        
     global_ent_label_map = {}
     global_rel_label_map = {}
     global_type_label_map = {}
@@ -322,20 +321,32 @@ def merge_all_data_for_logical_form_generation(dataset, split):
         
         new_example = {}
         
-        qid = example["ID"]
+        qid = example["ID"] if dataset=='CWQ' else example['QuestionId']
         question = example['question'] if dataset=='CWQ' else example['ProcessedQuestion']
         comp_type = example["compositionality_type"] if dataset=='CWQ' else None                
-        sexpr = example['SExpr']
-        sparql = example['sparql']
+        
         
         if dataset=='CWQ':
+            sexpr = example['SExpr']
+            sparql = example['sparql']
             if split=='test':
                 answer = list(execute_query_with_odbc_filter_answer(sparql))
             else:
                 answer = [x['answer_id'] for x in example['answers']]
         elif dataset=='WebQSP':
-            pass
-        
+            # for WebQSP choose the shortest sparql
+            parses = example['Parses']
+            shortest_idx = 0
+            shortest_len = 9999
+            for i in range(len(parses)):
+                if len(parses[i]['Sparql']) < shortest_len:
+                    shortest_idx = i
+                    shortest_len = len(parses[i]['Sparql'])
+                
+            sexpr = parses[shortest_idx]['SExpr']
+            sparql = parses[shortest_idx]['Sparql']
+            answer = [x['AnswerArgument'] for x in parses[shortest_idx]['Answers']]
+            
         
         normed_sexpr = vanilla_sexpr_linearization_method(sexpr)
 
@@ -368,7 +379,7 @@ def merge_all_data_for_logical_form_generation(dataset, split):
             global_rel_label_map[rel] = linear_rel
         
         
-        cand_relation_list = candidate_relations_map[qid]
+        cand_relation_list = candidate_relations_map.get(qid,[])
 
         cand_entities = candidate_entities_map[qid]
         cand_ent_list = []
@@ -522,6 +533,9 @@ def get_merged_disambiguated_entities(dataset, split):
             disamb_ent_map[qid] = disamb_entities
 
         print(f'Writing disamb entities into {disamb_ent_file}')
+        if not os.path.exists(disamb_ent_dir):
+            os.makedirs(disamb_ent_dir)
+
         dump_json(disamb_ent_map, disamb_ent_file, indent=4)
         
         return disamb_ent_map
@@ -578,15 +592,15 @@ def extract_entity_relation_type_label_from_dataset(dataset, split):
             'type_label_map':type_label_map
         }
 
-    dir_name = "data/label_maps"
+    dir_name = f"data/{dataset}/generation/label_maps"
     if not os.path.exists(dir_name):
         os.makedirs(dir_name)
     
-    dump_json(dataset_merged_label_map,f'{dir_name}/CWQ_{split}_label_maps.json',indent=4)    
+    dump_json(dataset_merged_label_map,f'{dir_name}/{dataset}_{split}_label_maps.json',indent=4)    
 
-    dump_json(global_ent_label_map, f'{dir_name}/CWQ_{split}_entity_label_map.json',indent=4)
-    dump_json(global_rel_label_map, f'{dir_name}/CWQ_{split}_relation_label_map.json',indent=4)
-    dump_json(global_type_label_map, f'{dir_name}/CWQ_{split}_type_label_map.json',indent=4)
+    dump_json(global_ent_label_map, f'{dir_name}/{dataset}_{split}_entity_label_map.json',indent=4)
+    dump_json(global_rel_label_map, f'{dir_name}/{dataset}_{split}_relation_label_map.json',indent=4)
+    dump_json(global_type_label_map, f'{dir_name}/{dataset}_{split}_type_label_map.json',indent=4)
 
     print("done")
 

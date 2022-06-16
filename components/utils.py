@@ -80,7 +80,7 @@ def extract_mentioned_entities_from_sparql(sparql:str) -> List[str]:
     """extract entity from sparql"""
     sparql = sparql.replace('(',' ( ').replace(')',' ) ')
     toks = sparql.split(' ')
-    toks = [x for x in toks if len(x)]
+    toks = [x.replace('\t.','') for x in toks if len(x)]
     entity_tokens = []
     for t in toks:
         if t.startswith('ns:m.') or t.startswith('ns:g.'):
