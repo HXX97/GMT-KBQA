@@ -6,14 +6,14 @@ import argparse
 from xmlrpc.client import boolean
 import numpy as np
 from transformers import AdamW, AutoTokenizer, get_linear_schedule_with_warmup
-from models.T5_models_final import (
+from generation.models.T5_models_final import (
     T5_generation, 
     T5_generation_concat,
     T5_Multitask_Relation_Concat, 
     T5_MultiTask_Relation_Entity_Concat,
     T5_Multitask_Entity_Concat
 )
-from inputDataset.gen_mtl_dataset import MTLGenDataset, MTLGenerationExample
+from input_dataset.gen_mtl_dataset import MTLGenDataset, MTLGenerationExample
 from components.utils import dump_json, load_json
 from torch.utils.data import DataLoader
 from torch.cuda.amp import autocast, GradScaler
@@ -26,9 +26,9 @@ Important: Edit this when change source data
 """ 
 def load_data(split, args):
     if args.dataset_type == "CWQ":
-        data_file_name = '../Data/CWQ/generation/merged/CWQ_{}.json'.format(split)
+        data_file_name = 'data/CWQ/generation/merged/CWQ_{}.json'.format(split)
     elif args.dataset_type == "WebQSP":
-        data_file_name = '../Data/WEBQSP/generation/merged/WebQSP_{}.json'.format(split)
+        data_file_name = 'data/WebQSP/generation/merged/WebQSP_{}.json'.format(split)
     print('Loading data from:',data_file_name)
     data_dict = load_json(data_file_name)
     return data_dict
@@ -168,14 +168,14 @@ def _collate_fn(data,tokenizer):
         all_entity_clf_pair_input_ids.extend(data_tuple[6])
         all_entity_clf_pair_labels.extend(data_tuple[7])
         rich_candidate_entities_list.extend(data_tuple[8])
-        all_structure_tgt_input_ids.append(data_tuple[9])
-        candidate_structures.extend(data_tuple[10])
-        all_structure_clf_pair_labels.extend(data_tuple[11])
-        all_rich_relation_clf_pair_input_ids.extend(data_tuple[12])
-        candidate_rich_relations.extend(data_tuple[13])
-        all_structure_clf_pair_input_ids.extend(data_tuple[14])
-        all_src_concatenated_input_ids.append(data_tuple[15])
-        all_src_golden_concatenated_input_ids.append(data_tuple[16])
+        #all_structure_tgt_input_ids.append(data_tuple[9])
+        #candidate_structures.extend(data_tuple[10])
+        #all_structure_clf_pair_labels.extend(data_tuple[11])
+        all_rich_relation_clf_pair_input_ids.extend(data_tuple[9])
+        candidate_rich_relations.extend(data_tuple[10])
+        #all_structure_clf_pair_input_ids.extend(data_tuple[14])
+        all_src_concatenated_input_ids.append(data_tuple[11])
+        all_src_golden_concatenated_input_ids.append(data_tuple[12])
 
     
     src_encoded = tokenizer.pad({'input_ids': all_src_input_ids},return_tensors='pt')

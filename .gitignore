@@ -188,3 +188,5 @@ hfcache/
 # feature cache
 feature_cache
 
+# experiment models and logs
+exps/

@@ -1,5 +1,4 @@
 from torch.utils.data import Dataset
-from inputDataset.gen_dataset import _vanilla_linearization_method
 import torch
 
 IGONORED_DOMAIN_LIST = ['type', 'common', 'kg', 'dataworld']
@@ -26,8 +25,8 @@ class MTLGenerationExample:
         self.cand_relation_list = dict_data['cand_relation_list']
         self.answer = dict_data['answer']
         self.cand_entity_list = dict_data['cand_entity_list']
-        self.gold_structure = dict_data['normed_all_masked_sexpr']
-        self.cand_structure_list = dict_data['cand_structure_list']
+        # self.gold_structure = dict_data['normed_all_masked_sexpr']
+        # self.cand_structure_list = dict_data['cand_structure_list']
         self.disambiguated_cand_entity = dict_data['disambiguated_cand_entity']
 
 
@@ -89,10 +88,10 @@ class MTLGenDataset(Dataset):
         entity_labels = [(ent['id'] in gold_entities_ids_set) for ent in example.cand_entity_list]
         entity_clf_pairs_labels = torch.LongTensor(entity_labels)
 
-        gold_structure = example.gold_structure
-        candidate_structures = example.cand_structure_list
-        structure_labels = [(item == gold_structure) for item in candidate_structures]
-        structure_clf_labels = torch.LongTensor(structure_labels)
+        # gold_structure = example.gold_structure
+        # candidate_structures = example.cand_structure_list
+        # structure_labels = [(item == gold_structure) for item in candidate_structures]
+        # structure_clf_labels = torch.LongTensor(structure_labels)
 
         input_src = question
 
@@ -125,6 +124,7 @@ class MTLGenDataset(Dataset):
                 else:
                     gen_src_concatenated += self.REL_TOKEN + rel[0]
         gen_src_concatenated += self.SEPERATOR
+        
         for ent in example.disambiguated_cand_entity:
             gen_src_concatenated += self.ENT_TOKEN + ent['label']
         gen_src_concatenated += self.SEPERATOR
@@ -171,13 +171,13 @@ class MTLGenDataset(Dataset):
                 #padding='max_length',
             ).data['input_ids'].squeeze(0)
         
-        with self.tokenizer.as_target_tokenizer():
-            tokenized_structure_gen_tgt = self.tokenizer(
-                gold_structure,
-                max_length=self.max_structure_tgt_len,
-                truncation=True,
-                return_tensors='pt',
-            ).data['input_ids'].squeeze(0)
+        # with self.tokenizer.as_target_tokenizer():
+        #     tokenized_structure_gen_tgt = self.tokenizer(
+        #         gold_structure,
+        #         max_length=self.max_structure_tgt_len,
+        #         truncation=True,
+        #         return_tensors='pt',
+        #     ).data['input_ids'].squeeze(0)
         
         tokenized_relation_clf_pairs = []
         
@@ -265,25 +265,25 @@ class MTLGenDataset(Dataset):
 
             tokenized_entity_clf_pairs.append(tokenized_entity_pair)
         
-        tokenized_structure_clf_pairs = []
+        #tokenized_structure_clf_pairs = []
 
-        for cand_stru in candidate_structures:
-            stru_src = input_src
-            if self.add_prefix:
-                stru_src = 'Structure Classification: ' + stru_src
-            if self.do_lower:
-                stru_src = stru_src.lower()
-                cand_stru = cand_stru.lower()
+        # for cand_stru in candidate_structures:
+        #     stru_src = input_src
+        #     if self.add_prefix:
+        #         stru_src = 'Structure Classification: ' + stru_src
+        #     if self.do_lower:
+        #         stru_src = stru_src.lower()
+        #         cand_stru = cand_stru.lower()
             
-            tokenized_structure_pair = self.tokenizer(
-                stru_src,
-                cand_stru,
-                max_length=self.max_src_len,
-                truncation='longest_first',
-                return_tensors='pt'
-            ).data['input_ids'].squeeze(0)
+        #     tokenized_structure_pair = self.tokenizer(
+        #         stru_src,
+        #         cand_stru,
+        #         max_length=self.max_src_len,
+        #         truncation='longest_first',
+        #         return_tensors='pt'
+        #     ).data['input_ids'].squeeze(0)
 
-            tokenized_structure_clf_pairs.append(tokenized_structure_pair)
+        #     tokenized_structure_clf_pairs.append(tokenized_structure_pair)
 
         return (
             tokenized_src, 
@@ -296,12 +296,12 @@ class MTLGenDataset(Dataset):
             tokenized_entity_clf_pairs,
             entity_clf_pairs_labels,
             example.cand_entity_list,
-            tokenized_structure_gen_tgt,
-            candidate_structures,
-            structure_clf_labels,
+            #tokenized_structure_gen_tgt,
+            #candidate_structures,
+            #structure_clf_labels,
             tokenized_rich_relation_clf_pairs,
             candidate_rich_relations,
-            tokenized_structure_clf_pairs,
+            #tokenized_structure_clf_pairs,
             tokenized_src_concatenated,
             tokenized_src_golden_concatenated
         )
