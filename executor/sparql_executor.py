@@ -11,7 +11,6 @@ sparql.setReturnFormat(JSON)
 
 path = str(Path(__file__).parent.absolute())
 
-
 with open(path + '/../ontology/fb_roles', 'r') as f:
     contents = f.readlines()
 
@@ -19,6 +18,38 @@ roles = set()
 for line in contents:
     fields = line.split()
     roles.add(fields[1])
+
+# connection for freebase
+odbc_conn = None
+def initialize_odbc_connection():
+    global odbc_conn
+    # odbc_conn = pyodbc.connect(r'DRIVER=/data/virtuoso/virtuoso-opensource/lib/virtodbc.so'
+    #                       r';HOST=114.212.190.19:1111'
+    #                       r';UID=dba'
+    #                       r';PWD=dba'
+    #                       )
+    odbc_conn = pyodbc.connect(
+        f'DRIVER={path}/../lib/virtodbc.so;Host=localhost:1111;UID=dba;PWD=dba'
+    )
+    odbc_conn.setdecoding(pyodbc.SQL_CHAR, encoding='utf8')
+    odbc_conn.setdecoding(pyodbc.SQL_WCHAR, encoding='utf8')
+    odbc_conn.setencoding(encoding='utf8')
+    print('Freebase Virtuoso ODBC connected')
+
+# connection for dbpedia
+odbc_dbpedia_conn = None
+def initialize_dbpedia_odbc_connection():
+    global odbc_dbpedia_conn
+    odbc_dbpedia_conn = pyodbc.connect(f'DRIVER={path}/../lib/virtodbc.so'
+                          ';HOST=210.28.134.34:1113'
+                          ';UID=dba'
+                          ';PWD=dba'
+                          )
+    odbc_dbpedia_conn.setdecoding(pyodbc.SQL_CHAR, encoding='utf8')
+    odbc_dbpedia_conn.setdecoding(pyodbc.SQL_WCHAR, encoding='utf8')
+    odbc_dbpedia_conn.setencoding(encoding='utf8')
+    print('DBpedia Virtuoso ODBC connected')
+
 
 
 def execute_query(query: str) -> List[str]:
@@ -1159,36 +1190,6 @@ def pyodbc_test():
     conn.commit()
     conn.close()
 
-# connection for freebase
-odbc_conn = None
-def initialize_odbc_connection():
-    global odbc_conn
-    # odbc_conn = pyodbc.connect(r'DRIVER=/data/virtuoso/virtuoso-opensource/lib/virtodbc.so'
-    #                       r';HOST=114.212.190.19:1111'
-    #                       r';UID=dba'
-    #                       r';PWD=dba'
-    #                       )
-    odbc_conn = pyodbc.connect(
-        'DRIVER=/home3/xwu/virtuoso/virtodbc.so;Host=localhost:1111;UID=dba;PWD=dba'
-    )
-    odbc_conn.setdecoding(pyodbc.SQL_CHAR, encoding='utf8')
-    odbc_conn.setdecoding(pyodbc.SQL_WCHAR, encoding='utf8')
-    odbc_conn.setencoding(encoding='utf8')
-    print('Freebase Virtuoso ODBC connected')
-
-# connection for dbpedia
-odbc_dbpedia_conn = None
-def initialize_dbpedia_odbc_connection():
-    global odbc_dbpedia_conn
-    odbc_dbpedia_conn = pyodbc.connect(r'DRIVER=/data/virtuoso/virtuoso-opensource/lib/virtodbc.so'
-                          r';HOST=210.28.134.34:1113'
-                          r';UID=dba'
-                          r';PWD=dba'
-                          )
-    odbc_dbpedia_conn.setdecoding(pyodbc.SQL_CHAR, encoding='utf8')
-    odbc_dbpedia_conn.setdecoding(pyodbc.SQL_WCHAR, encoding='utf8')
-    odbc_dbpedia_conn.setencoding(encoding='utf8')
-    print('DBpedia Virtuoso ODBC connected')
 
 
 def get_label_with_odbc(entity: str) -> str:
@@ -1508,13 +1509,13 @@ def query_rich_relation(relation):
 
 
 if __name__=='__main__':
-    pass
+    
     # pyodbc_test()
     
     # print(get_label('m.04tfqf'))
-    # print(get_label_with_odbc('m.04tfqf'))
-    # print(get_in_relations_with_odbc('m.04tfqf'))
-    # print(get_out_relations_with_odbc('m.04tfqf'))
+    print(get_label_with_odbc('m.04tfqf'))
+    print(get_in_relations_with_odbc('m.04tfqf'))
+    print(get_out_relations_with_odbc('m.04tfqf'))
 
     # print(get_label('m.0fjp3'))
     # print(get_label_with_odbc('m.0fjp3'))
