@@ -53,7 +53,7 @@ TODO: cite
 ---
 TODO: Brief introduction to GMT-KBQA
 
-## Model Description
+<!-- ## Model Description
 
 TODO:
 
@@ -66,13 +66,13 @@ TODO:
 
 The code for question answering is mainly in  `common`.
 
-The code for candidate relations retrieval is mainly in `relation_detection_and_linking`.
+The code for candidate relations retrieval is mainly in `relation_detection_and_linking`. -->
 
 
 ## Reproducing the Results on CWQ
 (1) **Prepare dataset and pretrained checkpoints**
 
-Download the CWQ dataset and put them under `data/CWQ/origin`. The dataset files should be named as `ComplexWebQuestions_test[train,dev].json`.
+Download the CWQ dataset from [here](https://www.dropbox.com/sh/7pkwkrfnwqhsnpo/AACuu4v3YNkhirzBOeeaHYala) and put them under `data/CWQ/origin`. The dataset files should be named as `ComplexWebQuestions_test[train,dev].json`.
 
 (2) **Parse SPARQL queries to S-expressions**
 
@@ -110,8 +110,9 @@ If you want to retrive the candidate relations from scratch, follow the steps be
 
 (5) **Generate Logical Forms through multi-task learning**
 1. Run `python data_process.py --merge_all --dataset CWQ --split test[train,dev]` prepare all the input data for logical form generation and the two auxiliary tasks (entity disambiguation and relation classification). The merged data file will be saved as `data/CWQ/generation/merged/CWQ_test[train,dev].json`
-2. 
-
+2. Run `sh scripts/run_t5_entity_concat_add_prefix_warmup_5_15epochs_CWQ.sh train multitask0617` to train the logical form generation model. The trained model will be saved in `exps/final/CWQ_multitask0617`.
+3. // TODO `complete the command for inference`
+4. // TODO `complete the command for evaluation`
 
 
 

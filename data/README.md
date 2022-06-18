@@ -1,1 +1,0 @@
-Data of CWQ and WebQSP.
