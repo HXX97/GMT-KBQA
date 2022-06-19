@@ -3,8 +3,6 @@ from typing import List, Union
 from collections import defaultdict
 from pathlib import Path
 from tqdm import tqdm
-import sys
-sys.path.append("/data/xxhu/QDT2sExpression/common")
 from executor.sparql_executor import execute_query
 import re
 import json

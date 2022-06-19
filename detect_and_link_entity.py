@@ -3,7 +3,7 @@ from textwrap import indent
 from tqdm import tqdm
 import json
 import argparse
-from executor.sparql_executor import get_freebase_mid_from_wikiID, get_label, get_label_with_odbc, get_wikipage_id_from_dbpedia_uri
+from executor.sparql_executor import get_freebase_mid_from_wikiID, get_label, get_label_with_odbc
 from entity_retrieval.aqqu_entity_linker import IdentifiedEntity
 from entity_retrieval import surface_index_memory
 from entity_retrieval.bert_entity_linker import BertEntityLinker
