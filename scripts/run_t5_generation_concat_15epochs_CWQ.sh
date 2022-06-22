@@ -30,10 +30,8 @@ if [ "$ACTION" = "train" ]; then
                             --overwrite_output_dir \
                             --normalize_relations \
                             --sample_size 10 \
-                            --add_prefix \
-                            --model T5_Multitask_Entity_Concat \
+                            --model T5_generation_concat \
                             --dataset_type CWQ \
-                            --warmup_epochs 5 \
                             --train_batch_size 8 \
                             --eval_batch_size 4 \
                             --test_batch_size 4 | tee "${exp_prefix}log.txt"
@@ -57,8 +55,7 @@ elif [ "$ACTION" = "eval" -o "$ACTION" = "predict" ]; then
                         --model_save_dir "${exp_prefix}model_saved" \
                         --normalize_relations \
                         --sample_size 10 \
-                        --add_prefix \
-                        --model T5_Multitask_Entity_Concat \
+                        --model T5_generation_concat \
                         --overwrite_output_dir \
                         --dataset_type CWQ \
                         --train_batch_size 8 \

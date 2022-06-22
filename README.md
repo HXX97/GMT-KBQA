@@ -110,9 +110,9 @@ If you want to retrive the candidate relations from scratch, follow the steps be
 
 (5) **Generate Logical Forms through multi-task learning**
 1. Run `python data_process.py --merge_all --dataset CWQ --split test[train,dev]` prepare all the input data for logical form generation and the two auxiliary tasks (entity disambiguation and relation classification). The merged data file will be saved as `data/CWQ/generation/merged/CWQ_test[train,dev].json`
-2. Run `sh scripts/run_t5_entity_concat_add_prefix_warmup_5_15epochs_CWQ.sh train multitask0617` to train the logical form generation model. The trained model will be saved in `exps/final/CWQ_multitask0617`.
-3. // TODO `complete the command for inference`
-4. // TODO `complete the command for evaluation`
+2. Run `sh scripts/run_t5_relation_entity_concat_add_prefix_warmup_epochs_5_15epochs_CWQ.sh train multitask0617` to train the logical form generation model. The trained model will be saved in `exps/CWQ_multitask0617`. Command for training other model variants can be found in `cheatsheet_generation.txt`.
+3. Command for training model(as shown in 2.) will also do inference on `test` split. You can run `sh scripts/run_t5_relation_entity_concat_add_prefix_warmup_epochs_5_15epochs_CWQ.sh predict multitask0617 False test 50 4` to do inference on `test` split alone. Command for inferencing on other model variants can be found in `cheatsheet_generation.txt`.
+4. Run `python3 eval_topk_prediction_final.py --split test --pred_file exps/multitask0617/beam_50_top_k_predictions.json` to evaluate trained model.
 
 
 

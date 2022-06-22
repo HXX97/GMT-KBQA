@@ -111,9 +111,9 @@ def generate_candidate_entity_map_classification_res(predictions, dirname, datas
                 }
     
     if args.dataset_type == "CWQ":
-        dump_json(predicted_entities, os.path.join(dirname, 'CWQ_candidate_entity_map.json'))
+        dump_json(predicted_entities, os.path.join(dirname, f'CWQ_{args.predict_split}_candidate_entity_map.json'))
     elif args.dataset_type == "WebQSP":
-        dump_json(predicted_entities, os.path.join(dirname, 'WebQSP_candidate_entity_map.json'))
+        dump_json(predicted_entities, os.path.join(dirname, f'WebQSP_{args.predict_split}_candidate_entity_map.json'))
 
 
 def generate_candidate_entity_map_from_source_file(dirname, dataset, args):
@@ -148,12 +148,12 @@ def _collate_fn(data,tokenizer):
     all_entity_clf_pair_input_ids = []
     all_entity_clf_pair_labels = []
     rich_candidate_entities_list = []
-    all_structure_tgt_input_ids = []
-    candidate_structures = []
-    all_structure_clf_pair_labels = []
+    # all_structure_tgt_input_ids = []
+    # candidate_structures = []
+    # all_structure_clf_pair_labels = []
     all_rich_relation_clf_pair_input_ids = []
     candidate_rich_relations = []
-    all_structure_clf_pair_input_ids = []
+    # all_structure_clf_pair_input_ids = []
     all_src_concatenated_input_ids = []
     all_src_golden_concatenated_input_ids = []
     # print(len(data))
@@ -185,9 +185,9 @@ def _collate_fn(data,tokenizer):
     rich_relation_clf_pair_encoded = tokenizer.pad({'input_ids': all_rich_relation_clf_pair_input_ids},return_tensors='pt')
     entity_clf_pair_encoded = tokenizer.pad({'input_ids': all_entity_clf_pair_input_ids},return_tensors='pt')
     entity_clf_pair_labels = torch.tensor(all_entity_clf_pair_labels)
-    structure_tgt_encoded = tokenizer.pad({'input_ids': all_structure_tgt_input_ids},return_tensors='pt')
-    structure_clf_pair_labels = torch.tensor(all_structure_clf_pair_labels)
-    structure_clf_pair_encoded = tokenizer.pad({'input_ids': all_structure_clf_pair_input_ids},return_tensors='pt')
+    # structure_tgt_encoded = tokenizer.pad({'input_ids': all_structure_tgt_input_ids},return_tensors='pt')
+    # structure_clf_pair_labels = torch.tensor(all_structure_clf_pair_labels)
+    # structure_clf_pair_encoded = tokenizer.pad({'input_ids': all_structure_clf_pair_input_ids},return_tensors='pt')
     src_concatenated_encoded = tokenizer.pad({'input_ids': all_src_concatenated_input_ids},return_tensors='pt')
     src_golden_concatenated_encoded = tokenizer.pad({'input_ids': all_src_golden_concatenated_input_ids},return_tensors='pt')
 
@@ -201,12 +201,12 @@ def _collate_fn(data,tokenizer):
         entity_clf_pair_encoded,
         entity_clf_pair_labels,
         rich_candidate_entities_list,
-        structure_tgt_encoded,
-        candidate_structures,
-        structure_clf_pair_labels,
+        # structure_tgt_encoded,
+        # candidate_structures,
+        # structure_clf_pair_labels,
         rich_relation_clf_pair_encoded,
         candidate_rich_relations,
-        structure_clf_pair_encoded,
+        # structure_clf_pair_encoded,
         src_concatenated_encoded,
         src_golden_concatenated_encoded
     )
@@ -324,14 +324,14 @@ def train_model(args,model,tokenizer,device,train_dataloader,dev_dataloader=None
             entity_clf_pair_encoded = data[6]
             entity_clf_pair_labels = data[7]
             rich_textual_candidate_entities_list = data[8]
-            structure_tgt_encoded = data[9]
-            candidate_structures = data[10]
-            structure_clf_pair_labels = data[11]
-            rich_relation_clf_pair_encoded = data[12]
-            candidate_rich_relations = data[13]
-            structure_clf_pair_encoded = data[14]
-            src_concatenated_encoded = data[15]
-            src_golden_concatenated_encoded = data[16]
+            # structure_tgt_encoded = data[9]
+            # candidate_structures = data[10]
+            # structure_clf_pair_labels = data[11]
+            rich_relation_clf_pair_encoded = data[9]
+            candidate_rich_relations = data[10]
+            # structure_clf_pair_encoded = data[14]
+            src_concatenated_encoded = data[11]
+            src_golden_concatenated_encoded = data[12]
             # print(data)
 
             if isinstance(model, T5_generation):
@@ -462,14 +462,14 @@ def evaluate_loss(args, model,device,dataloader):
             entity_clf_pair_encoded = data[6]
             entity_clf_pair_labels = data[7]
             rich_textual_candidate_entities_list = data[8]
-            structure_tgt_encoded = data[9]
-            candidate_structures = data[10]
-            structure_clf_pair_labels = data[11]
-            rich_relation_clf_pair_encoded = data[12]
-            candidate_rich_relations = data[13]
-            structure_clf_pair_encoded = data[14]
-            src_concatenated_encoded = data[15]
-            src_golden_concatenated_encoded = data[16]
+            # structure_tgt_encoded = data[9]
+            # candidate_structures = data[10]
+            # structure_clf_pair_labels = data[11]
+            rich_relation_clf_pair_encoded = data[9]
+            candidate_rich_relations = data[10]
+            # structure_clf_pair_encoded = data[14]
+            src_concatenated_encoded = data[11]
+            src_golden_concatenated_encoded = data[12]
             # print(data)
 
             if isinstance(model, T5_generation):
@@ -548,10 +548,10 @@ def run_prediction(args,model,device,dataloader,tokenizer,output_dir,output_pred
     all_relation_clf_labels = []
     all_entity_clf_predictions = []
     all_entity_clf_labels = []
-    all_structure_gen_predictions = []
-    all_structure_gen_labels = []
-    all_structure_clf_predictions = []
-    all_structure_clf_labels = []
+    # all_structure_gen_predictions = []
+    # all_structure_gen_labels = []
+    # all_structure_clf_predictions = []
+    # all_structure_clf_labels = []
     for it,data in enumerate(tqdm(dataloader,desc='Predicting')):
             src_encoded = data[0]
             tgt_encoded = data[1]
@@ -562,19 +562,19 @@ def run_prediction(args,model,device,dataloader,tokenizer,output_dir,output_pred
             entity_clf_pair_encoded = data[6]
             entity_clf_pair_labels = data[7]
             rich_textual_candidate_entities_list = data[8]
-            structure_tgt_encoded = data[9]
-            candidate_structures = data[10]
-            structure_clf_pair_labels = data[11]
-            rich_relation_clf_pair_encoded = data[12]
-            candidate_rich_relations = data[13]
-            structure_clf_pair_encoded = data[14]
-            src_concatenated_encoded = data[15]
-            src_golden_concatenated_encoded = data[16]
+            # structure_tgt_encoded = data[9]
+            # candidate_structures = data[10]
+            # structure_clf_pair_labels = data[11]
+            rich_relation_clf_pair_encoded = data[9]
+            candidate_rich_relations = data[10]
+            # structure_clf_pair_encoded = data[14]
+            src_concatenated_encoded = data[11]
+            src_golden_concatenated_encoded = data[12]
 
             entity_clf_outputs = None
             relation_clf_outputs = None
-            structure_gen_outputs = None
-            structure_clf_outputs = None
+            # structure_gen_outputs = None
+            # structure_clf_outputs = None
 
             if isinstance(model, T5_generation):
                 gen_outputs = model.inference(
@@ -647,17 +647,17 @@ def run_prediction(args,model,device,dataloader,tokenizer,output_dir,output_pred
                 all_entity_clf_predictions.extend([p.numpy() for p in entity_clf_outputs])
                 all_entity_clf_labels.extend([l.numpy() for l in entity_clf_pair_labels])
             
-            if structure_gen_outputs is not None:
-                structure_gen_outputs = [p.cpu().numpy() for p in structure_gen_outputs]
-                structure_gen_labels = structure_tgt_encoded['input_ids'].numpy()
-                all_structure_gen_predictions.extend(structure_gen_outputs)
-                all_structure_gen_labels.extend(structure_gen_labels)
+            # if structure_gen_outputs is not None:
+            #     structure_gen_outputs = [p.cpu().numpy() for p in structure_gen_outputs]
+            #     structure_gen_labels = structure_tgt_encoded['input_ids'].numpy()
+            #     all_structure_gen_predictions.extend(structure_gen_outputs)
+            #     all_structure_gen_labels.extend(structure_gen_labels)
             
-            if structure_clf_outputs is not None:
-                structure_clf_outputs = torch.sigmoid(structure_clf_outputs).detach().cpu().reshape(-1,args.structure_sample_size)
-                structure_clf_pair_labels = structure_clf_pair_labels.cpu().reshape(-1,args.structure_sample_size)
-                all_structure_clf_predictions.extend([p.numpy() for p in structure_clf_outputs])
-                all_structure_clf_labels.extend([l.numpy() for l in structure_clf_pair_labels])
+            # if structure_clf_outputs is not None:
+            #     structure_clf_outputs = torch.sigmoid(structure_clf_outputs).detach().cpu().reshape(-1,args.structure_sample_size)
+            #     structure_clf_pair_labels = structure_clf_pair_labels.cpu().reshape(-1,args.structure_sample_size)
+            #     all_structure_clf_predictions.extend([p.numpy() for p in structure_clf_outputs])
+            #     all_structure_clf_labels.extend([l.numpy() for l in structure_clf_pair_labels])
 
     ex_cnt = 0
     contains_ex_cnt = 0
@@ -666,31 +666,31 @@ def run_prediction(args,model,device,dataloader,tokenizer,output_dir,output_pred
     for i,pred in enumerate(all_gen_predictions):
         predictions = tokenizer.batch_decode(pred, skip_special_tokens=True)
         gen_label = tokenizer.decode(all_gen_labels[i], skip_special_tokens=True)
-        if len(all_structure_gen_predictions) > 0 and len(all_entity_clf_predictions) > 0 and len(all_relation_clf_predictions) > 0:
-            structure_predictions = tokenizer.batch_decode(all_structure_gen_predictions[i],skip_special_tokens=True)
-            structure_label = tokenizer.decode(all_structure_gen_labels[i], skip_special_tokens=True)
-            output_list.append({
-                'predictions':predictions,
-                'gen_label':gen_label,
-                'structure_predictions': structure_predictions,
-                'structure_label': structure_label,
-                'pred_relation_clf_labels':[float(p) for p in list(all_relation_clf_predictions[i])],
-                'gold_relation_clf_labels':[float(l) for l in list(all_relation_clf_labels[i])],
-                'pred_entity_clf_labels':[float(p) for p in list(all_entity_clf_predictions[i])],
-                'gold_entity_clf_labels':[float(p) for p in list(all_entity_clf_labels[i])],
-            })
-        elif len(all_structure_clf_predictions) > 0 and len(all_entity_clf_predictions) > 0 and len(all_relation_clf_predictions) > 0:
-            output_list.append({
-                'predictions':predictions,
-                'gen_label':gen_label,
-                'pred_relation_clf_labels':[float(p) for p in list(all_relation_clf_predictions[i])],
-                'gold_relation_clf_labels':[float(l) for l in list(all_relation_clf_labels[i])],
-                'pred_entity_clf_labels':[float(p) for p in list(all_entity_clf_predictions[i])],
-                'gold_entity_clf_labels':[float(p) for p in list(all_entity_clf_labels[i])],
-                'pred_structure_clf_labels': [float(p) for p in list(all_structure_clf_predictions[i])],
-                'gold_structure_clf_labels': [float(p) for p in list(all_structure_clf_labels[i])],
-            })
-        elif len(all_entity_clf_predictions) > 0 and len(all_relation_clf_predictions) > 0:
+        # if len(all_structure_gen_predictions) > 0 and len(all_entity_clf_predictions) > 0 and len(all_relation_clf_predictions) > 0:
+        #     structure_predictions = tokenizer.batch_decode(all_structure_gen_predictions[i],skip_special_tokens=True)
+        #     structure_label = tokenizer.decode(all_structure_gen_labels[i], skip_special_tokens=True)
+        #     output_list.append({
+        #         'predictions':predictions,
+        #         'gen_label':gen_label,
+        #         'structure_predictions': structure_predictions,
+        #         'structure_label': structure_label,
+        #         'pred_relation_clf_labels':[float(p) for p in list(all_relation_clf_predictions[i])],
+        #         'gold_relation_clf_labels':[float(l) for l in list(all_relation_clf_labels[i])],
+        #         'pred_entity_clf_labels':[float(p) for p in list(all_entity_clf_predictions[i])],
+        #         'gold_entity_clf_labels':[float(p) for p in list(all_entity_clf_labels[i])],
+        #     })
+        # elif len(all_structure_clf_predictions) > 0 and len(all_entity_clf_predictions) > 0 and len(all_relation_clf_predictions) > 0:
+        #     output_list.append({
+        #         'predictions':predictions,
+        #         'gen_label':gen_label,
+        #         'pred_relation_clf_labels':[float(p) for p in list(all_relation_clf_predictions[i])],
+        #         'gold_relation_clf_labels':[float(l) for l in list(all_relation_clf_labels[i])],
+        #         'pred_entity_clf_labels':[float(p) for p in list(all_entity_clf_predictions[i])],
+        #         'gold_entity_clf_labels':[float(p) for p in list(all_entity_clf_labels[i])],
+        #         'pred_structure_clf_labels': [float(p) for p in list(all_structure_clf_predictions[i])],
+        #         'gold_structure_clf_labels': [float(p) for p in list(all_structure_clf_labels[i])],
+        #     })
+        if len(all_entity_clf_predictions) > 0 and len(all_relation_clf_predictions) > 0:
             output_list.append({
                 'predictions':predictions,
                 'gen_label':gen_label,
@@ -756,9 +756,9 @@ def run_prediction(args,model,device,dataloader,tokenizer,output_dir,output_pred
         dump_json(output_list, file_path, indent=4)
         dump_json(gen_statistics, gen_statistics_file_path,indent=4)
         if args.dataset_type == 'CWQ':
-            dataset = load_json('../Data/CWQ/generation/merged/CWQ_test.json')
+            dataset = load_json(f'data/CWQ/generation/merged/CWQ_{args.predict_split}.json')
         elif args.dataset_type == 'WebQSP':
-            dataset = load_json('../Data/WEBQSP/generation/merged/WebQSP_test.json')
+            dataset = load_json(f'data/WebQSP/generation/merged/WebQSP_{args.predict_split}.json')
         if len(all_entity_clf_predictions) > 0:
             generate_candidate_entity_map_classification_res(output_list, output_dir, dataset, args)
 

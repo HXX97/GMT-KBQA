@@ -132,17 +132,7 @@ dmypy.json
 .vscode/
 
 
-# Relation Retrieval
-Relation_retrieval/bi-encoder/data
-Relation_retrieval/cross-encoder/data
-Relation_retrieval/logs
 
-
-# Generation
-Generation/cache
-Generation/exps
-Generation/feature_cache
-Generation/test_scripts
 
 
 # data
@@ -152,27 +142,7 @@ data/CWQ
 data/WebQSP
 
 
-# CWQ data
-Data/CWQ/generation/ablation
-Data/CWQ/generation/label_maps
-Data/CWQ/generation/merged
-Data/CWQ/generation/exps
-Data/CWQ/relation_retrieval/bi-encoder
-Data/CWQ/relation_retrieval/cross-encoder
-Data/CWQ/entity_retrieval/luo_linking_results
 
-
-# WebQSP data
-Data/WebQSP/generation/ablation
-Data/WebQSP/generation/label_maps
-Data/WebQSP/generation/merged
-Data/WebQSP/generation/exps
-Data/WebQSP/relation_retrieval/bi-encoder
-Data/WebQSP/relation_retrieval/cross-encoder
-
-
-# common data
-Data/common_data/facc1
 
 
 # BERT NER model for entity mention detection
@@ -190,3 +160,7 @@ feature_cache
 
 # experiment models and logs
 exps/
+
+scripts/bk
+
+xwu_test.py

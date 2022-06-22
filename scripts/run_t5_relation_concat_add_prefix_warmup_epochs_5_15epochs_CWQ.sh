@@ -18,6 +18,7 @@ if [ "$ACTION" = "train" ]; then
                             --do_train \
                             --do_predict \
                             --do_debug ${do_debug} \
+                            --do_predict \
                             --max_tgt_len 190 \
                             --max_src_len 256 \
                             --epochs 15 \
@@ -31,7 +32,7 @@ if [ "$ACTION" = "train" ]; then
                             --normalize_relations \
                             --sample_size 10 \
                             --add_prefix \
-                            --model T5_Multitask_Entity_Concat \
+                            --model T5_Multitask_Relation_Concat \
                             --dataset_type CWQ \
                             --warmup_epochs 5 \
                             --train_batch_size 8 \
@@ -58,7 +59,7 @@ elif [ "$ACTION" = "eval" -o "$ACTION" = "predict" ]; then
                         --normalize_relations \
                         --sample_size 10 \
                         --add_prefix \
-                        --model T5_Multitask_Entity_Concat \
+                        --model T5_Multitask_Relation_Concat \
                         --overwrite_output_dir \
                         --dataset_type CWQ \
                         --train_batch_size 8 \

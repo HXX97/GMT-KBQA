@@ -2,7 +2,7 @@ ACTION=${1:-none}
 exp_id=${2:-none}
 do_debug=${3:-False}
 
-dataset='CWQ'
+dataset='WebQSP'
 exp_prefix="exps/${dataset}_${exp_id}/"
 
 
@@ -18,9 +18,9 @@ if [ "$ACTION" = "train" ]; then
                             --do_train \
                             --do_predict \
                             --do_debug ${do_debug} \
-                            --max_tgt_len 190 \
+                            --max_tgt_len 110 \
                             --max_src_len 256 \
-                            --epochs 15 \
+                            --epochs 20 \
                             --lr 5e-5 \
                             --eval_beams 50 \
                             --iters_to_accumulate 1 \
@@ -30,11 +30,10 @@ if [ "$ACTION" = "train" ]; then
                             --overwrite_output_dir \
                             --normalize_relations \
                             --sample_size 10 \
-                            --add_prefix \
-                            --model T5_Multitask_Entity_Concat \
-                            --dataset_type CWQ \
-                            --warmup_epochs 5 \
-                            --train_batch_size 8 \
+                            --model T5_generation_concat \
+                            --dataset_type WebQSP \
+                            --concat_golden \
+                            --train_batch_size 4 \
                             --eval_batch_size 4 \
                             --test_batch_size 4 | tee "${exp_prefix}log.txt"
 elif [ "$ACTION" = "eval" -o "$ACTION" = "predict" ]; then
@@ -46,9 +45,9 @@ elif [ "$ACTION" = "eval" -o "$ACTION" = "predict" ]; then
                         --do_predict \
                         --do_debug ${do_debug} \
                         --predict_split ${split} \
-                        --epochs 15 \
+                        --epochs 20 \
                         --lr 5e-5 \
-                        --max_tgt_len 190 \
+                        --max_tgt_len 110 \
                         --max_src_len 256 \
                         --iters_to_accumulate 1 \
                         --eval_beams ${beam_size} \
@@ -57,11 +56,11 @@ elif [ "$ACTION" = "eval" -o "$ACTION" = "predict" ]; then
                         --model_save_dir "${exp_prefix}model_saved" \
                         --normalize_relations \
                         --sample_size 10 \
-                        --add_prefix \
-                        --model T5_Multitask_Entity_Concat \
+                        --model T5_generation_concat \
                         --overwrite_output_dir \
-                        --dataset_type CWQ \
-                        --train_batch_size 8 \
+                        --dataset_type WebQSP \
+                        --concat_golden \
+                        --train_batch_size 4 \
                         --eval_batch_size 4 \
                         --test_batch_size ${test_batch_size}
 else
