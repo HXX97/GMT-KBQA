@@ -146,7 +146,8 @@ Generation/test_scripts
 
 
 # data
-data/common_data
+data/common_data/bak
+data/common_data/facc1
 data/CWQ
 data/WebQSP
 
