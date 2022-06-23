@@ -1471,8 +1471,9 @@ def execuate_reduced_sparql(split):
     dump_json(new_data, '/home3/xwu/workspace/QDT2SExpr/CWQ/data/WebQSP/merged_all_data/richRelation_2hopValidation_richEntity_CrossEntropyLoss_top100_parse0_ep6/WebQSP_{}_all_data_noQdt_parse0_with_time_constraint.json'.format(split))
 
 
-def get_entity_labels():
-    entities_list = load_json('/home3/xwu/workspace/QDT2SExpr/CWQ/data/CWQ/entity_linking_0414/0506/CWQ_FACC1_missed_entities.json')
+def get_entity_labels(src_path, tgt_path):
+    # entities_list = load_json('/home3/xwu/workspace/QDT2SExpr/CWQ/data/CWQ/entity_linking_0414/0506/CWQ_FACC1_missed_entities.json')
+    entities_list = load_json(src_path)
     res = dict()
     count = 0
     for entity in entities_list:
@@ -1480,7 +1481,8 @@ def get_entity_labels():
         count += 1
         label = get_label_with_odbc(entity)
         res[entity] = label
-    dump_json(res, '/home3/xwu/workspace/QDT2SExpr/CWQ/data/CWQ/entity_linking_0414/0506/CWQ_FACC1_extra_label_map.json')
+    # dump_json(res, '/home3/xwu/workspace/QDT2SExpr/CWQ/data/CWQ/entity_linking_0414/0506/CWQ_FACC1_extra_label_map.json')
+    dump_json(res, tgt_path)
 
 
 def query_rich_relation(relation):
@@ -1513,9 +1515,9 @@ if __name__=='__main__':
     # pyodbc_test()
     
     # print(get_label('m.04tfqf'))
-    print(get_label_with_odbc('m.04tfqf'))
-    print(get_in_relations_with_odbc('m.04tfqf'))
-    print(get_out_relations_with_odbc('m.04tfqf'))
+    print(get_label_with_odbc('m.0rczx'))
+    # print(get_in_relations_with_odbc('m.04tfqf'))
+    # print(get_out_relations_with_odbc('m.04tfqf'))
 
     # print(get_label('m.0fjp3'))
     # print(get_label_with_odbc('m.0fjp3'))
