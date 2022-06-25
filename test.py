@@ -7,6 +7,8 @@ import numpy as np
     
     - CWQ 上，使用学长生成的候选实体重新训练最终模型，导致了 1.7 的下降
     - 正在跑把 候选实体 的 label 更新之后的模型，看看效果如何
+        - 效果好了很多，在正常波动范围内
+        - 不一样的 label 来自于 ELQ, 对于label 相同的实体，加了一些补充说明，比如 Tom(singer), Tom(boxer)
 
     - 对于 CWQ 原来的候选实体（应该是我跑的 FACC1 消岐模型）；
         - 我跑通了从 _elq 文件和 _FACC1_disamb 文件开始的流程，生成完全一致的结果
@@ -15,21 +17,24 @@ import numpy as np
     
     - _elq 文件是否存在不同？
         - test 差了 45 条，原来的文件中这45条似乎都是空的
-        - train 居然一条都不差
+        - train 一条都不差
     - facc1_disamb 文件是否存在不同?
         - 不考虑顺序， train 差了 8 条， test 差 1 条
         - 考虑顺序的话, train 差了 13642， test 差了 1813
         - 比较 facc1_disamb 与新生成的 facc1_unranked 不考虑顺序是否相同 -- test 完全一致
         - facc1_disamb 与新生成的 facc1_unranked 结合之前的消岐结果 -- test 完全一致
-    
-    - 结论就是使用我训练的消岐模型，除了 ELQ 的 test 少了45条链接结果，其他都是没问题的；看一下这45条吧
-
+    - 结论就是使用我训练的消岐模型，除了 ELQ 的 test 少了45条链接结果，其他都是没问题的
+    - 复现的 merged_data 结果，test 有13条顺序不一样的（不考虑顺序是完全一样的），应该没什么问题，可能是 merge 两种结果时的微小不同
     - 确认了是没问题的，可以另外弄一个文件夹，生成我的实体链接的一系列文件
+
+消岐后的实体链接结果的复现
+    - 见`/home2/xxhu/QDT2SExpr/CWQ/data/linking_results`下的数据和 `/home2/xxhu/QDT2SExpr/CWQ/get_final_entity_linking.py`文件
+    - 对于 facc1, 只取 logits > 0 的部分
+    - 对于 elq, 只取 logits > -1.5 的部分
 
 WebQSP:
     - ELQ 的结果是完全一样的
     - FACC1 的排序结果不一样(train 1256, test 587), 召回结果基本一样（训练集测试集各差一个）
-
     - 先跑一下新 merged data 的训练吧，居然报错 shape '[2, 10, -1]' is invalid for input of size 10， 有数据的关系不足10个？
 """
 
@@ -172,8 +177,8 @@ def get_entity_label_diff(split):
 
 
 def compare_elq_result(split):
-    xwu_results = load_json(f'data/CWQ/entity_retrieval/candidate_entities_xwu/CWQ_{split}_cand_entities_elq.json')
-    xxhu_results = load_json(f'/home3/xwu/workspace/QDT2SExpr/CWQ/all_data_bk/CWQ/entity_linking_0414/CWQ_{split}_cand_entities_elq.json')
+    xwu_results = load_json(f'data/WebQSP/entity_retrieval/candidate_entities_xwu/WebQSP_{split}_cand_entities_elq.json')
+    xxhu_results = load_json(f'data/WebQSP/entity_retrieval/candidate_entities/WebQSP_{split}_cand_entities_elq.json')
     assert len(xwu_results) == len(xxhu_results), print(len(xwu_results), len(xxhu_results))
     diff_qids = set()
     for qid in xwu_results:
@@ -184,8 +189,8 @@ def compare_elq_result(split):
 
 
 def compare_facc1_ranked_result(split):
-    xwu_results = load_json(f'data/CWQ/generation/xwu_merged_new/entity_linking/CWQ_{split}_entities_FACC1_disamb.json')
-    xxhu_results = load_json(f'data/CWQ/generation/xwu_merged_new/entity_linking_res_from_service/CWQ_{split}_entities_facc1_unranked.json')
+    xwu_results = load_json(f'data/CWQ/entity_retrieval/candidate_entities_xwu/CWQ_{split}_entities_facc1_unranked.json')
+    xxhu_results = load_json(f'/home2/xxhu/QDT2SExpr/CWQ/data/CWQ_{split}_entities.json')
     assert len(xwu_results) == len(xxhu_results), print(len(xwu_results), len(xxhu_results))
     sequence_diff_qids = set()
     content_diff_qids = set()
@@ -205,8 +210,8 @@ def compare_facc1_ranked_result(split):
 
 
 def compare_merged_el_result(split):
-    prev_result = load_json(f'/home3/xwu/workspace/QDT2SExpr/CWQ/all_data_bk/CWQ/entity_linking_0414/CWQ_{split}_merged_elq_FACC1.json')
-    new_result = load_json(f'data/CWQ/entity_retrieval/candidate_entities_xwu/CWQ_{split}_merged_cand_entities_elq_facc1.json')
+    prev_result = load_json(f'data/CWQ/entity_retrieval/candidate_entities_xwu/CWQ_{split}_merged_cand_entities_elq_facc1.json')
+    new_result = load_json(f'data/CWQ/entity_retrieval/candidate_entities/CWQ_{split}_merged_cand_entities_elq_facc1.json')
     assert len(prev_result) == len(new_result), print(len(prev_result), len(new_result))
     sequence_diff_qids = set()
     content_diff_qids = set()
@@ -217,14 +222,18 @@ def compare_merged_el_result(split):
         if prev_ids != new_ids:
             sequence_diff_qids.add(qid)
         if set(prev_ids) != set(new_ids):
+            print(set(prev_ids))
+            print(set(new_ids))
             content_diff_qids.add(qid)
         
-    print(len(sequence_diff_qids))
-    print(len(content_diff_qids))
+    # print(len(sequence_diff_qids))
+    # print(len(content_diff_qids))
 
 def compare_merged_el_result_including_label(split):
-    prev_result = load_json(f'/home3/xwu/workspace/QDT2SExpr/CWQ/all_data_bk/CWQ/entity_linking_0414/CWQ_{split}_merged_elq_FACC1.json')
-    new_result = load_json(f'data/CWQ/entity_retrieval/candidate_entities_xwu/CWQ_{split}_merged_cand_entities_elq_facc1_label_updated.json')
+    # prev_result = load_json(f'/home3/xwu/workspace/QDT2SExpr/CWQ/all_data_bk/CWQ/entity_linking_0414/CWQ_{split}_merged_elq_FACC1.json')
+    prev_result = load_json(f'data/WebQSP/entity_retrieval/candidate_entities_xwu_bak/WebQSP_{split}_merged_cand_entities_elq_facc1.json')
+    new_result = load_json(f'data/WebQSP/entity_retrieval/candidate_entities_xwu/WebQSP_{split}_merged_cand_entities_elq_facc1.json')
+    print(len(new_result))
     assert len(prev_result) == len(new_result), print(len(prev_result), len(new_result))
     sequence_diff_qids = set()
     content_diff_qids = set()
@@ -237,8 +246,8 @@ def compare_merged_el_result_including_label(split):
         if set(prev_ids) != set(new_ids):
             content_diff_qids.add(qid)
         
-    print(len(sequence_diff_qids))
-    print(len(content_diff_qids))
+    # print(len(sequence_diff_qids), list(sequence_diff_qids))
+    print(len(content_diff_qids), list(content_diff_qids))
 
 
 def combine_FACC1_and_disamb(split):
@@ -266,8 +275,8 @@ def combine_FACC1_and_disamb(split):
 
 
 def compare_facc1_disamb(split):
-    prev_result = load_json(f'/home3/xwu/workspace/QDT2SExpr/CWQ/all_data_bk/CWQ/entity_linking_0414/CWQ_{split}_entities_FACC1_disamb.json')
-    new_result = load_json(f'/home3/xwu/new_workspace/GMT-KBQA/data/CWQ/entity_retrieval/candidate_entities_xwu/CWQ_{split}_cand_entities_facc1.json')
+    prev_result = load_json(f'data/WebQSP/entity_retrieval/candidate_entities_xwu/WebQSP_{split}_entities_facc1_unranked.json')
+    new_result = load_json(f'/home2/xxhu/QDT2SExpr/CWQ/data/WEBQSP_{split}_entities.json')
     assert len(prev_result) == len(new_result), print(len(prev_result), len(new_result))
     diff_qids = set()
     for qid in prev_result:
@@ -308,13 +317,16 @@ def remove_item_webqsp():
     dump_json(new_merged_data, 'data/WebQSP/generation/merged_corrected/WebQSP_train.json')
 
 def compare_disamb_logits(split):
-    prev_logits = load_json(f'/home3/xwu/workspace/QDT2SExpr/CWQ/results/disamb/CWQ_{split}/prediction.json')
-    new_logits = load_json(f'data/CWQ/entity_retrieval/candidate_entities_xwu/disamb_results/CWQ_{split}/predict_logits.json')
+    prev_logits = load_json(f'data/CWQ/entity_retrieval/candidate_entities_xwu/disamb_results/CWQ_{split}/predict_logits.json')
+    new_logits = load_json(f'data/CWQ/entity_retrieval/candidate_entities_xwu_compared/disamb_results/CWQ_{split}/predict_logits.json')
+    
+    key_diff = set(new_logits.keys()) - set(prev_logits.keys())
+    print(key_diff)
     assert len(prev_logits) == len(new_logits), print(len(prev_logits), len(new_logits))
     diff_keys = set()
     for key in prev_logits:
         assert key in new_logits, print(key)
-        prev = np.array(prev_logits[key]["logits"])
+        prev = np.array(prev_logits[key])
         prev_indexes = np.argsort(prev)
         new = np.array(new_logits[key])
         new_indexes = np.argsort(new)
@@ -335,13 +347,78 @@ def disamb_logits_generation(split):
     dump_json(new_predictions, f'data/CWQ/entity_retrieval/candidate_entities_xwu/disamb_results/CWQ_{split}/predictions.json')
 
 
+def test_merged_length():
+    prev_merged = load_json('data/WebQSP/generation/merged_old/WebQSP_test.json')
+    print(len(prev_merged))
+
+
+def check_disambed_entities(split, filter_empty_id=False):
+    prev_disambed = load_json(f'data/CWQ/entity_retrieval/merged_linking_results/merged_CWQ_{split}_linking_results.json')
+    new_disambed = load_json(f'data/CWQ/entity_retrieval/disamb_entities_xwu_bak/merged_CWQ_{split}_linking_results.json')
+    diff_qids = set()
+    special_qids = set()
+    assert len(prev_disambed) == len(new_disambed), print(len(prev_disambed), len(new_disambed))
+    for qid in prev_disambed:
+        assert qid in new_disambed, print(qid)
+        if filter_empty_id:
+            prev_keys = [key for key in prev_disambed[qid].keys() if key != '']
+            new_keys = [key for key in new_disambed[qid].keys() if key != '']
+        else:
+            prev_keys = prev_disambed[qid].keys()
+            new_keys = new_disambed[qid].keys()
+        if set(prev_keys) != set(new_keys):
+            diff_qids.add(qid)
+        else:
+            for ent_id in prev_keys:
+                if prev_disambed[qid][ent_id] != new_disambed[qid][ent_id]:
+                    diff_qids.add(qid)
+        if len(prev_keys) == 1 and len(new_keys) == 0:
+            special_qids.add(qid)
+    # print(len(diff_qids), list(diff_qids))
+    print(len(special_qids), list(special_qids))
+
+
+def compare_facc1_ignore_sequence(split):
+    """不考虑顺序"""
+    new_unranked = load_json(f'data/WebQSP/entity_retrieval/candidate_entities_xwu/WebQSP_{split}_entities_facc1_unranked.json')
+    prev_ranked = load_json(f'/home3/xwu/workspace/QDT2SExpr/CWQ/all_data_bk/WebQSP/entity_linking_0423/WEBQSP_{split}_cand_entities_facc1.json')
+    assert len(new_unranked) == len(prev_ranked), print(len(new_unranked), len(prev_ranked))
+    diff_qids = set()
+    for qid in new_unranked:
+        assert qid in prev_ranked, print(qid)
+        new_ids = set([item['id'] for mention_res in new_unranked[qid] for item in mention_res])
+        prev_ids = set([item['id'] for item in prev_ranked[qid]])
+        if prev_ids != new_ids:
+            diff_qids.add(qid)
+    print(len(diff_qids), list(diff_qids))
+
+
+def compare_facc1(split):
+    """考虑顺序"""
+    new_ranked = load_json(f'data/CWQ/entity_retrieval/candidate_entities_xwu/CWQ_{split}_cand_entities_facc1.json')
+    prev_ranked = load_json(f'data/CWQ/entity_retrieval/candidate_entities/CWQ_{split}_cand_entities_facc1.json')
+    assert len(new_ranked) == len(prev_ranked), print(len(new_ranked), len(prev_ranked))
+    diff_qids = set()
+    sequence_diff_qids = set()
+    for qid in new_ranked:
+        assert qid in prev_ranked, print(qid)
+        prev_ids = [(item['id'], item['label']) for item in prev_ranked[qid]]
+        new_ids = [(item['id'], item['label']) for item in new_ranked[qid]]
+        if prev_ids != new_ids:
+            diff_qids.add(qid)
+        if set(prev_ids) != set(new_ids):
+            sequence_diff_qids.add(qid)
+    print(len(diff_qids))
+    print(len(sequence_diff_qids), list(sequence_diff_qids))
+
+
 if __name__=='__main__':
     # xwu_test_get_merged_disambiguated_entities('CWQ', 'test')
     # check_disambiguated_cand_entity()
     # error_analysis()
     # compared_merged_data('train')
     # get_entity_label_diff('train')
-    # for split in ['train', 'dev', 'test']:
+    # for split in ['train', 'test']:
     #     print(split)
     #     compare_elq_result(split)
     # compare_facc1_ranked_result('test')
@@ -350,7 +427,11 @@ if __name__=='__main__':
     # compare_WebQSP_merged_linking_results('test')
     # check_webqsp_merged_cand_relation_length('train')
     # remove_item_webqsp()
-    # compare_disamb_logits('test')
-    compare_merged_el_result('test')
-    compare_merged_el_result_including_label('test')
+    compare_disamb_logits('dev')
+    # compare_merged_el_result('train')
+    # compare_merged_el_result_including_label('test')
     # disamb_logits_generation('dev')
+    # test_merged_length()
+    # check_disambed_entities('test')
+    # compare_facc1_ignore_sequence('train')
+    # compare_facc1('test')

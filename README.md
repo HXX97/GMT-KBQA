@@ -85,21 +85,29 @@ The augmented dataset files are saved as `data/CWQ/sexpr/CWQ.test[train,dev].jso
 (3) **Retrieve Candidate Entities**
 
 This step can be ***skipped***, as we've provided the entity retrieval retuls in `data/CWQ/entity_retrieval/candidate_entities/CWQ_test[train,dev]_merged_cand_entities_elq_FACC1.json`.
+0623吴轩: `data/CWQ/entity_retrieval/candidate_entities_xwu/CWQ_test[train,dev]_merged_cand_entities_elq_FACC1.json`
 
 If you want to retrieve the candidate entities from scratch, follow the steps below:
 
 1. Obtain the linking results from ELQ. Firstly you should deploy our tailored [ELQ](). Then run `python detect_and_link_entity.py --dataset CWQ --split test[train,dev] --linker elq` to get candidate entities linked by ELQ. The results will be saved as `data/CWQ/entity_retrieval/candidate_entities/CWQ_test[train,dev]_cand_entities_elq.json`.
+0623吴轩: 这一步我直接复制 /home3/xwu/workspace/QDT2SExpr/CWQ/all_data_bk/CWQ/entity_linking_0414 目录下的结果，经对比，和学长生成的结果差距在于测试集有45个问题的链接结果为空，但这只能让性能更差吧应该
 
 
 2. Retrieve candidate entities from FACC1. Firstly run
 `python detect_and_link_entity.py --dataset CWQ --split test[train,dev] --linker facc1` to retrieve candidate entities.
 Then run `sh scripts/run_entity_disamb.sh CWQ predict test[train,dev]` to rank the candidates by a BertRanker. The ranked results will be saved as `data/CWQ/entity_retrieval/candidate_entities/CWQ_test[train,dev]_cand_entities_facc1.json`.
+0623吴轩: 按照上述命令首先生成 unranked;
+<!-- 生成 ranked 之后，应该和FACC1_disamb 对比一下，disamb_result 也可以对比
+对比了 disamb_result，在排序结果上还是会有一些区别，直接看看 merge 之后的差别大不大吧 -->
+感觉不对，应该用自己的 disamb_result, 结合学长的代码(get_candidate_entity_linking_with_logits)，生成 ranked;
 
 3. Finally, merge the linking results of ELQ and FACC1 by running `python data_process.py merge_entity --dataset CWQ --split test[train,dev]`, and the final entity retrieval results are saved as `data/CWQ/entity_retrieval/candidate_entities/CWQ_test[train,dev]_merged_cand_entities_elq_facc1.json`.
+0623吴轩: 直接跑这个脚本试试; 基本上和原来只有个位数左右的区别了
+在原来的基础上，加一个 update_label?然后比较 id 和 label 的联合一致性, 结果发现也是个位数，大功告成！CWQ实体链接结果复现成功
 
 (4) **Retrieve Candidate Relations**
 
-This step can also be ***skipped*** , as we've provided the candidate relations in `data/CWQ/relation_retrieval/`
+This step can also be ***skipped*** , as we've provided t he candidate relations in `data/CWQ/relation_retrieval/`
 
 If you want to retrive the candidate relations from scratch, follow the steps below:
 
@@ -110,6 +118,7 @@ If you want to retrive the candidate relations from scratch, follow the steps be
 
 (5) **Generate Logical Forms through multi-task learning**
 1. Run `python data_process.py --merge_all --dataset CWQ --split test[train,dev]` prepare all the input data for logical form generation and the two auxiliary tasks (entity disambiguation and relation classification). The merged data file will be saved as `data/CWQ/generation/merged/CWQ_test[train,dev].json`
+吴轩 0623: merge_all 直接原来的结果，就说明因为有一些候补实体是随机筛选得到的，为了保证与论文中的设置完全一致，直接将论文训练的数据集放上来
 2. Run `sh scripts/run_t5_relation_entity_concat_add_prefix_warmup_epochs_5_15epochs_CWQ.sh train multitask0617` to train the logical form generation model. The trained model will be saved in `exps/CWQ_multitask0617`. Command for training other model variants can be found in `cheatsheet_generation.txt`.
 3. Command for training model(as shown in 2.) will also do inference on `test` split. You can run `sh scripts/run_t5_relation_entity_concat_add_prefix_warmup_epochs_5_15epochs_CWQ.sh predict multitask0617 False test 50 4` to do inference on `test` split alone. Command for inferencing on other model variants can be found in `cheatsheet_generation.txt`.
 4. Run `python3 eval_topk_prediction_final.py --split test --pred_file exps/multitask0617/beam_50_top_k_predictions.json` to evaluate trained model.
