@@ -23,17 +23,17 @@ import logging
 from executor.sparql_executor import get_label_with_odbc
 logger = logging.getLogger(__name__)
 
-try:
-    from torch.utils.tensorboard import SummaryWriter
-except ImportError:
-    from tensorboardX import SummaryWriter
+# try:
+#     from torch.utils.tensorboard import SummaryWriter
+# except ImportError:
+#     from tensorboardX import SummaryWriter
 
-from input_dataset.disamb_dataset import load_and_cache_disamb_examples
+from inputDataset.disamb_dataset import load_and_cache_disamb_examples
 
 
 def train(args, train_dataset, model, tokenizer):
     if args.local_rank in [-1, 0]:
-        tb_writer = SummaryWriter()
+        # tb_writer = SummaryWriter()
         mkdir_p(args.output_dir)
     
     args.train_batch_size = args.per_gpu_train_batch_size * max(1, args.n_gpu)
@@ -179,8 +179,8 @@ def train(args, train_dataset, model, tokenizer):
                     logs['learning_rate'] = scheduler.get_last_lr()[0]
                     logs['loss'] = (tr_loss - logging_loss) / args.logging_steps
                     logs['step'] = global_step
-                    tb_writer.add_scalar("lr", scheduler.get_lr()[0], global_step)
-                    tb_writer.add_scalar("loss", (tr_loss - logging_loss) / args.logging_steps, global_step)
+                    # tb_writer.add_scalar("lr", scheduler.get_lr()[0], global_step)
+                    # tb_writer.add_scalar("loss", (tr_loss - logging_loss) / args.logging_steps, global_step)
                     logger.info("Training logs: {}".format(logs))
                     logging_loss = tr_loss
 
@@ -190,8 +190,8 @@ def train(args, train_dataset, model, tokenizer):
                     # Only evaluate when single GPU otherwise metrics may not average well
                     if args.local_rank == -1 and args.evaluate_during_training:
                         results = evaluate(args, model, tokenizer)
-                        for key, value in results.items():
-                            tb_writer.add_scalar("eval_{}".format(key), value, global_step)
+                        # for key, value in results.items():
+                        #     tb_writer.add_scalar("eval_{}".format(key), value, global_step)
                         logger.info("Eval results: {}".format(dict(results)))
                 
                 # Save model checkpoint
@@ -217,8 +217,8 @@ def train(args, train_dataset, model, tokenizer):
             train_iterator.close()
             break
 
-    if args.local_rank in [-1,0]:
-        tb_writer.close()
+    # if args.local_rank in [-1,0]:
+    #     tb_writer.close()
     
     return global_step, tr_loss / global_step
 

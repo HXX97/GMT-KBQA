@@ -317,7 +317,7 @@ def remove_item_webqsp():
     dump_json(new_merged_data, 'data/WebQSP/generation/merged_corrected/WebQSP_train.json')
 
 def compare_disamb_logits(split):
-    prev_logits = load_json(f'data/CWQ/entity_retrieval/candidate_entities_xwu/disamb_results/CWQ_{split}/predict_logits.json')
+    prev_logits = load_json(f'data/CWQ/entity_retrieval/candidate_entities/disamb_results/CWQ_{split}/predict_logits.json')
     new_logits = load_json(f'data/CWQ/entity_retrieval/candidate_entities_xwu_compared/disamb_results/CWQ_{split}/predict_logits.json')
     
     key_diff = set(new_logits.keys()) - set(prev_logits.keys())
