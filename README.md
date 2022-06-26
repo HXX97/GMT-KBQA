@@ -82,28 +82,21 @@ Here we provide the scripts to parse SPARQL queries
 Run `python parse_sparql_cwq.py`, and it will augment the original dataset files with s-expressions. 
 The augmented dataset files are saved as `data/CWQ/sexpr/CWQ.test[train,dev].json`.
 
-(3) **Retrieve Candidate Entities**
+(3) **Retrieve Candidate Entities** (tested)
 
 This step can be ***skipped***, as we've provided the entity retrieval retuls in `data/CWQ/entity_retrieval/candidate_entities/CWQ_test[train,dev]_merged_cand_entities_elq_FACC1.json`.
-0623吴轩: `data/CWQ/entity_retrieval/candidate_entities_xwu/CWQ_test[train,dev]_merged_cand_entities_elq_FACC1.json`
 
 If you want to retrieve the candidate entities from scratch, follow the steps below:
 
 1. Obtain the linking results from ELQ. Firstly you should deploy our tailored [ELQ](). Then run `python detect_and_link_entity.py --dataset CWQ --split test[train,dev] --linker elq` to get candidate entities linked by ELQ. The results will be saved as `data/CWQ/entity_retrieval/candidate_entities/CWQ_test[train,dev]_cand_entities_elq.json`.
-0623吴轩: 这一步我直接复制 /home3/xwu/workspace/QDT2SExpr/CWQ/all_data_bk/CWQ/entity_linking_0414 目录下的结果，经对比，和学长生成的结果差距在于测试集有45个问题的链接结果为空，但这只能让性能更差吧应该
 
 
 2. Retrieve candidate entities from FACC1. Firstly run
 `python detect_and_link_entity.py --dataset CWQ --split test[train,dev] --linker facc1` to retrieve candidate entities.
-Then run `sh scripts/run_entity_disamb.sh CWQ predict test[train,dev]` to rank the candidates by a BertRanker. The ranked results will be saved as `data/CWQ/entity_retrieval/candidate_entities/CWQ_test[train,dev]_cand_entities_facc1.json`.
-0623吴轩: 按照上述命令首先生成 unranked;
-<!-- 生成 ranked 之后，应该和FACC1_disamb 对比一下，disamb_result 也可以对比
-对比了 disamb_result，在排序结果上还是会有一些区别，直接看看 merge 之后的差别大不大吧 -->
-感觉不对，应该用自己的 disamb_result, 结合学长的代码(get_candidate_entity_linking_with_logits)，生成 ranked;
+Then run `sh scripts/run_entity_disamb.sh CWQ predict test[train,dev]` to rank the candidates by a BertRanker. The ranked results will be saved as `data/CWQ/entity_retrieval/candidate_entities/CWQ_test[train,dev]_cand_entities_facc1.json`. To reproduce our disambiguation results, please download `feature_cache/` from our checkpoint.
 
-3. Finally, merge the linking results of ELQ and FACC1 by running `python data_process.py merge_entity --dataset CWQ --split test[train,dev]`, and the final entity retrieval results are saved as `data/CWQ/entity_retrieval/candidate_entities/CWQ_test[train,dev]_merged_cand_entities_elq_facc1.json`.
-0623吴轩: 直接跑这个脚本试试; 基本上和原来只有个位数左右的区别了
-在原来的基础上，加一个 update_label?然后比较 id 和 label 的联合一致性, 结果发现也是个位数，大功告成！CWQ实体链接结果复现成功
+3. Finally, merge the linking results of ELQ and FACC1 by running `python data_process.py merge_entity --dataset CWQ --split test[train,dev]`, and the final entity retrieval results are saved as `data/CWQ/entity_retrieval/candidate_entities/CWQ_test[train,dev]_merged_cand_entities_elq_facc1.json`. Note for CWQ, entity label will be standardized in final entity retrieval results.
+
 
 (4) **Retrieve Candidate Relations**
 

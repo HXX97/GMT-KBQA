@@ -72,7 +72,6 @@ def combine_entities_from_FACC1_and_elq(dataset, split, sample_size=10):
 
         elq_result = elq_res[qid]
         facc1_result = facc1_disamb_res.get(qid,[])
-        # facc1_result = [item for mention_res in facc1_disamb_res[qid] for item in mention_res] if qid in facc1_disamb_res else []
         
         # sort by score
         elq_result = sorted(elq_result, key=lambda d: d.get('score', -20.0), reverse=True)
@@ -103,9 +102,9 @@ def combine_entities_from_FACC1_and_elq(dataset, split, sample_size=10):
     merged_file_path = f'{entity_dir}/{dataset}_{split}_merged_cand_entities_elq_facc1.json'
     print(f'Writing merged candidate entities to {merged_file_path}')
     dump_json(combined_res, merged_file_path, indent=4)
-    # 0623 xwu
+
     if dataset.lower() == 'cwq':
-        update_entity_label(dirname='data/CWQ/entity_retrieval/candidate_entities', dataset=dataset, split=split)
+        update_entity_label(dirname=entity_dir, dataset=dataset)
 
 
 def make_sorted_relation_dataset_from_logits(dataset, split):
@@ -624,8 +623,15 @@ def get_all_entity(dirname, dataset):
     dump_json(list(all_entity), f'{dirname}/{dataset}_all_entities.json')
 
 
-def update_entity_label(dirname, dataset, split):
+def update_entity_label(dirname, dataset):
     """Stardardize all entity labels"""
+    if not (
+        os.path.exists(f'{dirname}/{dataset}_train_merged_cand_entities_elq_facc1.json') and
+        os.path.exists(f'{dirname}/{dataset}_dev_merged_cand_entities_elq_facc1.json') and
+        os.path.exists(f'{dirname}/{dataset}_test_merged_cand_entities_elq_facc1.json')
+    ):
+        return # Update label when all dataset splits are ready
+
     if not os.path.exists(f'{dirname}/{dataset}_all_entities.json'):
         get_all_entity(dirname, dataset)
     assert os.path.exists(f'{dirname}/{dataset}_all_entities.json')
@@ -637,42 +643,43 @@ def update_entity_label(dirname, dataset, split):
         )
     assert os.path.exists(f'{dirname}/{dataset}_all_label_map.json')
     
-    el_res = load_json(f'{dirname}/{dataset}_{split}_merged_cand_entities_elq_facc1.json')
-    all_label_map = load_json(f'{dirname}/{dataset}_all_label_map.json')
-    
-    updated_res = dict()
+    for split in ['train', 'dev', 'test']:
+        el_res = load_json(f'{dirname}/{dataset}_{split}_merged_cand_entities_elq_facc1.json')
+        all_label_map = load_json(f'{dirname}/{dataset}_all_label_map.json')
+        
+        updated_res = dict()
 
-    for qid in el_res:
-        values = el_res[qid]
-        for item in values:
-            if item["id"] in all_label_map:
-                item['label'] = all_label_map[item['id']]
-            else:
-                print(item["id"])
-                
-        updated_res[qid] = values
-    
-    dump_json(updated_res, f'{dirname}/{dataset}_{split}_merged_cand_entities_elq_facc1.json'.format(split))
+        for qid in el_res:
+            values = el_res[qid]
+            for item in values:
+                if item["id"] in all_label_map:
+                    item['label'] = all_label_map[item['id']]
+                else:
+                    print(item["id"])
+                    
+            updated_res[qid] = values
+        
+        dump_json(updated_res, f'{dirname}/{dataset}_{split}_merged_cand_entities_elq_facc1.json'.format(split))
 
-def update_entity_label_in_merged_data(dataset, split):
-    prev_merged_data = load_json(f'data/{dataset}/generation/merged/{dataset}_{split}.json')
-    label_map = load_json(f'data/{dataset}/generation/label_maps/{dataset}_{split}_entity_label_map.json')
-    extra_label_map = load_json(f'data/{dataset}/generation/xwu_merged_new/{dataset}_extra_label_map.json')
-    new_merged_data = []
-    diff_ids = []
-    for item in prev_merged_data:
-        entity_list = item["cand_entity_list"]
-        for ent in entity_list:
-            if ent["id"] in label_map:
-                ent["label"] = label_map[ent["id"]]
-                diff_ids.append(item["ID"])
-            elif ent["id"] in extra_label_map:
-                ent['label'] = extra_label_map[ent['id']]
-                diff_ids.append(item["ID"])
-        item["cand_entity_list"] = entity_list
-        new_merged_data.append(item)
-    dump_json(new_merged_data, f'data/{dataset}/generation/xwu_merged_new/{dataset}_{split}.json')
-    print(len(diff_ids), diff_ids)
+# def update_entity_label_in_merged_data(dataset, split):
+#     prev_merged_data = load_json(f'data/{dataset}/generation/merged/{dataset}_{split}.json')
+#     label_map = load_json(f'data/{dataset}/generation/label_maps/{dataset}_{split}_entity_label_map.json')
+#     extra_label_map = load_json(f'data/{dataset}/generation/xwu_merged_new/{dataset}_extra_label_map.json')
+#     new_merged_data = []
+#     diff_ids = []
+#     for item in prev_merged_data:
+#         entity_list = item["cand_entity_list"]
+#         for ent in entity_list:
+#             if ent["id"] in label_map:
+#                 ent["label"] = label_map[ent["id"]]
+#                 diff_ids.append(item["ID"])
+#             elif ent["id"] in extra_label_map:
+#                 ent['label'] = extra_label_map[ent['id']]
+#                 diff_ids.append(item["ID"])
+#         item["cand_entity_list"] = entity_list
+#         new_merged_data.append(item)
+#     dump_json(new_merged_data, f'data/{dataset}/generation/xwu_merged_new/{dataset}_{split}.json')
+#     print(len(diff_ids), diff_ids)
 
 
 def merge_entity_linking_results_CWQ(split):
@@ -752,82 +759,6 @@ def merge_entity_linking_results_CWQ(split):
 
     dump_json(merged_el_results, f"data/CWQ/entity_retrieval/disamb_entities_xwu/merged_CWQ_{split}_linking_results.json", indent=4)
 
-"""
-复现之前的实体链接结果
-"""
-# def combine_FACC1_and_elq(dirname, split, sample_size=10):
-#     facc1_disamb_res = load_json(f'{dirname}/CWQ_{split}_cand_entities_facc1.json')
-#     elq_res = load_json(f'{dirname}/CWQ_{split}_cand_entities_elq.json')
-
-#     print('lens: {}'.format(len(elq_res.keys())))
-
-#     combined_res = dict()
-#     train_entities_elq = dict()
-#     elq_res_train = load_json(f'{dirname}/CWQ_train_cand_entities_elq.json')
-#     for qid,cand_ents in elq_res_train.items():
-#         for ent in cand_ents:
-#             train_entities_elq[ent['id']] = ent['label']
-        
-#     train_entities_elq = [{"id":mid,"label":label} for mid,label in train_entities_elq.items()]
-
-#     for qid in elq_res:
-#         cur = dict() # 根据 id 对实体去重
-#         # 根据 id 进行去重
-#         elq_result = elq_res[qid]
-#         # facc1_result = [item for mention_res in facc1_disamb_res[qid] for item in mention_res] if qid in facc1_disamb_res else []
-#         facc1_result = facc1_disamb_res[qid]
-#         # 各自按照得分进行排序
-#         # elq_result = sorted(elq_result, key=lambda d: d.get('score', -20.0), reverse=True) # elq 的结果一般都有score, 所以没有的话就赋个很小的值
-#         # facc1_result = sorted(facc1_result, key=lambda d: d.get('disamb_logits', 0.0), reverse=True) # FACC1 中没有 disamb_logits 往往是因为只召回了一个实体，所以给个比较高的分数
-
-#         idx = 0
-#         while len(cur.keys()) < sample_size:
-#             if idx < len(elq_result):
-#                 cur[elq_result[idx]["id"]] = elq_result[idx] # 根据 id 进行了去重，后面的会覆盖前面的
-#             if len(cur.keys()) < sample_size and idx < len(facc1_result):
-#                 cur[facc1_result[idx]["id"]] = facc1_result[idx]
-#             if idx >= len(elq_result) and idx >= len(facc1_result):
-#                 break
-#             idx += 1
-
-#         if len(cur.keys()) < sample_size:
-#             # 随机抽取一些实体
-#             diff_entities = list(filter(lambda v: v["id"] not in cur.keys(), train_entities_elq))
-#             random_entities = random.sample(diff_entities, 10 - len(cur.keys()))
-#             for ent in random_entities:
-#                 cur[ent["id"]] = ent
-
-#         assert len(cur.keys()) == sample_size, print(qid)
-#         combined_res[qid] = list(cur.values())
-
-    
-#     dump_json(combined_res, f'{dirname}/CWQ_{split}_merged_cand_entities_elq_facc1_new.json')
-#     # print(len(count))
-
-# def compare_reproduces_res(prev_path, reproduced_path):
-#     prev_res = load_json(prev_path)
-#     reproduced_res = load_json(reproduced_path)
-
-#     assert len(prev_res) == len(reproduced_res), print(len(prev_res), len(reproduced_res))
-#     diff_qids = set()
-#     for qid in prev_res:
-#         assert qid in reproduced_res, print(qid)
-#         prev_ents = prev_res[qid]
-#         reproduced_ents = reproduced_res[qid]
-#         assert len(prev_ents) == len(reproduced_ents)
-#         for (prev, reproduced) in zip(prev_ents, reproduced_ents):
-#             if 'mention' in prev and prev != reproduced: # 不是随机得到的
-#                 diff_qids.add(qid)
-#     print(len(diff_qids), list(diff_qids))
-
-
-# def reproduce_xwu_entity_linking(dirname, dataset):
-#     for split in ['train', 'dev', 'test']:
-#         combine_FACC1_and_elq(dirname, split)
-#     # for split in ['train', 'dev', 'test']:
-#     #     update_entity_label(dirname, dataset, split)
-
-
 
 if __name__=='__main__':
     
@@ -843,28 +774,3 @@ if __name__=='__main__':
         merge_all_data_for_logical_form_generation(dataset=args.dataset, split=args.split)
     else:
         print('usage: data_process.py action [--dataset DATASET] --split SPLIT ')
-
-
-    # for split in ['train', 'dev', 'test']:
-    #     update_entity_label('CWQ', split)
-    # update_entity_label_in_merged_data('CWQ', 'train')
-    # update_entity_label_in_merged_data('CWQ', 'dev')
-
-    # reproduce_xwu_entity_linking(
-    #     'data/CWQ/generation/xwu_merged_new/entity_linking',
-    #     'CWQ'
-    # )
-
-    # compare_reproduces_res(
-    #     '/home3/xwu/workspace/QDT2SExpr/CWQ/all_data_bk/CWQ/entity_linking_0414/CWQ_test_merged_elq_FACC1.json',
-    #     # 'data/CWQ/generation/xwu_merged_new/entity_linking/CWQ_test_merged_cand_entities_elq_facc1_label_updated.json'
-    #     'data/CWQ/generation/xwu_merged_new/entity_linking/CWQ_test_merged_cand_entities_elq_facc1.json'
-    # )
-
-    # combine_FACC1_and_elq(
-    #     'data/CWQ/entity_retrieval/candidate_entities_xwu',
-    #     'test'
-    # )
-
-    # for split in ['test', 'dev', 'train']:
-    #     merge_entity_linking_results_CWQ(split)

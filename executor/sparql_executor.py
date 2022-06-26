@@ -1472,16 +1472,12 @@ def execuate_reduced_sparql(split):
 
 
 def get_entity_labels(src_path, tgt_path):
-    # entities_list = load_json('/home3/xwu/workspace/QDT2SExpr/CWQ/data/CWQ/entity_linking_0414/0506/CWQ_FACC1_missed_entities.json')
     entities_list = load_json(src_path)
     res = dict()
-    count = 0
-    for entity in entities_list:
-        print(count)
-        count += 1
+    # for entity in entities_list:
+    for entity in tqdm(entities_list, total=len(entities_list),desc=f'Querying entity labels'):
         label = get_label_with_odbc(entity)
         res[entity] = label
-    # dump_json(res, '/home3/xwu/workspace/QDT2SExpr/CWQ/data/CWQ/entity_linking_0414/0506/CWQ_FACC1_extra_label_map.json')
     dump_json(res, tgt_path)
 
 

@@ -177,8 +177,8 @@ def get_entity_label_diff(split):
 
 
 def compare_elq_result(split):
-    xwu_results = load_json(f'data/WebQSP/entity_retrieval/candidate_entities_xwu/WebQSP_{split}_cand_entities_elq.json')
-    xxhu_results = load_json(f'data/WebQSP/entity_retrieval/candidate_entities/WebQSP_{split}_cand_entities_elq.json')
+    xwu_results = load_json(f'data/WebQSP/entity_retrieval/candidate_entities/WebQSP_{split}_cand_entities_elq.json')
+    xxhu_results = load_json(f'data/WebQSP/entity_retrieval/candidate_entities_xxhu/WebQSP_{split}_cand_entities_elq.json')
     assert len(xwu_results) == len(xxhu_results), print(len(xwu_results), len(xxhu_results))
     diff_qids = set()
     for qid in xwu_results:
@@ -189,35 +189,32 @@ def compare_elq_result(split):
 
 
 def compare_facc1_ranked_result(split):
-    xwu_results = load_json(f'data/CWQ/entity_retrieval/candidate_entities_xwu/CWQ_{split}_entities_facc1_unranked.json')
-    xxhu_results = load_json(f'/home2/xxhu/QDT2SExpr/CWQ/data/CWQ_{split}_entities.json')
-    assert len(xwu_results) == len(xxhu_results), print(len(xwu_results), len(xxhu_results))
+    new_results = load_json(f'data/WebQSP/entity_retrieval/candidate_entities/WebQSP_{split}_cand_entities_facc1.json')
+    prev_results = load_json(f'data/WebQSP/entity_retrieval/candidate_entities_xwu/WebQSP_{split}_cand_entities_facc1.json')
+    assert len(new_results) == len(prev_results), print(len(new_results), len(prev_results))
     sequence_diff_qids = set()
     content_diff_qids = set()
-    for qid in xwu_results:
-        assert qid in xxhu_results, print(qid)
-        xwu_ents = [item for mention_res in xwu_results[qid] for item in mention_res]
-        xwu_ents = sorted(xwu_ents, key=lambda d: d.get('disamb_logits', 1.0), reverse=True) # FACC1 中没有 disamb_logits 往往是因为只召回了一个实体，所以给个比较高的分数
-        xwu_ids = [item['id'] for item in xwu_ents]
-        xxhu_ents = [item for mention_res in xxhu_results[qid] for item in mention_res]
-        xxhu_ids = [item['id'] for item in xxhu_ents]
+    for qid in new_results:
+        assert qid in prev_results, print(qid)
+        xwu_ids = [item['id'] for item in new_results[qid]]
+        xxhu_ids = [item['id'] for item in prev_results[qid]]
         if xwu_ids != xxhu_ids:
             sequence_diff_qids.add(qid)
         if set(xwu_ids) != set(xxhu_ids):
             content_diff_qids.add(qid)
-    # print(len(sequence_diff_qids))
+    print(len(sequence_diff_qids))
     print(len(content_diff_qids))
 
 
 def compare_merged_el_result(split):
-    prev_result = load_json(f'data/CWQ/entity_retrieval/candidate_entities_xwu/CWQ_{split}_merged_cand_entities_elq_facc1.json')
+    prev_result = load_json(f'/home3/xwu/workspace/QDT2SExpr/CWQ/all_data_bk/CWQ/entity_linking_0414/CWQ_{split}_merged_elq_FACC1.json')
     new_result = load_json(f'data/CWQ/entity_retrieval/candidate_entities/CWQ_{split}_merged_cand_entities_elq_facc1.json')
     assert len(prev_result) == len(new_result), print(len(prev_result), len(new_result))
     sequence_diff_qids = set()
     content_diff_qids = set()
     for qid in prev_result:
         assert qid in new_result, print(qid)
-        prev_ids = [item['id'] for item in prev_result[qid] if 'mention' in item]
+        prev_ids = [item['id'] for item in prev_result[qid] if 'mention' in item] # without 'mention' --> randomly sampled
         new_ids = [item['id'] for item in new_result[qid] if 'mention' in item]
         if prev_ids != new_ids:
             sequence_diff_qids.add(qid)
@@ -226,27 +223,26 @@ def compare_merged_el_result(split):
             print(set(new_ids))
             content_diff_qids.add(qid)
         
-    # print(len(sequence_diff_qids))
-    # print(len(content_diff_qids))
+    print(len(sequence_diff_qids), list(sequence_diff_qids))
+    print(len(content_diff_qids), list(content_diff_qids))
 
 def compare_merged_el_result_including_label(split):
-    # prev_result = load_json(f'/home3/xwu/workspace/QDT2SExpr/CWQ/all_data_bk/CWQ/entity_linking_0414/CWQ_{split}_merged_elq_FACC1.json')
-    prev_result = load_json(f'data/WebQSP/entity_retrieval/candidate_entities_xwu_bak/WebQSP_{split}_merged_cand_entities_elq_facc1.json')
-    new_result = load_json(f'data/WebQSP/entity_retrieval/candidate_entities_xwu/WebQSP_{split}_merged_cand_entities_elq_facc1.json')
+    prev_result = load_json(f'/home3/xwu/workspace/QDT2SExpr/CWQ/all_data_bk/CWQ/entity_linking_0414/CWQ_{split}_merged_elq_FACC1.json')
+    new_result = load_json(f'data/CWQ/entity_retrieval/candidate_entities/CWQ_{split}_merged_cand_entities_elq_facc1.json')
     print(len(new_result))
     assert len(prev_result) == len(new_result), print(len(prev_result), len(new_result))
     sequence_diff_qids = set()
     content_diff_qids = set()
     for qid in prev_result:
         assert qid in new_result, print(qid)
-        prev_ids = [(item['id'], item['label']) for item in prev_result[qid] if 'mention' in item]
+        prev_ids = [(item['id'], item['label']) for item in prev_result[qid] if 'mention' in item] # without 'mention' --> randomly sampled
         new_ids = [(item['id'], item['label']) for item in new_result[qid] if 'mention' in item]
         if prev_ids != new_ids:
             sequence_diff_qids.add(qid)
         if set(prev_ids) != set(new_ids):
             content_diff_qids.add(qid)
         
-    # print(len(sequence_diff_qids), list(sequence_diff_qids))
+    print(len(sequence_diff_qids), list(sequence_diff_qids))
     print(len(content_diff_qids), list(content_diff_qids))
 
 
@@ -427,9 +423,9 @@ if __name__=='__main__':
     # compare_WebQSP_merged_linking_results('test')
     # check_webqsp_merged_cand_relation_length('train')
     # remove_item_webqsp()
-    compare_disamb_logits('dev')
+    # compare_disamb_logits('dev')
     # compare_merged_el_result('train')
-    # compare_merged_el_result_including_label('test')
+    compare_merged_el_result_including_label('train')
     # disamb_logits_generation('dev')
     # test_merged_length()
     # check_disambed_entities('test')
