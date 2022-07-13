@@ -1,5 +1,6 @@
 from components.utils import dump_json, load_json
 import numpy as np
+from tqdm import tqdm
 """
 记录一下当前的进展
     - CWQ 上，使用学长生成的实体消岐结果，会导致 0.5 左右的提升；
@@ -407,6 +408,24 @@ def compare_facc1(split):
     print(len(diff_qids))
     print(len(sequence_diff_qids), list(sequence_diff_qids))
 
+def compared_generated_sexpr(split):
+    prev_data = load_json('data/CWQ/generation/merged_old/CWQ_{}.json'.format(split))
+    generated_data = load_json('data/CWQ/generation/xwu_merged_test/CWQ_{}.json'.format(split))
+    prev_data = {item["ID"]: item for item in prev_data}
+    generated_data = {item["ID"]: item for item in generated_data}
+    diff = set()
+    for idx in tqdm(generated_data, total=len(generated_data)):
+        if idx not in prev_data:
+            if generated_data[idx]["sexpr"] != "null":
+                diff.add(idx)
+        elif prev_data[idx]['sexpr'] != generated_data[idx]["sexpr"]:
+            diff.add(idx)
+
+        # if prev_data[idx]["sexpr"] != generated_data[idx]["sexpr"]:
+        #     diff.add(idx)
+    print('diff: {} {}'.format(len(diff), list(diff)))
+
+
 
 if __name__=='__main__':
     # xwu_test_get_merged_disambiguated_entities('CWQ', 'test')
@@ -425,9 +444,12 @@ if __name__=='__main__':
     # remove_item_webqsp()
     # compare_disamb_logits('dev')
     # compare_merged_el_result('train')
-    compare_merged_el_result_including_label('train')
+    # compare_merged_el_result_including_label('train')
     # disamb_logits_generation('dev')
     # test_merged_length()
     # check_disambed_entities('test')
     # compare_facc1_ignore_sequence('train')
     # compare_facc1('test')
+
+    for split in ['test', 'train', 'dev']:
+        compared_generated_sexpr(split)

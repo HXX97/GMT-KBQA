@@ -74,14 +74,13 @@ def execute_query_with_odbc(query:str) -> List[str]:
     
     # print('successfully connnected to Freebase ODBC')
     result_set = set()
-
     query2 = "SPARQL "+query
     try:
         with odbc_conn.cursor() as cursor:
             cursor.execute(query2)
             rows = cursor.fetchall()
     except Exception:
-        # print(f"Query Execution Failed:{query2}")
+        print(f"Query Execution Failed:{query2}")
         exit(0)
     
     for row in rows:

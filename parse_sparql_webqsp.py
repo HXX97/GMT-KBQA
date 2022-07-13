@@ -16,12 +16,12 @@ from re import L
 import shutil
 from collections import Counter
 from typing import Pattern
+from tqdm import tqdm
 
 from numpy import sort
 from components.utils import *
 from components.expr_parser import parse_s_expr, extract_entities, tokenize_s_expr
-from executor.sparql_executor import execute_query
-from executor.sparql_executor import get_label, execute_query
+from executor.sparql_executor import get_label, execute_query, execute_query_with_odbc
 from executor.logic_form_util import lisp_to_sparql
 
 
@@ -658,14 +658,14 @@ def execute_webq_s_expr(s_expr):
 def augment_with_s_expr_webqsp(split, check_execute_accuracy=False):
     """augment original webqsp datasets with s-expression"""
     #dataset = load_json(f'data/origin/ComplexWebQuestions_{split}.json')
-    dataset = load_json(f'data/WEBQSP/origin/WebQSP.{split}.json')
+    dataset = load_json(f'data/WebQSP/origin/WebQSP.{split}.json')
     dataset = dataset['Questions']
 
     total_num = 0
     hit_num = 0
     execute_hit_num = 0
     failed_instances = []
-    for i,data in enumerate(dataset):
+    for i,data in tqdm(enumerate(dataset), total=len(dataset)):
         
         # sparql = data['sparql']  # sparql string
         parses = data['Parses']
@@ -679,15 +679,18 @@ def augment_with_s_expr_webqsp(split, check_execute_accuracy=False):
                 if check_execute_accuracy:
                     execute_right_flag = False
                     try:
-                        execute_ans = execute_query(lisp_to_sparql(instance['SExpr']))
+                        execute_ans = execute_query_with_odbc(lisp_to_sparql(instance['SExpr']))
+                        execute_ans = [res.replace("http://rdf.freebase.com/ns/",'') for res in execute_ans]
                         if 'Answers' in parse:
                             gold_ans = [ans['AnswerArgument'] for ans in parse['Answers']]
                         else:
-                            gold_ans = execute_query(parse['Sparql'])
+                            gold_ans = execute_query_with_odbc(parse['Sparql'])
+                            gold_ans = [res.replace("http://rdf.freebase.com/ns/",'') for res in gold_ans]
                         # if split=='test':
                         #     gold_ans = execute_query(parse['Sparql'])
                         # else:
-                        #     gold_ans = [x['answer_id'] for x in data['answers']]    
+                        #     gold_ans = [x['answer_id'] for x in data['answers']]
+
                         if set(execute_ans) == set(gold_ans):
                             execute_hit_num +=1
                             execute_right_flag = True
@@ -713,7 +716,7 @@ def augment_with_s_expr_webqsp(split, check_execute_accuracy=False):
     print(f'Execute right rate [{split}]: {execute_hit_num}, {total_num}, {execute_hit_num/total_num}, {len(dataset)}', )
     
 
-    sexpr_dir = 'data/WEBQSP/sexpr'
+    sexpr_dir = 'data/WebQSP/sexpr'
     if not os.path.exists(sexpr_dir):
         os.makedirs(sexpr_dir)
 
@@ -845,7 +848,12 @@ if __name__ == '__main__':
     parser = Parser()
     # parse_res = single_debug_cwq()
     # print(execute_webq_s_expr(parse_res['SExpr']))
-    parse_webqsp_sparql(check_execute_accuracy=False)
+    """
+    Since WebQSP may provide multiple `Parses` for each question
+    Execution accuracy of generated S-Expression will be verified.
+    It will later be used as an filtering condition in step (5).1
+    """
+    parse_webqsp_sparql(check_execute_accuracy=True)
 
     
     # sExpr = '(AND (JOIN government.politician.government_positions_held (JOIN government.government_position_held.from "1987-05-01"^^http://www.w3.org/2001/XMLSchema#dateTime)) (JOIN (R government.government_position_held.office_holder) (AND (TC government.government_position_held.from 2013^^http://www.w3.org/2001/XMLSchema#dateTime) (AND (JOIN government.government_position_held.governmental_body m.07t58) (JOIN (R government.political_district.representatives) m.07z1m)))))'

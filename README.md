@@ -74,7 +74,7 @@ The code for candidate relations retrieval is mainly in `relation_detection_and_
 
 Download the CWQ dataset from [here](https://www.dropbox.com/sh/7pkwkrfnwqhsnpo/AACuu4v3YNkhirzBOeeaHYala) and put them under `data/CWQ/origin`. The dataset files should be named as `ComplexWebQuestions_test[train,dev].json`.
 
-(2) **Parse SPARQL queries to S-expressions**
+(2) **Parse SPARQL queries to S-expressions** (测试完毕，没有问题)
 
 As stated in the paper, we generate S-expressions which are not provided by the original dataset.
 Here we provide the scripts to parse SPARQL queries 
@@ -82,7 +82,11 @@ Here we provide the scripts to parse SPARQL queries
 Run `python parse_sparql_cwq.py`, and it will augment the original dataset files with s-expressions. 
 The augmented dataset files are saved as `data/CWQ/sexpr/CWQ.test[train,dev].json`.
 
-(3) **Retrieve Candidate Entities** (tested)
+Run `python parse_sparql_webqsp.py` and the augmented dataset files are saved as `data/WebQSP/sexpr/WebQSP.test[train,dev].json`. 
+
+吴轩 0713: 这里的 S-Expression 我重新生成了，需要加上 Execution_Accuracy 的检查
+
+(3) **Retrieve Candidate Entities** (测试完毕，没有问题)
 
 This step can be ***skipped***, as we've provided the entity retrieval retuls in `data/CWQ/entity_retrieval/candidate_entities/CWQ_test[train,dev]_merged_cand_entities_elq_FACC1.json`.
 
@@ -110,8 +114,12 @@ If you want to retrive the candidate relations from scratch, follow the steps be
 4. Merge the logits with relations to get sorted relations for each question by running `python data_process.py merge_relation --dataset CWQ --split test[train,dev]`. The sorted relations will be saved as `data/CWQ/relation_retrieval/candidate_relations/CWQ_test[train,dev]_cand_rels_sorted.json`
 
 (5) **Generate Logical Forms through multi-task learning**
-1. Run `python data_process.py --merge_all --dataset CWQ --split test[train,dev]` prepare all the input data for logical form generation and the two auxiliary tasks (entity disambiguation and relation classification). The merged data file will be saved as `data/CWQ/generation/merged/CWQ_test[train,dev].json`
-吴轩 0623: merge_all 直接原来的结果，就说明因为有一些候补实体是随机筛选得到的，为了保证与论文中的设置完全一致，直接将论文训练的数据集放上来
+
+0. 吴轩 0623: merge_all 直接原来的结果，就说明因为有一些候补实体是随机筛选得到的，为了保证与论文中的设置完全一致，直接将论文训练的数据集放上来
+1. Run `python data_process.py merge_all --dataset CWQ --split test[train,dev]` prepare all the input data for logical form generation and the two auxiliary tasks (entity disambiguation and relation classification). The merged data file will be saved as `data/CWQ/generation/merged/CWQ_test[train,dev].json`
+
+    - For WebQSP, Run `python data_process.py merge_all --dataset WebQSP --split test[train]`. The merged data file will be saved as `data/WebQSP/generation/merged/WebQSP_test[train].json`
+
 2. Run `sh scripts/run_t5_relation_entity_concat_add_prefix_warmup_epochs_5_15epochs_CWQ.sh train multitask0617` to train the logical form generation model. The trained model will be saved in `exps/CWQ_multitask0617`. Command for training other model variants can be found in `cheatsheet_generation.txt`.
 3. Command for training model(as shown in 2.) will also do inference on `test` split. You can run `sh scripts/run_t5_relation_entity_concat_add_prefix_warmup_epochs_5_15epochs_CWQ.sh predict multitask0617 False test 50 4` to do inference on `test` split alone. Command for inferencing on other model variants can be found in `cheatsheet_generation.txt`.
 4. Run `python3 eval_topk_prediction_final.py --split test --pred_file exps/multitask0617/beam_50_top_k_predictions.json` to evaluate trained model.

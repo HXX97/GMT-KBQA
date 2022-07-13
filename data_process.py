@@ -337,14 +337,17 @@ def merge_all_data_for_logical_form_generation(dataset, split):
             else:
                 answer = [x['answer_id'] for x in example['answers']]
         elif dataset=='WebQSP':
-            # for WebQSP choose the shortest sparql
+            # for WebQSP choose 
+            # 1. shortest sparql
+            # 2. s-expression converted from this sparql should leads to same execution results.
             parses = example['Parses']
             shortest_idx = 0
             shortest_len = 9999
             for i in range(len(parses)):
-                if len(parses[i]['Sparql']) < shortest_len:
-                    shortest_idx = i
-                    shortest_len = len(parses[i]['Sparql'])
+                if 'SExpr_execute_right' in parses[i] and parses[i]['SExpr_execute_right']:
+                    if len(parses[i]['Sparql']) < shortest_len:
+                        shortest_idx = i
+                        shortest_len = len(parses[i]['Sparql'])
                 
             sexpr = parses[shortest_idx]['SExpr']
             sparql = parses[shortest_idx]['Sparql']
