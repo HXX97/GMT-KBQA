@@ -9,7 +9,7 @@ from transformers import AutoModel
 
 
 class BiEncoderModule(torch.nn.Module):
-    def __init__(self, device, bert_model="/home3/xwu/bertModels/bert-base-uncased", tokenizer=None, freeze_bert=False):
+    def __init__(self, device, bert_model="hfcache/bert-base-uncased", tokenizer=None, freeze_bert=False):
         super(BiEncoderModule, self).__init__()
         self.question_bert_layer = AutoModel.from_pretrained(bert_model)
         self.relation_bert_layer = AutoModel.from_pretrained(bert_model)

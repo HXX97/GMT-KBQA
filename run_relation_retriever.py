@@ -176,24 +176,24 @@ def sample_data(dataset, split):
     if dataset.lower() == 'cwq':
         extract_golden_relations_cwq(
             'data/CWQ/sexpr/CWQ.{}.expr.json'.format(split),
-            'data/CWQ/relation_retrieval/bi-encoder/xwu_test_0713/CWQ.{}.relation.json'.format(split)
+            'data/CWQ/relation_retrieval/bi-encoder/CWQ.{}.relation.json'.format(split)
         )
         sample_data_mask_entity_mention(
-            'data/CWQ/relation_retrieval/bi-encoder/xwu_test_0713/CWQ.{}.relation.json'.format(split),
+            'data/CWQ/relation_retrieval/bi-encoder/CWQ.{}.relation.json'.format(split),
             'data/CWQ/entity_retrieval/merged_linking_results/merged_CWQ_{}_linking_results.json'.format(split),
             'data/common_data/freebase_relations_filtered.json',
-            'data/CWQ/relation_retrieval/bi-encoder/xwu_test_0713/CWQ.{}.sampled.tsv'.format(split)
+            'data/CWQ/relation_retrieval/bi-encoder/CWQ.{}.sampled.tsv'.format(split)
         )
     elif dataset.lower() == 'webqsp':
         extract_golden_relations_webqsp(
             'data/WebQSP/sexpr/WebQSP.{}.expr.json'.format(split),
-            'data/WebQSP/relation_retrieval/bi-encoder/xwu_test_0713/WebQSP.{}.relation.json'.format(split)
+            'data/WebQSP/relation_retrieval/bi-encoder/WebQSP.{}.relation.json'.format(split)
         )
         sample_data_rich_relation(
-            'data/WebQSP/relation_retrieval/bi-encoder/xwu_test_0713/WebQSP.{}.relation.json'.format(split),
+            'data/WebQSP/relation_retrieval/bi-encoder/WebQSP.{}.relation.json'.format(split),
             'data/common_data/freebase_relations_filtered.json',
             'data/common_data/fb_relation_rich_map.json',
-            'data/WebQSP/relation_retrieval/bi-encoder/xwu_test_0713/WebQSP.{}.sampled.tsv'.format(split)
+            'data/WebQSP/relation_retrieval/bi-encoder/WebQSP.{}.sampled.tsv'.format(split)
         )
 
 

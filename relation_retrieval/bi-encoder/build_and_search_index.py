@@ -8,15 +8,16 @@ import json
 import csv
 from functools import reduce
 from torch.utils.data import DataLoader, Dataset
-# from transformers import AutoTokenizer
+from transformers import AutoTokenizer
 import torch
 # import faiss
 import numpy
 import pandas as pd
+import argparse
 
 from tqdm import tqdm
 
-# from biencoder import BiEncoderModule
+from biencoder import BiEncoderModule
 from faiss_indexer import DenseFlatIndexer, DenseHNSWFlatIndexer
 
 import os
@@ -35,6 +36,18 @@ def read_json(json_path):
 def write_json(json_path, data):
     with open(json_path, 'w') as f:
         json.dump(data, f, indent=4)
+
+
+def _parse_args():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('action', type=str, help='Action to operate')
+    parser.add_argument('--dataset', help='CWQ or WebQSP')
+    parser.add_argument('--split', help='split to operate on') # the split file: ['dev','test','train']
+    parser.add_argument('--cache_dir', default='hfcache/bert-base-uncased')
+
+    return parser.parse_args()
+
 
 
 def get_logger(output_dir=None):
@@ -89,10 +102,10 @@ class CustomDataset(Dataset):
         return relation_token_ids, relation_attn_masks, relation_token_type_ids
 
 
-def save_relations_vectors(relations_path, model_path, save_path, add_special_tokens=False, max_len=32, batch_size=128):
+def encode_relations(relations_path, model_path, save_path, add_special_tokens=False, max_len=32, batch_size=128, cache_dir='bert-base-uncased'):
     maxlen = max_len
     bs = batch_size
-    bert_model = "/home3/xwu/bertModels/bert-base-uncased"
+    bert_model = cache_dir
 
     if add_special_tokens:
         print('add special tokens')
@@ -484,4 +497,38 @@ def main():
 
 
 if __name__=='__main__':
-    main()
+    args = _parse_args()
+    action = args.action
+
+    if action.lower() == 'encode_relation':
+        if args.dataset.lower() == 'cwq':
+            encode_relations(
+                'data/common_data/freebase_relations_filtered.json',
+                'data/CWQ/relation_retrieval/bi-encoder/saved_models/CWQ_ep_1.pt',
+                'data/CWQ/relation_retrieval/bi-encoder/vectors/CWQ_ep_1_relations.pt',
+                add_special_tokens=True,
+                max_len=32,
+                batch_size=128,
+                cache_dir=args.cache_dir
+            )
+        elif args.dataset.lower() == 'webqsp':
+            encode_relations(
+                'data/common_data/freebase_relations_filtered.json',
+                'data/WebQSP/relation_retrieval/bi-encoder/saved_models/WebQSP_ep_3.pt',
+                'data/WebQSP/relation_retrieval/bi-encoder/vectors/WebQSP_ep_3_relations.pt',
+                add_special_tokens=False,
+                max_len=80,
+                batch_size=128,
+                cache_dir=args.cache_dir
+            )
+    if action.lower() == 'build_index':
+        if args.dataset.lower() == 'cwq':
+            build_index(
+                'data/CWQ/relation_retrieval/bi-encoder/index/flat.index',
+                'data/CWQ/relation_retrieval/bi-encoder/vectors/CWQ_ep_1_relations.pt'
+            )
+        elif args.dataset.lower() == 'webqsp':
+            build_index(
+                'data/WebQSP/relation_retrieval/bi-encoder/index/flat.index',
+                'data/WebQSP/relation_retrieval/bi-encoder/vectors/WebQSP_ep_3_relations.pt'
+            )

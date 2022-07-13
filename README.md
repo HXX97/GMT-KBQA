@@ -121,11 +121,15 @@ This step can also be ***skipped*** , as we've provided t he candidate relations
 
 If you want to retrive the candidate relations from scratch, follow the steps below:
 
-1. Bi-encoder
-    - CWQ: Run `python run_relation_retriever.py sample_data --dataset CWQ --split train[dev]` to prepare training data.
-    - WebQSP: Run `python run_relation_retriever.py sample_data --dataset WebQSP --split train` to prepare training data.
+1. Train the bi-encoder to encode questions and relations.
+    - CWQ: Run `python run_relation_retriever.py sample_data --dataset CWQ --split train[dev]` to prepare training data. Then run `sh scripts/run_bi_encoder_CWQ.sh [YOUR_FOLDER_NAME]` to train bi-encoder model. Trained model will be saved in `data/CWQ/relation_retrieval/bi-encoder/saved_models/[YOUR_FOLDER_NAME]`.
+    - WebQSP: Run `python run_relation_retriever.py sample_data --dataset WebQSP --split train` to prepare training data. Then run `sh scripts/run_bi_encoder_WebQSP.sh [YOUR_FOLDER_NAME]` to train bi-encoder model. Trained model will be saved in `data/WebQSP/relation_retrieval/bi-encoder/saved_models/[YOUR_FOLDER_NAME]`.
 
-Train the bi-encoder to encode questions and relations, and build the index of encoded relations. //TODO `complete the running commands`
+2. Build the index of encoded relations.
+    - CWQ: To encode Freebase relations using trained bi-encoder, run `python relation_retrieval/bi-encoder/build_and_search_index.py encode_relation --dataset CWQ`. Then run `python relation_retrieval/bi-encoder/build_and_search_index.py build_index --dataset CWQ` to build the index of encoded relations. Index file will be saved as `data/CWQ/relation_retrieval/bi-encoder/index/flat.index`.
+    - WebQSP: To encode Freebase relations using trained bi-encoder, run `python relation_retrieval/bi-encoder/build_and_search_index.py encode_relation --dataset WebQSP`. Then run `python relation_retrieval/bi-encoder/build_and_search_index.py build_index --dataset WebQSP` to build the index of encoded relations. Index file will be saved as `data/WebQSP/relation_retrieval/bi-encoder/index/flat.index`.
+
+
 2. Retrieve relations by dense search over the index. //TODO `complete the running commands`
 3. Train the cross-encoder to rank retrieved relations. //TODO `complete the running commands`
 4. Merge the logits with relations to get sorted relations for each question by running `python data_process.py merge_relation --dataset CWQ --split test[train,dev]`. The sorted relations will be saved as `data/CWQ/relation_retrieval/candidate_relations/CWQ_test[train,dev]_cand_rels_sorted.json`

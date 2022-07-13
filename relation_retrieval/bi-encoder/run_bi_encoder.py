@@ -1,4 +1,3 @@
-from email.policy import default
 import torch
 import random
 import os
@@ -19,30 +18,28 @@ BLANK_TOKEN = '[BLANK]'
 def _parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--add_special_tokens', default=False, action='store_true',help='True when mask entity mention')
-    parser.add_argument('--dataset_type', default="CWQ", type=str, help="CWQ | WEBQSP")
+    parser.add_argument('--dataset_type', default="CWQ", type=str, help="CWQ | WebQSP")
     parser.add_argument('--model_save_path', default='data/', type=str)
     parser.add_argument('--max_len', default=32, type=int, help="32 for CWQ, 80 for WebQSP with richRelation, 28 for LC")
     parser.add_argument('--batch_size', default=4, type=int, help="4 for CWQ")
     parser.add_argument('--epochs', default=1, type=int, help="1 for CWQ, 3 for WebQSP")
     parser.add_argument('--log_dir', default='log/', type=str)
+    parser.add_argument('--cache_dir', default='hfcache/bert-base-uncased', type=str)
     args = parser.parse_args()
     return args
 
 
 def data_process(dataset_type):
     if dataset_type == "CWQ":
-        train_df = pd.read_csv('../../Data/CWQ/relation_retrieval/bi-encoder/CWQ.train.maskEntity.sampled.tsv', sep='\t', error_bad_lines=False).dropna()
-        dev_df = pd.read_csv('../../Data/CWQ/relation_retrieval/bi-encoder/CWQ.dev.maskEntity.sampled.tsv', sep='\t', error_bad_lines=False).dropna()
-        test_df = pd.read_csv('../../Data/CWQ/relation_retrieval/bi-encoder/CWQ.test.maskEntity.sampled.tsv', sep='\t', error_bad_lines=False).dropna()
+        train_df = pd.read_csv('data/CWQ/relation_retrieval/bi-encoder/CWQ.train.sampled.tsv', sep='\t', error_bad_lines=False).dropna()
+        dev_df = pd.read_csv('data/CWQ/relation_retrieval/bi-encoder/CWQ.dev.sampled.tsv', sep='\t', error_bad_lines=False).dropna()
     else:
-        train_df = pd.read_csv('../../Data/WEBQSP/relation_retrieval/bi-encoder/train.sampled.richRelation.1parse.tsv', sep='\t', error_bad_lines=False).dropna()
+        train_df = pd.read_csv('data/WebQSP/relation_retrieval/bi-encoder/WebQSP.train.sampled.tsv', sep='\t', error_bad_lines=False).dropna()
         dev_df = None
-        test_df = pd.read_csv('../../Data/WEBQSP/relation_retrieval/bi-encoder/test.sampled.richRelation.1parse.tsv', sep='\t', error_bad_lines=False).dropna()
     
-    return train_df, dev_df, test_df
+    return train_df, dev_df
 
 def set_seed(seed):
-    """ Set all seeds to make results reproducible """
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
@@ -85,7 +82,7 @@ def evaluate(model, device, dataloader):
     
 
 class CustomDataset(Dataset):
-    def __init__(self, data, maxlen, tokenizer=None, bert_model='/home3/xwu/bertModels/bert-base-uncased',  sample_size=100):
+    def __init__(self, data, maxlen, tokenizer=None, bert_model='hfcache/bert-base-uncased',  sample_size=100):
         self.data = data
         self.sample_size = sample_size
         self.tokenizer = tokenizer if tokenizer is not None else AutoTokenizer.from_pretrained(bert_model)
@@ -128,7 +125,7 @@ class CustomDataset(Dataset):
         return question_token_ids, question_attn_masks, question_token_type_ids, relations_token_ids, relations_attn_masks, relations_token_type_ids, golden_id[0]
 
 
-def train_bert(model, opti, lr, lr_scheduler, train_loader, val_loader, epochs, iters_to_accumulate, device, log_path, model_save_path):
+def train_bert(model, opti, lr, lr_scheduler, train_loader, val_loader, epochs, iters_to_accumulate, device, log_path, model_save_path, dataset_type):
     nb_iterations = len(train_loader)
     print_every = nb_iterations // 5
     if log_path:
@@ -183,7 +180,7 @@ def train_bert(model, opti, lr, lr_scheduler, train_loader, val_loader, epochs, 
         #     print()
         #     best_loss = val_loss
         
-        model_path = os.path.join(model_save_path, '{}_lr_{}_ep_{}.pt'.format("bert-base-uncased", lr, ep+1))
+        model_path = os.path.join(model_save_path, '{}_ep_{}.pt'.format(dataset_type, ep+1))
         torch.save(model_copy.state_dict(), model_path)
         print("The model has been saved in {}".format(model_path))
 
@@ -194,7 +191,7 @@ def train_bert(model, opti, lr, lr_scheduler, train_loader, val_loader, epochs, 
  
 
 def main(args):
-    bert_model = '/home3/xwu/bertModels/bert-base-uncased'
+    bert_model = args.cache_dir
     freeze_bert = False
     maxlen = args.max_len
     bs = args.batch_size
@@ -213,8 +210,7 @@ def main(args):
 
     set_seed(1)
     print("Reading training data...")
-    # train_df, dev_df, test_df = data_process()
-    train_df, dev_df, _ = data_process(args.dataset_type)
+    train_df, dev_df = data_process(args.dataset_type)
     print(train_df.shape)
     train_set = CustomDataset(train_df, maxlen, tokenizer=tokenizer, bert_model=bert_model)
     train_loader = DataLoader(train_set, batch_size=bs, num_workers=2)
@@ -236,7 +232,7 @@ def main(args):
     t_total = (len(train_loader) // iters_to_accumulate) * epochs  # Necessary to take into account Gradient accumulation
     lr_scheduler = get_linear_schedule_with_warmup(optimizer=opti, num_warmup_steps=num_warmup_steps, num_training_steps=t_total)
     
-    train_bert(model, opti, lr, lr_scheduler, train_loader, val_loader, epochs, iters_to_accumulate, device, log_path, args.model_save_path)
+    train_bert(model, opti, lr, lr_scheduler, train_loader, val_loader, epochs, iters_to_accumulate, device, log_path, args.model_save_path, args.dataset_type)
          
 
 if __name__=='__main__':
