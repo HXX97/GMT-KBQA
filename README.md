@@ -70,36 +70,49 @@ The code for candidate relations retrieval is mainly in `relation_detection_and_
 
 
 ## Reproducing the Results on CWQ
-(1) **Prepare dataset and pretrained checkpoints**
+TODO: 发现一个问题，旧的 merged 文件里头吧 sexpr == 'null' 的问题都过滤掉了, 后续看看要不要把过滤的问题补上
+(1) **Prepare dataset and pretrained checkpoints** (测试完毕，没问题)
 
 Download the CWQ dataset from [here](https://www.dropbox.com/sh/7pkwkrfnwqhsnpo/AACuu4v3YNkhirzBOeeaHYala) and put them under `data/CWQ/origin`. The dataset files should be named as `ComplexWebQuestions_test[train,dev].json`.
+
+Download the WebQSP dataset from [here](https://www.microsoft.com/en-us/research/publication/the-value-of-semantic-parse-labeling-for-knowledge-base-question-answering-2/) and put them under `data/WebQSP/origin`. The dataset files should be named as `WebQSP.test[train].json`.
 
 (2) **Parse SPARQL queries to S-expressions** (测试完毕，没有问题)
 
 As stated in the paper, we generate S-expressions which are not provided by the original dataset.
-Here we provide the scripts to parse SPARQL queries 
+Here we provide the scripts to parse SPARQL queries to S-expressions. 
 
 Run `python parse_sparql_cwq.py`, and it will augment the original dataset files with s-expressions. 
 The augmented dataset files are saved as `data/CWQ/sexpr/CWQ.test[train,dev].json`.
 
 Run `python parse_sparql_webqsp.py` and the augmented dataset files are saved as `data/WebQSP/sexpr/WebQSP.test[train,dev].json`. 
 
-吴轩 0713: 这里的 S-Expression 我重新生成了，需要加上 Execution_Accuracy 的检查
-
 (3) **Retrieve Candidate Entities** (测试完毕，没有问题)
 
-This step can be ***skipped***, as we've provided the entity retrieval retuls in `data/CWQ/entity_retrieval/candidate_entities/CWQ_test[train,dev]_merged_cand_entities_elq_FACC1.json`.
+This step can be ***skipped***, as we've provided the entity retrieval retuls in 
+- CWQ: `data/CWQ/entity_retrieval/candidate_entities/CWQ_test[train,dev]_merged_cand_entities_elq_facc1.json`.
+- WebQSP: `data/WebQSP/entity_retrieval/candidate_entities/WebQSP_test[train]_merged_cand_entities_elq_facc1.json`
 
 If you want to retrieve the candidate entities from scratch, follow the steps below:
 
-1. Obtain the linking results from ELQ. Firstly you should deploy our tailored [ELQ](). Then run `python detect_and_link_entity.py --dataset CWQ --split test[train,dev] --linker elq` to get candidate entities linked by ELQ. The results will be saved as `data/CWQ/entity_retrieval/candidate_entities/CWQ_test[train,dev]_cand_entities_elq.json`.
+1. Obtain the linking results from ELQ. Firstly you should deploy our tailored [ELQ](). Then run 
+    - CWQ: `python detect_and_link_entity.py --dataset CWQ --split test[train,dev] --linker elq` to get candidate entities linked by ELQ. The results will be saved as `data/CWQ/entity_retrieval/candidate_entities/CWQ_test[train,dev]_cand_entities_elq.json`.
+    - WebQSP: Run `python detect_and_link_entity.py --dataset WebQSP --split test[train] --linker elq`, and the results will be saved as `data/WebQSP/entity_retrieval/candidate_entities/WebQSP_test[train]_cand_entities_elq.json`
 
+2. Retrieve candidate entities from FACC1. 
+    - CWQ: Firstly run
+    `python detect_and_link_entity.py --dataset CWQ --split test[train,dev] --linker facc1` to retrieve candidate entities.
+    Then run `sh scripts/run_entity_disamb.sh CWQ predict test[train,dev]` to rank the candidates by a BertRanker. The ranked results will be saved as `data/CWQ/entity_retrieval/candidate_entities/CWQ_test[train,dev]_cand_entities_facc1.json`. 
 
-2. Retrieve candidate entities from FACC1. Firstly run
-`python detect_and_link_entity.py --dataset CWQ --split test[train,dev] --linker facc1` to retrieve candidate entities.
-Then run `sh scripts/run_entity_disamb.sh CWQ predict test[train,dev]` to rank the candidates by a BertRanker. The ranked results will be saved as `data/CWQ/entity_retrieval/candidate_entities/CWQ_test[train,dev]_cand_entities_facc1.json`. To reproduce our disambiguation results, please download `feature_cache/` from our checkpoint.
+    - WebQSP: Firstly run
+    `python detect_and_link_entity.py --dataset WebQSP --split test[train] --linker facc1` to retrieve candidate entities. Then run `sh scripts/run_entity_disamb.sh WebQSP predict test[train]` to rank the candidates by a BertRanker. The ranked results will be saved as `data/WebQSP/entity_retrieval/candidate_entities/WebQSP_test[train]_cand_entities_facc1.json`
 
-3. Finally, merge the linking results of ELQ and FACC1 by running `python data_process.py merge_entity --dataset CWQ --split test[train,dev]`, and the final entity retrieval results are saved as `data/CWQ/entity_retrieval/candidate_entities/CWQ_test[train,dev]_merged_cand_entities_elq_facc1.json`. Note for CWQ, entity label will be standardized in final entity retrieval results.
+    To reproduce our disambiguation results, please download  `feature_cache/` and place it under root folder from our checkpoint.
+
+3. Finally, merge the linking results of ELQ and FACC1.  
+    - CWQ: `python data_process.py merge_entity --dataset CWQ --split test[train,dev]`, and the final entity retrieval results are saved as `data/CWQ/entity_retrieval/candidate_entities/CWQ_test[train,dev]_merged_cand_entities_elq_facc1.json`. Note for CWQ, entity label will be standardized in final entity retrieval results.
+    - WebQSP: `python data_process.py merge_entity --dataset WebQSP --split test[train]`, and the final entity retrieval results are saved as `data/WebQSP/entity_retrieval/candidate_entities/WebQSP_test[train]_merged_cand_entities_elq_facc1.json`.
+
 
 
 (4) **Retrieve Candidate Relations**
@@ -108,7 +121,11 @@ This step can also be ***skipped*** , as we've provided t he candidate relations
 
 If you want to retrive the candidate relations from scratch, follow the steps below:
 
-1. Train the bi-encoder to encode questions and relations, and build the index of encoded relations. //TODO `complete the running commands`
+1. Bi-encoder
+    - CWQ: Run `python run_relation_retriever.py sample_data --dataset CWQ --split train[dev]` to prepare training data.
+    - WebQSP: Run `python run_relation_retriever.py sample_data --dataset WebQSP --split train` to prepare training data.
+
+Train the bi-encoder to encode questions and relations, and build the index of encoded relations. //TODO `complete the running commands`
 2. Retrieve relations by dense search over the index. //TODO `complete the running commands`
 3. Train the cross-encoder to rank retrieved relations. //TODO `complete the running commands`
 4. Merge the logits with relations to get sorted relations for each question by running `python data_process.py merge_relation --dataset CWQ --split test[train,dev]`. The sorted relations will be saved as `data/CWQ/relation_retrieval/candidate_relations/CWQ_test[train,dev]_cand_rels_sorted.json`

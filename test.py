@@ -1,6 +1,7 @@
 from components.utils import dump_json, load_json
 import numpy as np
 from tqdm import tqdm
+import pandas as pd
 """
 记录一下当前的进展
     - CWQ 上，使用学长生成的实体消岐结果，会导致 0.5 左右的提升；
@@ -425,7 +426,22 @@ def compared_generated_sexpr(split):
         #     diff.add(idx)
     print('diff: {} {}'.format(len(diff), list(diff)))
 
-
+"""
+Bi-encoder 相关的
+"""
+def compare_training_data(split):
+    new_training_data_path = 'data/WebQSP/relation_retrieval/bi-encoder/xwu_test_0713/WebQSP.{}.sampled.tsv'.format(split)
+    prev_training_data_path = 'data/WebQSP/relation_retrieval/bi-encoder/xwu_test_0713/prev/{}.sampled.richRelation.1parse.tsv'.format(split)
+    new_df = pd.read_csv(new_training_data_path, sep='\t', error_bad_lines=False).dropna()
+    prev_df = pd.read_csv(prev_training_data_path, sep='\t', error_bad_lines=False).dropna()
+    new_questions = new_df["question"].unique().tolist()
+    prev_questions = prev_df["question"].unique().tolist()
+    print(len(new_questions), len(prev_questions))
+    print(new_questions == prev_questions)
+    print(set(prev_questions) - set(new_questions))
+    print(set(new_questions) - set(prev_questions))
+    # for i in range(100):
+    #     print(new_questions[i], prev_questions[i])
 
 if __name__=='__main__':
     # xwu_test_get_merged_disambiguated_entities('CWQ', 'test')
@@ -451,5 +467,6 @@ if __name__=='__main__':
     # compare_facc1_ignore_sequence('train')
     # compare_facc1('test')
 
-    for split in ['test', 'train', 'dev']:
-        compared_generated_sexpr(split)
+    # for split in ['test', 'train', 'dev']:
+    #     compared_generated_sexpr(split)
+    compare_training_data('train')

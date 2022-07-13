@@ -89,15 +89,15 @@ def extract_mentioned_entities_from_sparql(sparql:str) -> List[str]:
     entity_tokens = list(set(entity_tokens))
     return entity_tokens
 
-def extract_mentioned_relations_from_sparql(sparql:str) -> List[str]:
+def extract_mentioned_relations_from_sparql(sparql:str):
     """extract relation from sparql"""
     sparql = sparql.replace('(',' ( ').replace(')',' ) ')
     toks = sparql.split(' ')
     toks = [x for x in toks if len(x)]
     relation_tokens = []
     for t in toks:
-        if (re.match("ns:[a-zA-Z_]*\.[a-zA-Z_]*\.[a-zA-Z_]*",t.strip()) 
-            or re.match("ns:[a-zA-Z_]*\.[a-zA-Z_]*\.[a-zA-Z_]*\.[a-zA-Z_]*",t.strip())):
+        if (re.match("ns:[a-zA-Z_0-9]*\.[a-zA-Z_0-9]*\.[a-zA-Z_0-9]*",t.strip()) 
+            or re.match("ns:[a-zA-Z_0-9]*\.[a-zA-Z_0-9]*\.[a-zA-Z_0-9]*\.[a-zA-Z_0-9]*",t.strip())):
             relation_tokens.append(t[3:])
     
     relation_tokens = list(set(relation_tokens))
