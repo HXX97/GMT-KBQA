@@ -18,7 +18,6 @@ if [ "$ACTION" = "train" ]; then
                             --do_train \
                             --do_predict \
                             --do_debug ${do_debug} \
-                            --do_predict \
                             --max_tgt_len 190 \
                             --max_src_len 256 \
                             --epochs 15 \
