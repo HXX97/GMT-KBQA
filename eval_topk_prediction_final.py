@@ -6,7 +6,8 @@ import sys
 sys.path.append('..')
 import argparse
 from generation.cwq_evaluate import cwq_evaluate_valid_results
-from generation.webqsp_evaluate import webqsp_evaluate_valid_results
+# from generation.webqsp_evaluate import webqsp_evaluate_valid_results
+from generation.webqsp_evaluate_offcial import webqsp_evaluate_valid_results
 from components.utils import dump_json, load_json
 from tqdm import tqdm
 from executor.sparql_executor import execute_query_with_odbc
@@ -316,12 +317,12 @@ def execute_normed_s_expr_from_label_maps(normed_expr,
 def aggressive_top_k_eval_new(split, predict_file, dataset):
     """Run top k predictions, using linear origin map"""
     if dataset == "CWQ":
-        train_gen_dataset = load_json('data/CWQ/generation/merged_0715_retrain/CWQ_train.json')
-        test_gen_dataset = load_json('data/CWQ/generation/merged_0715_retrain/CWQ_test.json')
-        dev_gen_dataset = load_json('data/CWQ/generation/merged_0715_retrain/CWQ_dev.json')
+        train_gen_dataset = load_json('data/CWQ/generation/merged_0715_retrain_new_data/CWQ_train.json')
+        test_gen_dataset = load_json('data/CWQ/generation/merged_0715_retrain_new_data/CWQ_test.json')
+        dev_gen_dataset = load_json('data/CWQ/generation/merged_0715_retrain_new_data/CWQ_dev.json')
     elif dataset == "WebQSP":
-        train_gen_dataset = load_json('data/WebQSP/generation/merged_0715_retrain/WebQSP_train.json')
-        test_gen_dataset = load_json('data/WebQSP/generation/merged_0715_retrain/WebQSP_test.json')
+        train_gen_dataset = load_json('data/WebQSP/generation/merged_rich_entity_rich_relation_1parse/WebQSP_train.json')
+        test_gen_dataset = load_json('data/WebQSP/generation/merged_rich_entity_rich_relation_1parse/WebQSP_test.json')
         dev_gen_dataset = None
     # if dataset == "CWQ":
     #     train_gen_dataset = load_json('../data/CWQ/generation/merged_old/CWQ_train.json')
@@ -410,6 +411,7 @@ def aggressive_top_k_eval_new(split, predict_file, dataset):
     ex_cnt = 0
     top_hit = 0
     lines = []
+    official_lines = []
     failed_preds = []
     # denormalize_failed = []
 
@@ -482,6 +484,11 @@ def aggressive_top_k_eval_new(split, predict_file, dataset):
                     'pred': pred, 
                     'denormed_pred':denormed_pred
                 })
+
+                official_lines.append({
+                    "QuestionId": qid,
+                    "Answers": answers
+                })
                
                 if rank==0:
                     top_hit +=1
@@ -515,7 +522,9 @@ def aggressive_top_k_eval_new(split, predict_file, dataset):
     print('Final Executable', final_executable_cnt/ len(predictions))
 
     result_file = os.path.join(dirname,f'{filename}_gen_sexpr_results.json')
+    official_results_file = os.path.join(dirname,f'{filename}_gen_sexpr_results_official_format.json')
     dump_json(lines, result_file, indent=4)
+    dump_json(official_lines, official_results_file, indent=4)
 
     # write failed predictions
     dump_json(failed_preds,os.path.join(dirname,f'{filename}_gen_failed_results.json'),indent=4)
@@ -527,7 +536,8 @@ def aggressive_top_k_eval_new(split, predict_file, dataset):
     }, os.path.join(dirname,f'{filename}_statistics.json'),indent=4)
 
     # evaluate
-    args.pred_file = result_file
+    # args.pred_file = result_file
+    args.pred_file = official_results_file
     if dataset == "CWQ":
         cwq_evaluate_valid_results(args)
     elif dataset == "WebQSP":

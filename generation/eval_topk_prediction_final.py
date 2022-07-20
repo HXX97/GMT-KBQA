@@ -316,13 +316,21 @@ def execute_normed_s_expr_from_label_maps(normed_expr,
 def aggressive_top_k_eval_new(split, predict_file, dataset):
     """Run top k predictions, using linear origin map"""
     if dataset == "CWQ":
-        train_gen_dataset = load_json('../data/CWQ/generation/merged/CWQ_train.json')
-        test_gen_dataset = load_json('../data/CWQ/generation/merged/CWQ_test.json')
-        dev_gen_dataset = load_json('../data/CWQ/generation/merged/CWQ_dev.json')
+        train_gen_dataset = load_json('../data/CWQ/generation/merged_old/CWQ_train.json')
+        test_gen_dataset = load_json('../data/CWQ/generation/merged_old/CWQ_test.json')
+        dev_gen_dataset = load_json('../data/CWQ/generation/merged_old/CWQ_dev.json')
     elif dataset == "WebQSP":
-        train_gen_dataset = load_json('../data/WebQSP/generation/merged/WebQSP_train.json')
-        test_gen_dataset = load_json('../data/WebQSP/generation/merged/WebQSP_test.json')
+        train_gen_dataset = load_json('../data/WebQSP/generation/merged_old/WebQSP_train.json')
+        test_gen_dataset = load_json('../data/WebQSP/generation/merged_old/WebQSP_test.json')
         dev_gen_dataset = None
+    # if dataset == "CWQ":
+    #     train_gen_dataset = load_json('../data/CWQ/generation/merged_old/CWQ_train.json')
+    #     test_gen_dataset = load_json('../data/CWQ/generation/merged_old/CWQ_test.json')
+    #     dev_gen_dataset = load_json('../data/CWQ/generation/merged_old/CWQ_dev.json')
+    # elif dataset == "WebQSP":
+    #     train_gen_dataset = load_json('../data/WebQSP/generation/merged_old/WebQSP_train.json')
+    #     test_gen_dataset = load_json('../data/WebQSP/generation/merged_old/WebQSP_test.json')
+    #     dev_gen_dataset = None
     
     predictions = load_json(predict_file)
 
@@ -357,17 +365,24 @@ def aggressive_top_k_eval_new(split, predict_file, dataset):
     if not use_goldEnt:
         use_linking_results = False
         if dataset == "CWQ":
-            if os.path.exists(os.path.join(dirname, 'CWQ_candidate_entity_map.json')):
-                candidate_entity_map = load_json(os.path.join(dirname, 'CWQ_candidate_entity_map.json'))
+            if os.path.exists(os.path.join(dirname, f'CWQ_{split}_candidate_entity_map.json')):
+                candidate_entity_map = load_json(os.path.join(dirname, f'CWQ_{split}_candidate_entity_map.json'))
+                # candidate_entity_map = load_json('/home3/xwu/workspace/QDT2SExpr/CWQ/exps/final/CWQ_relation_entity_concat_add_prefix_warmup_epochs_5_20epochs/15epoch/CWQ_candidate_entity_map.json')
+                # print('/home3/xwu/workspace/QDT2SExpr/CWQ/exps/final/CWQ_relation_entity_concat_add_prefix_warmup_epochs_5_20epochs/15epoch/CWQ_candidate_entity_map.json')
             else:
-                candidate_entity_map = load_json(f'../data/CWQ/entity_retrieval/disamb_entities/CWQ_merged_{split}_disamb_entities.json')
-                print(f'loading: ../data/CWQ/entity_retrieval/disamb_entities/CWQ_merged_{split}_disamb_entities.json')
+                candidate_entity_map = load_json(f'../data/CWQ/entity_retrieval/disamb_entities_xwu/merged_CWQ_{split}_linking_results.json')
+                print(f'loading: ../data/CWQ/entity_retrieval/disamb_entities_xwu/merged_CWQ_{split}_linking_results.json')
+                # candidate_entity_map = load_json(f'../data/CWQ/entity_retrieval/disamb_entities/CWQ_merged_{split}_disamb_entities.json')
+                # print(f'loading: ../data/CWQ/entity_retrieval/disamb_entities/CWQ_merged_{split}_disamb_entities.json')
+                # TODO: revert!!
+                # candidate_entity_map = load_json(f'../data/CWQ/entity_retrieval/xwu_test/CWQ_merged_test_disamb_entities.json')
+                # print(f'loading: ../data/CWQ/entity_retrieval/xwu_test/CWQ_merged_test_disamb_entities.json')
                 use_linking_results = True
             train_type_map = load_json(f"../data/CWQ/generation/label_maps/CWQ_train_type_label_map.json")
             train_type_map = {l.lower():t for t,l in train_type_map.items()}
         elif dataset == "WebQSP":
-            if os.path.exists(os.path.join(dirname, "WebQSP_candidate_entity_map.json")):
-                candidate_entity_map = load_json(os.path.join(dirname, "WebQSP_candidate_entity_map.json"))
+            if os.path.exists(os.path.join(dirname, f"WebQSP_{split}_candidate_entity_map.json")):
+                candidate_entity_map = load_json(os.path.join(dirname, f"WebQSP_{split}_candidate_entity_map.json"))
             else:
                 candidate_entity_map = load_json(f'../data/WebQSP/entity_retrieval/disamb_entities/WebQSP_merged_{split}_disamb_entities.json')
                 print(f'loading ../data/WebQSP/entity_retrieval/disamb_entities/WebQSP_merged_{split}_disamb_entities.json')
@@ -410,8 +425,8 @@ def aggressive_top_k_eval_new(split, predict_file, dataset):
             # entity label map, Dict[label:mid]
             if qid in candidate_entity_map:
                 if use_linking_results:
-                    # entity_label_map = {value['label']:key for key,value in candidate_entity_map[qid].items()}
-                    entity_label_map = {item['label']:item['id'] for item in candidate_entity_map[qid]}
+                    entity_label_map = {value['label']:key for key,value in candidate_entity_map[qid].items()}
+                    # entity_label_map = {item['label']:item['id'] for item in candidate_entity_map[qid]}
                 else:
                     entity_label_map = {key:value['id'] for key,value in candidate_entity_map[qid].items()}
             else:

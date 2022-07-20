@@ -992,6 +992,232 @@ def get_2hop_relations_with_odbc(entity: str):
 
     return in_relations, out_relations, paths
 
+def get_2hop_relations_with_odbc_wo_filter(entity: str):
+    in_relations = set()
+    out_relations = set()
+    paths = []
+
+    global odbc_conn
+    if odbc_conn == None:
+        initialize_odbc_connection()
+
+
+    query1 = ("""SPARQL 
+            PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX ns: <http://rdf.freebase.com/ns/>
+            SELECT distinct ?x0 as ?r0 ?y as ?r1 WHERE {
+            """
+              '?x1 ?x0 ' + 'ns:' + entity + '. '
+                                          """
+                ?x2 ?y ?x1 .
+                  FILTER (?x0 != rdf:type && ?x0 != rdfs:label)
+                  FILTER (?y != rdf:type && ?y != rdfs:label)
+                  FILTER(?x0 != ns:type.object.type && ?x0 != ns:type.object.instance)
+                  FILTER(?y != ns:type.object.type && ?y != ns:type.object.instance)
+                  FILTER( !regex(?x0,"wikipedia","i"))
+                  FILTER( !regex(?y,"wikipedia","i"))
+                  FILTER( !regex(?x0,"_id","i"))
+                  FILTER( !regex(?y,"_id","i"))
+                  FILTER( !regex(?x0,"#type","i"))
+                  FILTER( !regex(?y,"#type","i"))
+                  FILTER( !regex(?x0,"#label","i"))
+                  FILTER( !regex(?y,"#label","i"))
+                  FILTER( !regex(?x0,"/ns/freebase","i"))
+                  FILTER( !regex(?y,"/ns/freebase","i"))
+                  FILTER( !regex(?x0, "ns/kg."))
+                  FILTER( !regex(?y, "ns/kg."))
+                  FILTER( !regex(?x0, "ns/dataworld."))
+                  FILTER( !regex(?y, "ns/dataworld."))
+                  FILTER regex(?x0, "http://rdf.freebase.com/ns/")
+                  FILTER regex(?y, "http://rdf.freebase.com/ns/")
+                  }
+                  LIMIT 1000
+                  """)
+    # print(query1)
+    try:
+        with odbc_conn.cursor() as cursor:
+            cursor.execute(query1)
+            rows = cursor.fetchall()
+    except Exception:
+        print(f"Query Execution Failed:{query1}")
+        rows=[]
+        # exit(0)
+
+
+    for row in rows:
+        r0 = row[0].replace('http://rdf.freebase.com/ns/', '')
+        r1 = row[1].replace('http://rdf.freebase.com/ns/', '')
+        in_relations.add(r0)
+        in_relations.add(r1)
+
+        if r0 in roles and r1 in roles:
+            paths.append((r0, r1))
+        
+
+    query2 = ("""SPARQL 
+            PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX ns: <http://rdf.freebase.com/ns/> 
+            SELECT distinct ?x0 as ?r0 ?y as ?r1 WHERE {
+            """
+              '?x1 ?x0 ' + 'ns:' + entity + '. '
+                                          """
+                ?x1 ?y ?x2 .
+                """
+                  'FILTER (?x2 != ns:'+entity+' )'
+                  """
+                  FILTER (?x0 != rdf:type && ?x0 != rdfs:label)
+                  FILTER (?y != rdf:type && ?y != rdfs:label)
+                  FILTER(?x0 != ns:type.object.type && ?x0 != ns:type.object.instance)
+                  FILTER(?y != ns:type.object.type && ?y != ns:type.object.instance)
+                  FILTER( !regex(?x0,"wikipedia","i"))
+                  FILTER( !regex(?y,"wikipedia","i"))
+                  FILTER( !regex(?x0,"_id","i"))
+                  FILTER( !regex(?y,"_id","i"))
+                  FILTER( !regex(?x0,"#type","i"))
+                  FILTER( !regex(?y,"#type","i"))
+                  FILTER( !regex(?x0,"#label","i"))
+                  FILTER( !regex(?y,"#label","i"))
+                  FILTER( !regex(?x0,"/ns/freebase","i"))
+                  FILTER( !regex(?y,"/ns/freebase","i"))
+                  FILTER( !regex(?x0, "ns/kg."))
+                  FILTER( !regex(?y, "ns/kg."))
+                  FILTER( !regex(?x0, "ns/dataworld."))
+                  FILTER( !regex(?y, "ns/dataworld."))
+                  FILTER regex(?x0, "http://rdf.freebase.com/ns/")
+                  FILTER regex(?y, "http://rdf.freebase.com/ns/")
+                  }
+                  LIMIT 1000
+                  """)
+
+    try:
+        with odbc_conn.cursor() as cursor:
+            cursor.execute(query2)
+            rows = cursor.fetchall()
+    except Exception:
+        print(f"Query Execution Failed:{query2}")
+        rows = []
+        # exit(0)
+    
+    for row in rows:
+        r0 = row[0].replace('http://rdf.freebase.com/ns/', '')
+        r1 = row[1].replace('http://rdf.freebase.com/ns/', '')
+        in_relations.add(r0)
+        out_relations.add(r1)
+
+        if r0 in roles and r1 in roles:
+            paths.append((r0, r1 + '#R'))
+
+    
+    query3 = ("""SPARQL 
+                PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+                PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+                PREFIX ns: <http://rdf.freebase.com/ns/>
+                SELECT distinct ?x0 as ?r0 ?y as ?r1 WHERE {
+                """
+              'ns:' + entity + ' ?x0 ?x1 . '
+                             """
+                ?x2 ?y ?x1 .
+                  FILTER (?x0 != rdf:type && ?x0 != rdfs:label)
+                  FILTER (?y != rdf:type && ?y != rdfs:label)
+                  FILTER(?x0 != ns:type.object.type && ?x0 != ns:type.object.instance)
+                  FILTER(?y != ns:type.object.type && ?y != ns:type.object.instance)
+                  FILTER( !regex(?x0,"wikipedia","i"))
+                  FILTER( !regex(?y,"wikipedia","i"))
+                  FILTER( !regex(?x0,"_id","i"))
+                  FILTER( !regex(?y,"_id","i"))
+                  FILTER( !regex(?x0,"#type","i"))
+                  FILTER( !regex(?y,"#type","i"))
+                  FILTER( !regex(?x0,"#label","i"))
+                  FILTER( !regex(?y,"#label","i"))
+                  FILTER( !regex(?x0,"/ns/freebase","i"))
+                  FILTER( !regex(?y,"/ns/freebase","i"))
+                  FILTER( !regex(?x0, "ns/kg."))
+                  FILTER( !regex(?y, "ns/kg."))
+                  FILTER( !regex(?x0, "ns/dataworld."))
+                  FILTER( !regex(?y, "ns/dataworld."))
+                  FILTER regex(?x0, "http://rdf.freebase.com/ns/")
+                  FILTER regex(?y, "http://rdf.freebase.com/ns/")
+                  }
+                  LIMIT 1000
+                  """)
+
+    try:
+        with odbc_conn.cursor() as cursor:
+            cursor.execute(query3)
+            rows = cursor.fetchall()
+    except Exception:
+        print(f"Query Execution Failed:{query3}")
+        rows = []
+        # exit(0)
+    
+    for row in rows:
+        r0 = row[0].replace('http://rdf.freebase.com/ns/', '')
+        r1 = row[1].replace('http://rdf.freebase.com/ns/', '')
+        out_relations.add(r0)
+        in_relations.add(r1)
+
+        if r0 in roles and r1 in roles:
+            paths.append((r0 + '#R', r1))
+
+
+    query4 = ("""SPARQL 
+                PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+                PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+                PREFIX ns: <http://rdf.freebase.com/ns/>
+                SELECT distinct ?x0 as ?r0 ?y as ?r1 WHERE {
+                """
+              'ns:' + entity + ' ?x0 ?x1 . '
+                             """
+                ?x1 ?y ?x2 .
+                """
+                  'FILTER (?x2 != ns:'+entity+' )'
+                """
+                FILTER (?x0 != rdf:type && ?x0 != rdfs:label)
+                FILTER (?y != rdf:type && ?y != rdfs:label)
+                FILTER(?x0 != ns:type.object.type && ?x0 != ns:type.object.instance)
+                FILTER(?y != ns:type.object.type && ?y != ns:type.object.instance)
+                FILTER( !regex(?x0,"wikipedia","i"))
+                FILTER( !regex(?y,"wikipedia","i"))
+                FILTER( !regex(?x0,"_id","i"))
+                FILTER( !regex(?y,"_id","i"))
+                FILTER( !regex(?x0,"#type","i"))
+                FILTER( !regex(?y,"#type","i"))
+                FILTER( !regex(?x0,"#label","i"))
+                FILTER( !regex(?y,"#label","i"))
+                FILTER( !regex(?x0,"/ns/freebase","i"))
+                FILTER( !regex(?y,"/ns/freebase","i"))
+                FILTER( !regex(?x0, "ns/kg."))
+                FILTER( !regex(?y, "ns/kg."))
+                FILTER( !regex(?x0, "ns/dataworld."))
+                FILTER( !regex(?y, "ns/dataworld."))
+                FILTER regex(?x0, "http://rdf.freebase.com/ns/")
+                FILTER regex(?y, "http://rdf.freebase.com/ns/")
+                }
+                LIMIT 1000
+                """)
+
+    try:
+        with odbc_conn.cursor() as cursor:
+            cursor.execute(query4)
+            rows = cursor.fetchall()
+    except Exception:
+        print(f"Query Execution Failed:{query4}")
+        rows = []
+        # exit(0)
+
+    for row in rows:
+        r0 = row[0].replace('http://rdf.freebase.com/ns/', '')
+        r1 = row[1].replace('http://rdf.freebase.com/ns/', '')
+        out_relations.add(r0)
+        out_relations.add(r1)
+
+        if r0 in roles and r1 in roles:
+            paths.append((r0 + '#R', r1 + '#R'))
+
+    return in_relations, out_relations, paths
+
 
 def get_2hop_relations(entity: str):
     in_relations = set()
@@ -1510,7 +1736,7 @@ if __name__=='__main__':
     # pyodbc_test()
     
     # print(get_label('m.04tfqf'))
-    print(get_label_with_odbc('m.0rczx'))
+    # print(get_label_with_odbc('m.0rczx'))
     # print(get_in_relations_with_odbc('m.04tfqf'))
     # print(get_out_relations_with_odbc('m.04tfqf'))
 
@@ -1518,6 +1744,7 @@ if __name__=='__main__':
     # print(get_label_with_odbc('m.0fjp3'))
     # print(get_label('m.0z33s'))
     # print(get_2hop_relations_with_odbc('m.0rv97'))
+    # print(get_1hop_relations_with_odbc('m.09fcm'))
 
     # print(get_wikipage_id_from_dbpedia_uri("http://dbpedia.org/resource/China"))
 
@@ -1547,3 +1774,5 @@ if __name__=='__main__':
 
     # get_entity_labels()
     # query_rich_relation('ns:m.04tfqf')
+    in_relations, out_relations, paths = get_2hop_relations_with_odbc_wo_filter('m.04904')
+    print(in_relations, out_relations)

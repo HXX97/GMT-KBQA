@@ -34,6 +34,7 @@ def _parse_args():
     parser.add_argument('--model_save_path', type=str, help="load model checkpoint from this path")
     parser.add_argument('--output_dir', type=str)
     parser.add_argument('--loss_type', default="CE", type=str, help="loss function. 'BCE'|'CE' ")
+    parser.add_argument('--cache_dir', default='bert-base-uncased')
     args = parser.parse_args()
     return args
 
@@ -46,13 +47,23 @@ def read_json(json_path):
 
 def data_process(args):
     if args.dataset_type == 'WebQSP':
-        train_df = pd.read_csv('../../Data/WEBQSP/relation_retrieval/cross-encoder/WebQSP.train.biEncoder.train_all.richRelation.crossEncoder.train_all.richRelation.2hopValidation.richEntity.top100.1parse.tsv', sep='\t', error_bad_lines=False).dropna()
-        dev_df = None
-        test_df = pd.read_csv('../../Data/WEBQSP/relation_retrieval/cross-encoder/WebQSP.test.biEncoder.train_all.richRelation.crossEncoder.train_all.richRelation.2hopValidation.richEntity.top100.1parse.tsv', sep='\t', error_bad_lines=False).dropna()
+        train_df = pd.read_csv('data/WebQSP/relation_retrieval_0717/cross-encoder/2hop_relations/WebQSP.train.tsv', sep='\t', error_bad_lines=False).dropna()
+        # train_df = pd.read_csv('data/WebQSP/relation_retrieval/cross-encoder/0715_retrain/WebQSP.train.tsv', sep='\t', error_bad_lines=False).dropna()
+        # train_df = pd.read_csv('data/WebQSP/relation_retrieval_0717/cross-encoder/rich_relation_3epochs_question_relation_top100/WebQSP.ptrain.tsv', sep='\t', error_bad_lines=False).dropna()
+        # train_df = pd.read_csv('data/WebQSP/relation_retrieval_0717/cross-encoder/rich_relation_3epochs_mask_mention_rich_relation/WebQSP.train.tsv', sep='\t', error_bad_lines=False).dropna()
+        # train_df = pd.read_csv('data/WebQSP/relation_retrieval/cross-encoder/0715_retrain_biencoder_ep5/WebQSP.train.tsv', sep='\t', error_bad_lines=False).dropna()
+        dev_df = pd.read_csv('data/WebQSP/relation_retrieval_0717/cross-encoder/rich_relation_3epochs_rich_entity_rich_relation_1parse/WebQSP.pdev.tsv', sep='\t', error_bad_lines=False).dropna()
+        # dev_df = pd.read_csv('data/WebQSP/relation_retrieval_0717/cross-encoder/rich_relation_3epochs_question_relation_top100/WebQSP.pdev.tsv', sep='\t', error_bad_lines=False).dropna()
+        # test_df = pd.read_csv('data/WebQSP/relation_retrieval_0717/cross-encoder/rich_relation_3epochs_question_relation_top100/WebQSP.test.tsv', sep='\t', error_bad_lines=False).dropna()
+        # test_df = pd.read_csv('data/WebQSP/relation_retrieval_0717/cross-encoder/rich_relation_3epochs_mask_mention_rich_relation/WebQSP.test.tsv', sep='\t', error_bad_lines=False).dropna()
+        test_df = pd.read_csv('data/WebQSP/relation_retrieval_0717/cross-encoder/2hop_relations/WebQSP.test.tsv', sep='\t', error_bad_lines=False).dropna()
+        # test_df = pd.read_csv('data/WebQSP/relation_retrieval/cross-encoder/0715_retrain/WebQSP.test.tsv', sep='\t', error_bad_lines=False).dropna()
+        # test_df = pd.read_csv('data/WebQSP/relation_retrieval/cross-encoder/WebQSP.test.biEncoder.train_all.richRelation.crossEncoder.train_all.richRelation.2hopValidation.richEntity.top100.1parse.tsv', sep='\t', error_bad_lines=False).dropna()
     else:
-        train_df = pd.read_csv('../../Data/CWQ/relation_retrieval/cross-encoder/CWQ.train.biEncoder.train_all.maskMention.crossEncoder.2hopValidation.maskMention.richRelation.top100.tsv', sep='\t', error_bad_lines=False).dropna()
-        dev_df = pd.read_csv('../../Data/CWQ/relation_retrieval/cross-encoder/CWQ.dev.biEncoder.train_all.maskMention.crossEncoder.2hopValidation.maskMention.richRelation.top100.tsv', sep='\t', error_bad_lines=False).dropna()
-        test_df = pd.read_csv('../../Data/CWQ/relation_retrieval/cross-encoder/CWQ.test.biEncoder.train_all.maskMention.crossEncoder.2hopValidation.maskMention.richRelation.top100.tsv', sep='\t', error_bad_lines=False).dropna()
+        train_df = pd.read_csv('data/CWQ/relation_retrieval/cross-encoder/0715_retrain/CWQ.train.tsv', sep='\t', error_bad_lines=False).dropna()
+        dev_df = pd.read_csv('data/CWQ/relation_retrieval/cross-encoder/0715_retrain/CWQ.dev.tsv', sep='\t', error_bad_lines=False).dropna()
+        # test_df = pd.read_csv('data/CWQ/relation_retrieval/cross-encoder/xwu_test/CWQ.test.tsv', sep='\t', error_bad_lines=False).dropna()
+        test_df = pd.read_csv('data/CWQ/relation_retrieval/cross-encoder/0715_retrain/CWQ.test.tsv', sep='\t', error_bad_lines=False).dropna()
     
     return train_df, dev_df, test_df
 
@@ -188,7 +199,8 @@ class SentencePairClassifier(nn.Module):
 def train_bert(args, net, criterion, opti, lr, lr_scheduler, train_loader, val_loader, epochs, iters_to_accumulate, device, log_path, output_dir):
 
     best_loss = np.Inf
-    best_ep = 1
+    # best_f1 = -1.0
+    best_epoch = 1
     nb_iterations = len(train_loader)
     print_every = nb_iterations // 5  # print the training loss 5 times per epoch
     iters = []
@@ -233,24 +245,36 @@ def train_bert(args, net, criterion, opti, lr, lr_scheduler, train_loader, val_l
 
                 running_loss = 0.0
 
-        if val_loader:
-            val_loss, accuracy, kappa, f1 = evaluate(net, device, criterion, val_loader, args.loss_type)  # Compute validation loss
+        if val_loader is not None:
+            val_loss, accuracy, kappa, val_f1 = evaluate(net, device, criterion, val_loader, args.loss_type)  # Compute validation loss
             print()
             print("Epoch {} complete! Validation Loss : {}".format(ep+1, val_loss))
             log_w.write("Epoch {} complete! Validation Loss : {}\n".format(ep+1, val_loss))
             log_w.write("Accuracy on dev data: {}\n".format(accuracy))
             log_w.write("kappa on dev data: {}\n".format(kappa))
-            log_w.write("f1 on dev data: {}\n".format(f1))
+            log_w.write("f1 on dev data: {}\n".format(val_f1))
             print("Epoch {} complete! Validation Loss : {}\n".format(ep+1, val_loss))
             print("Accuracy on dev data: {}\n".format(accuracy))
             print("kappa on dev data: {}\n".format(kappa))
-            print("f1 on dev data: {}\n".format(f1))
+            print("f1 on dev data: {}\n".format(val_f1))
 
-        net_copy = copy.deepcopy(net)  # save a copy of the model
-        # Save model at every epoch
-        model_save_path = os.path.join(output_dir, '{}_lr_{}_ep_{}.pt'.format("bert-base-uncased", lr, ep+1))
-        torch.save(net_copy.state_dict(), model_save_path)
-        print("The model of epoch {} has been saved in {}".format(ep+1, model_save_path))
+            # TODO: 可以给出每一轮的 loss, 但是保存的还是当前轮的
+            if val_loss < best_loss:
+                print('Best validation loss improved from {} to {}'.format(best_loss, val_loss))
+                print()
+                # net_copy = copy.deepcopy(net) # save a copy of the model
+                best_loss = val_loss
+                best_epoch = ep+1
+            model_to_save = copy.deepcopy(net) # 每一轮都保存
+        else:
+            print("Epoch {} complete!".format(ep+1))
+            model_to_save = copy.deepcopy(net)  # save a copy of the model
+        
+        # Save model every epoch
+        if (ep+1)%1==0:
+            model_save_path = os.path.join(output_dir, '{}_ep_{}.pt'.format(args.dataset_type, ep+1))
+            torch.save(model_to_save.state_dict(), model_save_path)
+            print("The model of epoch {} has been saved in {}; best epoch is: {}".format(ep+1, model_save_path, best_epoch))
 
     log_w.close()
     del loss
@@ -353,7 +377,7 @@ def predict(net, device, dataloader, dataset, with_labels=True, relation_file="o
 
 
 def train_main(args):
-    bert_model = "/home3/xwu/bertModels/bert-base-uncased"
+    bert_model = args.cache_dir
     freeze_bert = False
     maxlen = args.max_len
     bs = args.batch_size
@@ -374,7 +398,7 @@ def train_main(args):
 
     train_set = CustomDataset(train_df, maxlen, tokenizer=tokenizer, bert_model=bert_model)
     val_set = None
-    if args.dataset_type == "CWQ":
+    if dev_df is not None:
         print("Reading validation data...")
         val_set = CustomDataset(dev_df, maxlen, tokenizer=tokenizer, bert_model=bert_model)
     # Creating instances of training and validation dataloaders
@@ -397,7 +421,7 @@ def train_main(args):
 
 
 def evaluation_main(args):
-    bert_model = "/home3/xwu/bertModels/bert-base-uncased"
+    bert_model = args.cache_dir
     maxlen = args.max_len
     bs = args.batch_size
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -426,7 +450,7 @@ def evaluation_main(args):
 
 
 def prediction_main(args):
-    bert_model = "/home3/xwu/bertModels/bert-base-uncased"
+    bert_model = args.cache_dir
     maxlen = args.max_len
     bs = args.batch_size
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

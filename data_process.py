@@ -115,13 +115,19 @@ def make_sorted_relation_dataset_from_logits(dataset, split):
     else:
         assert split in ['test','train','dev']
 
-    output_dir = f'data/{dataset}/relation_retrieval/candidate_relations'
-    logits_file = f'data/{dataset}/relation_retrieval/cross-encoder/saved_models/final/{split}/logits.pt'
+    # output_dir = f'data/{dataset}/relation_retrieval/candidate_relations'
+    # logits_file = f'data/{dataset}/relation_retrieval/cross-encoder/saved_models/final/{split}/logits.pt'
+    output_dir = f'data/{dataset}/relation_retrieval_0717/candidate_relations/rich_relation_3epochs_question_relation_maxlen_34_ep3_2hop'
+    
     
     if dataset=='CWQ':
-        tsv_file = f'data/CWQ/relation_retrieval/cross-encoder/CWQ.{split}.biEncoder.train_all.maskMention.crossEncoder.2hopValidation.maskMention.richRelation.top100.tsv'
+        # tsv_file = f'data/CWQ/relation_retrieval/cross-encoder/CWQ.{split}.biEncoder.train_all.maskMention.crossEncoder.2hopValidation.maskMention.richRelation.top100.tsv'
+        tsv_file = f'data/CWQ/relation_retrieval/cross-encoder/0715_retrain/CWQ.{split}.tsv'
+        logits_file = f'data/CWQ/relation_retrieval/cross-encoder/saved_models/0715_retrain/CWQ_ep_3.pt_{split}/logits.pt'
     elif dataset=='WebQSP':
-        tsv_file = f'data/WebQSP/relation_retrieval/cross-encoder/WebQSP.{split}.biEncoder.train_all.richRelation.crossEncoder.train_all.richRelation.2hopValidation.richEntity.top100.1parse.tsv'
+        # tsv_file = f'data/WebQSP/relation_retrieval/cross-encoder/WebQSP.{split}.biEncoder.train_all.richRelation.crossEncoder.train_all.richRelation.2hopValidation.richEntity.top100.1parse.tsv'
+        tsv_file = f'data/WebQSP/relation_retrieval_0717/cross-encoder/2hop_relations/WebQSP.{split}.tsv'
+        logits_file = f'data/WebQSP/relation_retrieval_0717/cross-encoder/saved_models/rich_relation_3epochs_question_relation_maxlen_34/WebQSP_ep_3.pt_{split}_2hop/logits.pt'
 
 
     if not os.path.exists(output_dir):
@@ -133,7 +139,7 @@ def make_sorted_relation_dataset_from_logits(dataset, split):
     # print(len(logits))
     logits_list = list(logits.squeeze().numpy())
     print('Logits len:',len(logits_list))
-
+    print('tsv_file: {}'.format(tsv_file))
     tsv_df = pd.read_csv(tsv_file, delimiter='\t',dtype={"id":int, "question":str, "relation":str, 'label':int})
                             #quoting=csv.QUOTE_NONE,
                             
@@ -156,12 +162,13 @@ def make_sorted_relation_dataset_from_logits(dataset, split):
 
 
     rowid2qid = {} # map rowid to qid
-    ''
 
     if dataset=='CWQ':
-        idmap = load_json(f'data/CWQ/relation_retrieval/cross-encoder/CWQ.{split}.biEncoder.train_all.maskMention.crossEncoder.2hopValidation.maskMention.richRelation.top100_CWQid_index_map.json')
+        # idmap = load_json(f'data/CWQ/relation_retrieval/cross-encoder/CWQ.{split}.biEncoder.train_all.maskMention.crossEncoder.2hopValidation.maskMention.richRelation.top100_CWQid_index_map.json')
+        idmap = load_json(f'data/CWQ/relation_retrieval/cross-encoder/0715_retrain/CWQ_{split}_id_index_map.json')
     elif dataset=='WebQSP':
-        idmap = load_json(f'data/WebQSP/relation_retrieval/cross-encoder/WebQSP.{split}.biEncoder.train_all.richRelation.crossEncoder.train_all.richRelation.2hopValidation.richEntity.top100.1parse_WebQSPid_index_map.json')
+        # idmap = load_json(f'data/WebQSP/relation_retrieval/cross-encoder/WebQSP.{split}.biEncoder.train_all.richRelation.crossEncoder.train_all.richRelation.2hopValidation.richEntity.top100.1parse_WebQSPid_index_map.json')
+        idmap = load_json(f'data/WebQSP/relation_retrieval_0717/cross-encoder/2hop_relations/WebQSP_{split}_id_index_map.json')
 
     for qid in idmap:
         rowid_start = idmap[qid]['start']
@@ -333,6 +340,7 @@ def merge_all_data_for_logical_form_generation(dataset, split):
             sexpr = example['SExpr']
             sparql = example['sparql']
             if split=='test':
+                # 这个没问题，检查过了
                 answer = list(execute_query_with_odbc_filter_answer(sparql))
             else:
                 answer = [x['answer_id'] for x in example['answers']]
@@ -611,6 +619,68 @@ def extract_entity_relation_type_label_from_dataset(dataset, split):
     print("done")
 
 
+def extract_entity_relation_type_label_from_dataset_webqsp(dataset, split):
+    # 针对 webqsp 有多种 parse 的情况，把所有 parse 的 label_map 都提取出来
+    
+    train_databank =load_json(f"data/{dataset}/sexpr/{dataset}.{split}.expr.json")
+
+    global_ent_label_map = {}
+    global_rel_label_map = {}
+    global_type_label_map = {}
+
+    dataset_merged_label_map = {}
+
+    for data in tqdm(train_databank, total=len(train_databank), desc=f"Processing {split}"):
+        # print(data)
+        qid = data['QuestionId']
+        ent_label_map = {}
+        rel_label_map = {}
+        type_label_map = {}
+        
+        for parse in data["Parses"]:
+            sparql = parse["Sparql"]
+            # extract entity labels
+            gt_entities = extract_mentioned_entities_from_sparql(sparql=sparql)
+            for entity in gt_entities:
+                is_type = False
+                entity_types = get_types_with_odbc(entity)
+                if "type.type" in entity_types:
+                    is_type = True
+
+                entity_label = get_label_with_odbc(entity)
+                ent_label_map[entity] = entity_label
+                global_ent_label_map[entity] = entity_label
+
+                if is_type:
+                    type_label_map[entity] = entity_label
+                    global_type_label_map[entity] = entity_label
+
+                # extract relation labels
+                gt_relations = extract_mentioned_relations_from_sparql(sparql)
+                for rel in gt_relations:
+                    linear_rel = _textualize_relation(rel)
+                    rel_label_map[rel] = linear_rel
+                    global_rel_label_map[rel] = linear_rel
+        
+        dataset_merged_label_map[qid] = {
+            'entity_label_map':ent_label_map,
+            'rel_label_map':rel_label_map,
+            'type_label_map':type_label_map
+        }
+
+    dir_name = f"data/{dataset}/generation/label_maps_all_parses"
+    if not os.path.exists(dir_name):
+        os.makedirs(dir_name)
+    
+    dump_json(dataset_merged_label_map,f'{dir_name}/{dataset}_{split}_label_maps.json',indent=4)    
+
+    dump_json(global_ent_label_map, f'{dir_name}/{dataset}_{split}_entity_label_map.json',indent=4)
+    dump_json(global_rel_label_map, f'{dir_name}/{dataset}_{split}_relation_label_map.json',indent=4)
+    dump_json(global_type_label_map, f'{dir_name}/{dataset}_{split}_type_label_map.json',indent=4)
+
+    print("done")
+
+
 """
 吴轩 0623 补充
 """
@@ -777,3 +847,6 @@ if __name__=='__main__':
         merge_all_data_for_logical_form_generation(dataset=args.dataset, split=args.split)
     else:
         print('usage: data_process.py action [--dataset DATASET] --split SPLIT ')
+
+    # for split in ['train', 'test']:
+    #     extract_entity_relation_type_label_from_dataset_webqsp('WebQSP', split)

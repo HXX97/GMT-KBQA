@@ -1,7 +1,60 @@
+from collections import defaultdict
+import collections
 from components.utils import dump_json, load_json
 import numpy as np
 from tqdm import tqdm
 import pandas as pd
+from transformers import AutoTokenizer
+import torch
+import logging
+import faiss
+logger = logging.getLogger()
+class DenseIndexer(object):
+    def __init__(self, buffer_size: int = 50000):
+        self.buffer_size = buffer_size
+        self.index_id_to_db_id = []
+        self.index = None
+
+    def index_data(self, data: np.array):
+        raise NotImplementedError
+
+    def search_knn(self, query_vectors: np.array, top_docs: int):
+        raise NotImplementedError
+
+    def serialize(self, index_file: str):
+        logger.info("Serializing index to %s", index_file)
+        faiss.write_index(self.index, index_file)
+
+    def deserialize_from(self, index_file: str):
+        logger.info("Loading index from %s", index_file)
+        self.index = faiss.read_index(index_file)
+        logger.info(
+            "Loaded index of type %s and size %d", type(self.index), self.index.ntotal
+        )
+
+
+# DenseFlatIndexer does exact search
+class DenseFlatIndexer(DenseIndexer):
+    def __init__(self, vector_sz: int = 1, buffer_size: int = 50000):
+        super(DenseFlatIndexer, self).__init__(buffer_size=buffer_size)
+        self.index = faiss.IndexFlatIP(vector_sz)
+
+    def index_data(self, data: np.array):
+        n = len(data)
+        # indexing in batches is beneficial for many faiss index types
+        logger.info("Indexing data, this may take a while.")
+        cnt = 0
+        for i in range(0, n, self.buffer_size):
+            vectors = [np.reshape(t, (1, -1)) for t in data[i : i + self.buffer_size]]
+            vectors = np.concatenate(vectors, axis=0)
+            self.index.add(vectors)
+            cnt += self.buffer_size
+
+        logger.info("Total data indexed %d", n)
+
+    def search_knn(self, query_vectors, top_k):
+        scores, indexes = self.index.search(query_vectors, top_k)
+        return scores, indexes
 """
 记录一下当前的进展
     - CWQ 上，使用学长生成的实体消岐结果，会导致 0.5 左右的提升；
@@ -410,8 +463,8 @@ def compare_facc1(split):
     print(len(sequence_diff_qids), list(sequence_diff_qids))
 
 def compared_generated_sexpr(split):
-    prev_data = load_json('data/CWQ/generation/merged_old/CWQ_{}.json'.format(split))
-    generated_data = load_json('data/CWQ/generation/xwu_merged_test/CWQ_{}.json'.format(split))
+    prev_data = load_json('data/CWQ/sexpr/CWQ.{}.sexpr.json'.format(split))
+    generated_data = load_json('data/CWQ/sexpr/xwu_test/CWQ.{}.sexpr.json'.format(split))
     prev_data = {item["ID"]: item for item in prev_data}
     generated_data = {item["ID"]: item for item in generated_data}
     diff = set()
@@ -443,6 +496,491 @@ def compare_training_data(split):
     # for i in range(100):
     #     print(new_questions[i], prev_questions[i])
 
+
+def calculate_topk_relation_recall(
+    sorted_file, 
+    dataset_file,
+    topk=10
+):
+    r_list = []
+    p_list = []
+    dataset = load_json(dataset_file)
+    dataset = {example["ID"]: example for example in dataset}
+    # dataset = {example["QuestionId"]: example for example in dataset}
+    sorted_relations = load_json(sorted_file)
+    sorted_relations = {item["ID"]: item for item in sorted_relations}
+    # assert len(sorted_relations) == len(dataset), print(len(dataset), len(sorted_relations))
+    for qid in dataset:
+        if qid not in sorted_relations:
+            # print(qid)
+            continue
+        # pred_rels = sorted_relations[qid][:topk]
+        # pred_rels = sorted_relations[qid]['relations'][:topk]
+        # pred_rels = list(sorted_relations[qid]['cand_relation_list'].keys())
+        pred_rels = [item[0] for item in sorted_relations[qid]['cand_relation_list']][:topk]
+        golden_rels = dataset[qid]['gold_relation_map'].keys()
+        if len(pred_rels)== 0:
+            if len(golden_rels)==0:
+                r=1
+                p=1
+            else:
+                r=0
+                p=0
+        elif len(golden_rels)==0:
+            r=0
+            p=0
+        else:
+            r = len(pred_rels & golden_rels)/ len(golden_rels)
+            p = len(pred_rels & golden_rels)/ len(pred_rels)
+        r_list.append(r)
+        p_list.append(p)
+
+    print('topk: {}'.format(topk))
+    print('Recall: {}'.format(sum(r_list)/len(r_list)))
+    print('Precision: {}'.format(sum(p_list)/len(p_list)))
+
+def substitude_relations_in_merged_file_with_addition(
+    prev_merged_path, 
+    output_path, 
+    sorted_relations_path,
+    addition_relations_path,
+    topk=10
+):
+    """
+    逻辑: 如果 sorted_relations_path 里头这个问题的候选关系为空，就选择addition_relations_path中这个问题候选关系的 topk
+    如果是在二跳关系上进行预测，很可能候选关系为空
+    """
+    prev_merged = load_json(prev_merged_path)
+    sorted_relations = load_json(sorted_relations_path)
+    additional_relation = load_json(addition_relations_path)
+    new_merged = []
+    for example in tqdm(prev_merged, total=len(prev_merged)):
+        qid = example["ID"]
+        if qid not in sorted_relations or len(sorted_relations[qid]) < topk: # 我们需要恰好 10 个关系
+            print(qid)
+            cand_relations = additional_relation[qid][:topk]
+        else:
+            # cand_relations = [
+            #     [item, 1.0, None]
+            #     for item in sorted_relations[qid]["relations"][:topk]
+            # ]
+            cand_relations = sorted_relations[qid][:topk]
+        example["cand_relation_list"] = cand_relations
+        new_merged.append(example)
+    assert len(prev_merged) == len(new_merged)
+    dump_json(new_merged, output_path)
+
+
+def substitude_relations_in_merged_file(
+    prev_merged_path, 
+    output_path, 
+    sorted_logits_path,
+    topk=10,
+    two_hop_relation_path=None
+):
+    prev_merged = load_json(prev_merged_path)
+    sorted_logits = load_json(sorted_logits_path)
+    new_merged = []
+    if two_hop_relation_path is not None:
+        all_two_hop_relation = load_json(two_hop_relation_path)
+        all_two_hop_relation = {item["id"]: item for item in all_two_hop_relation}
+    else:
+        all_two_hop_relation = None
+    for example in tqdm(prev_merged, total=len(prev_merged)):
+        qid = example["ID"]
+        if qid not in sorted_logits:
+            print(qid)
+        if all_two_hop_relation is not None:
+            two_hop_rels = all_two_hop_relation[qid]["two_hop_relations"]
+            new_sorted_logits = [item for item in sorted_logits[qid] if item[0] in two_hop_rels][:topk]
+            if len(new_sorted_logits) < topk:
+                cur_len = len(new_sorted_logits)
+                current_rels = [item[0] for item in new_sorted_logits]
+                sorted_rels = [item[0] for item in sorted_logits[qid]]
+                diff_rels = list(set(sorted_rels) - set(current_rels))
+                for idx in range(topk-cur_len):
+                    new_sorted_logits.append([
+                        diff_rels[idx],
+                        1.0,
+                        None
+                    ])
+            
+            if len(new_sorted_logits) != topk:
+                print(qid)
+            
+            example["cand_relation_list"] = new_sorted_logits
+        else:
+            example["cand_relation_list"] = sorted_logits[qid][:topk]
+        new_merged.append(example)
+    dump_json(new_merged, output_path)
+
+
+def validation_merged_file(prev_file, new_file):
+    prev_data = load_json(prev_file)
+    new_data = load_json(new_file)
+    assert len(prev_data) == len(new_data), print(len(prev_data), len(new_data))
+    for (prev, new) in tqdm(zip(prev_data, new_data), total=len(prev_data)):
+        for key in prev.keys():
+            if key != 'cand_relation_list':
+                assert prev[key] == new[key]
+            else:
+                assert len(prev[key]) == 10
+                assert len(new[key]) == 10, print(len(new[key]))
+
+
+def general_PRF1(predictions, goldens):
+    assert len(predictions) == len(goldens), print(len(predictions), len(goldens))
+    p_list = []
+    r_list = []
+    f_list = []
+    acc_num = 0
+    for (pred, golden) in zip(predictions, goldens):
+        pred = set(pred)
+        golden = set(golden)
+        if pred == golden:
+            acc_num+=1
+        if len(pred)== 0:
+            if len(golden)==0:
+                p=1
+                r=1
+                f=1
+            else:
+                p=0
+                r=0
+                f=0
+        elif len(golden) == 0:
+            p=0
+            r=0
+            f=0
+        else:
+            p = len(pred & golden)/ len(pred)
+            r = len(pred & golden)/ len(golden)
+            f = 2*(p*r)/(p+r) if p+r>0 else 0
+        
+        p_list.append(p)
+        r_list.append(r)
+        f_list.append(f)
+    
+    p_average = sum(p_list)/len(p_list)
+    r_average = sum(r_list)/len(r_list)
+    f_average = sum(f_list)/len(f_list)
+    res = f'Total: {len(p_list)}, ACC:{acc_num/len(p_list)}, AVGP: {p_average}, AVGR: {r_average}, AVGF: {f_average}'
+    return res
+    
+def calculate_disambiguated_el_res(src_path, golden_path):
+    src_data = load_json(src_path)
+    golden_data = load_json(golden_path)
+    predictions = []
+    golden = []
+    for example in golden_data:
+        qid = example["ID"]
+        golden_entities = example["gold_entity_map"].keys()
+        golden.append(golden_entities)
+        if qid not in src_data or len(src_data[qid]) == 0:
+            predictions.append([])
+        else:
+            predictions.append(src_data[qid].keys())
+    
+    print(general_PRF1(predictions, golden))
+
+def calculate_disambiguated_el_res_rng(src_path, golden_path):
+    src_data = load_json(src_path)
+    src_data = {item["id"]: item for item in src_data}
+    golden_data = load_json(golden_path)
+    predictions = []
+    golden = []
+    for example in golden_data:
+        qid = example["ID"]
+        golden_entities = example["gold_entity_map"].keys()
+        golden.append(golden_entities)
+        if qid not in src_data:
+            predictions.append([])
+        else:
+            predictions.append(src_data[qid]["freebase_ids"])
+    
+    print(general_PRF1(predictions, golden))
+
+def validate_answer(prev_path, new_path):
+    prev_data = load_json(prev_path)
+    new_data = load_json(new_path)
+    diff = set()
+    assert len(prev_data) == len(new_data)
+    for (prev, new) in zip(prev_data, new_data):
+        assert prev["ID"] == new["ID"]
+        if set(prev["answer"]) != set(new["answer"]):
+            diff.add(prev["ID"])
+    print(len(diff), list(diff))
+
+def error_analysis_new(
+    prev_success_path,
+    prev_failed_path,
+    new_success_path,
+    new_failed_path
+):
+    prev_success = load_json(prev_success_path)
+    prev_failed = load_json(prev_failed_path)
+    new_success = load_json(new_success_path)
+    new_failed = load_json(new_failed_path)
+
+    prev_success = {item["qid"]: item for item in prev_success}
+    prev_failed = {item["qid"]: item for item in prev_failed}
+    new_success = {item["qid"]: item for item in new_success}
+    new_failed = {item["qid"]: item for item in new_failed}
+
+    diff = set()
+
+    for qid in new_success:
+        if qid in prev_success:
+            if new_success[qid]["f1"] < prev_success[qid]["f1"]:
+                diff.add(qid)
+    
+    for qid in new_failed:
+        if qid not in prev_failed:
+            diff.add(qid)
+    print(len(diff), list(diff))
+
+
+def main(split):
+    compared_generated_sexpr(split)
+
+def get_cross_encoder_tsv_max_len(tsv_file):
+    tsv_df = pd.read_csv(tsv_file, sep='\t', error_bad_lines=False).dropna()
+    tokenizer = AutoTokenizer.from_pretrained('hfcache/bert-base-uncased')
+    length_dict = defaultdict(int)
+    for idx in tqdm(range(len(tsv_df)), total=len(tsv_df)):
+        question = tsv_df.loc[idx, 'question']
+        relation = tsv_df.loc[idx, 'relation']
+        tokenized = tokenizer.tokenize(question, relation)
+        length_dict[len(tokenized)] += 1
+    print(collections.OrderedDict(sorted(length_dict.items())))
+
+def get_bi_encoder_tsv_max_len(tsv_file):
+    tsv_df = pd.read_csv(tsv_file, sep='\t', error_bad_lines=False).dropna()
+    tokenizer = AutoTokenizer.from_pretrained('hfcache/bert-base-uncased')
+    length_dict = defaultdict(int)
+    for idx in tqdm(range(len(tsv_df)), total=len(tsv_df)):
+        question = tsv_df.loc[idx, 'question']
+        relation = tsv_df.loc[idx, 'relation']
+        tokenized_question = tokenizer.tokenize(question)
+        length_dict[len(tokenized_question)] += 1
+        tokenized_relation = tokenizer.tokenize(relation)
+        length_dict[len(tokenized_relation)] += 1
+    print(collections.OrderedDict(sorted(length_dict.items())))
+
+def calculate_rng_2hop_recall(
+    rng_data_path,
+    golden_data_path,
+):
+    rng_data = load_json(rng_data_path)
+    golden_data = load_json(golden_data_path)
+    rng_data = {item["id"]: item for item in rng_data}
+    golden_data = {item["QuestionId"]: item for item in golden_data}
+    assert len(rng_data) == len(golden_data)
+    r_list = []
+    candidate_numbers = []
+    for qid in rng_data:
+        assert qid in golden_data
+        pred_rels = rng_data[qid]["two_hop_relations"]
+        golden_rels = golden_data[qid]['gold_relation_map'].keys()
+        if len(pred_rels)== 0:
+            if len(golden_rels)==0:
+                r=1
+            else:
+                r=0
+        elif len(golden_rels)==0:
+            r=0
+        else:
+            r = len(pred_rels & golden_rels)/ len(golden_rels)
+        r_list.append(r)
+        candidate_numbers.append(len(pred_rels))
+
+    print('Recall: {}'.format(sum(r_list)/len(r_list)))
+    print('Average candidate number: {}'.format(sum(candidate_numbers)/len(candidate_numbers)))
+
+def calculate_bi_encoder_recall(
+    all_relations_path, 
+    golden_data_path, 
+    question_vectors_path, 
+    index_file, 
+    vector_size=768, 
+    index_buffer=50000, 
+    top_k=150, 
+):
+    all_relations = load_json(all_relations_path)
+    golden_data = load_json(golden_data_path)
+    
+    index = DenseFlatIndexer(vector_size, index_buffer)
+    index.deserialize_from(index_file) 
+    question_vectors = torch.load(question_vectors_path).cpu().detach().numpy()
+    _, pred_relation_indexes = index.search_knn(question_vectors, top_k=top_k)
+    pred_relations = pred_relation_indexes.tolist()
+    pred_relations = [[all_relations[index] for index in indexes ] for indexes in pred_relation_indexes ]
+    
+    assert len(golden_data) == len(pred_relations)
+    
+    r_list = []
+    for i in range(len(golden_data)):
+        pred_rels = pred_relations[i]
+        # pred_rels = [rel.split('|')[0] for rel in pred_rels]
+        golden_rels = golden_data[i]["gold_relation_map"].keys()
+        if len(pred_rels)== 0:
+            if len(golden_rels)==0:
+                r=1
+            else:
+                r=0
+        elif len(golden_rels)==0:
+            r=0
+        else:
+            r = len(pred_rels & golden_rels)/ len(golden_rels)
+        r_list.append(r)
+
+    print('Recall: {}'.format(sum(r_list)/len(r_list)))
+    return sum(r_list)/len(r_list)
+
+def validate_tsv_positive_samples(
+    tsv_file_1,
+    tsv_file_2
+):
+    tsv1_df = pd.read_csv(tsv_file_1, sep='\t', error_bad_lines=False).dropna()
+    tsv2_df = pd.read_csv(tsv_file_2, sep='\t', error_bad_lines=False).dropna()
+    print(len(tsv1_df), len(tsv2_df), len(tsv1_df) == len(tsv2_df))
+    tsv1_positive = tsv1_df.loc[tsv1_df['label'] == 1] 
+    tsv2_positive = tsv2_df.loc[tsv2_df['label'] == 1]
+    print(len(tsv1_positive), len(tsv2_positive), len(tsv1_positive) == len(tsv2_positive))
+
+
+def validate_ptrain_pdev_vectors(
+    ptrain_question_vector_path,
+    pdev_question_vector_path,
+    train_question_vector_path,
+    index_file,
+    ptrain_data_path,
+    pdev_data_path,
+    train_data_path,
+    vector_size=768, 
+    index_buffer=50000, 
+    top_k=100
+):
+    ptrain_data = load_json(ptrain_data_path)
+    pdev_data = load_json(pdev_data_path)
+    train_data = load_json(train_data_path)
+    index = DenseFlatIndexer(vector_size, index_buffer)
+    index.deserialize_from(index_file) 
+
+    ptrain_question_vectors = torch.load(ptrain_question_vector_path).cpu().detach().numpy()
+    pdev_question_vectors = torch.load(pdev_question_vector_path).cpu().detach().numpy()
+    train_question_vectors = torch.load(train_question_vector_path).cpu().detach().numpy()
+
+    _, ptrain_pred_relation_indexes = index.search_knn(ptrain_question_vectors, top_k=top_k)
+    _, pdev_pred_relation_indexes = index.search_knn(pdev_question_vectors, top_k=top_k)
+    _, train_pred_relation_indexes = index.search_knn(train_question_vectors, top_k=top_k)
+    ptrain_id_relation_map = {}
+    pdev_id_relation_map = {}
+    train_id_relation_map = {}
+
+    for idx in tqdm(range(len(ptrain_data)), total = len(ptrain_data)):
+        example = ptrain_data[idx]
+        qid = example["QuestionId"]
+        pred_relations = ptrain_pred_relation_indexes[idx]
+        ptrain_id_relation_map[qid] = pred_relations
+    
+    for idx in tqdm(range(len(pdev_data)), total = len(pdev_data)):
+        example = pdev_data[idx]
+        qid = example["QuestionId"]
+        pred_relations = pdev_pred_relation_indexes[idx]
+        pdev_id_relation_map[qid] = pred_relations
+    
+    for idx in tqdm(range(len(train_data)), total = len(train_data)):
+        example = train_data[idx]
+        qid = example["QuestionId"]
+        pred_relations = train_pred_relation_indexes[idx]
+        train_id_relation_map[qid] = pred_relations
+    
+    for qid in tqdm(train_id_relation_map, total=len(train_id_relation_map)):
+        if qid in pdev_id_relation_map:
+            # print(train_id_relation_map[qid])
+            # print(pdev_id_relation_map[qid])
+            if list(train_id_relation_map[qid]) != list(pdev_id_relation_map[qid]):
+                print(qid)
+        elif qid in ptrain_id_relation_map:
+            # print(set(train_id_relation_map[qid]) - set(ptrain_id_relation_map[qid]))
+            # print(ptrain_id_relation_map[qid])
+            if list(train_id_relation_map[qid]) != list(ptrain_id_relation_map[qid]):
+                print(qid)
+
+
+def compare_generation_results(
+    generation_failed_a_path,
+    generation_succeed_a_path,
+    generation_failed_b_path,
+    generation_succeed_b_path
+):
+    generation_failed_a = load_json(generation_failed_a_path)
+    generation_failed_b = load_json(generation_failed_b_path)
+    generation_failed_a_qids = [item["qid"] for item in generation_failed_a]
+    generation_failed_b_qids = [item["qid"] for item in generation_failed_b]
+    diff = set(generation_failed_a_qids) - set(generation_failed_b_qids)
+    print('A failed but b succeed: {}'.format(list(diff)))
+
+    generation_succeed_a = load_json(generation_succeed_a_path)
+    generation_succeed_b = load_json(generation_succeed_b_path)
+    generation_succeed_a = {item["qid"]: item for item in generation_succeed_a}
+    generation_succeed_b = {item["qid"]: item for item in generation_succeed_b}
+    diff2 = set()
+    for qid in generation_succeed_b:
+        if qid in generation_succeed_a:
+            if generation_succeed_a[qid]["f1"] < generation_succeed_b[qid]["f1"]:
+                diff2.add(qid)
+    print('A has less f1: {}'.format(list(diff2)))
+
+
+def calc_relation_num_influence(
+    dataset_file_path,
+    gen_failed_results_path,
+    gen_succeed_results_path,
+    topk=5,
+):
+    """
+    如果考虑 top5 之外的候选关系
+    1. 是 golden 关系: 如果出现在 f1 > 0.1 的问题中，并且最终执行的 S-Expr 包含该关系，正例 + 1
+    2. 不是 golden 关系: 可执行，f1<0.1, 且执行的那一条出现该关系
+        不可执行: 50条中有出现这个关系的， 负例加1
+    仍然要记录 id, 人工再看看
+    """
+    dataset = load_json(dataset_file_path)
+    gen_failed = load_json(gen_failed_results_path)
+    gen_failed = {item["qid"]: item for item in gen_failed}
+    gen_succeed = load_json(gen_succeed_results_path)
+    gen_succeed =  {item["qid"]: item for item in gen_succeed}
+    positive_samples = set()
+    negative_samples = set()
+    for example in dataset:
+        golden_relations = example["gold_relation_map"].keys()
+        cand_relations = example["cand_relation_list"][topk:]
+        qid = example["ID"]
+        for cand_rel in cand_relations:
+            if cand_rel[0] in golden_relations:
+                if qid not in gen_succeed:
+                    continue
+                else:
+                    executed_sexpr = gen_succeed[qid]["logical_form"]
+                    if cand_rel[0] in executed_sexpr:
+                        positive_samples.add(qid)
+            else:
+                if qid in gen_failed:
+                    predictions = gen_failed[qid]["pred"]["predictions"]
+                    normalized_rel = cand_rel[2].split('|')[0].strip()
+                    if any([normalized_rel in sexpr for sexpr in predictions]):
+                        negative_samples.add(qid)
+                elif qid in gen_succeed:
+                    executed_sexpr = gen_succeed[qid]["logical_form"]
+                    if cand_rel[0] in executed_sexpr:
+                        negative_samples.add(qid)
+    print('positive: {} {}'.format(len(positive_samples), list(positive_samples)))
+    print('negative: {} {}'.format(len(negative_samples), list(negative_samples)))
+
+
+
 if __name__=='__main__':
     # xwu_test_get_merged_disambiguated_entities('CWQ', 'test')
     # check_disambiguated_cand_entity()
@@ -469,4 +1007,120 @@ if __name__=='__main__':
 
     # for split in ['test', 'train', 'dev']:
     #     compared_generated_sexpr(split)
-    compare_training_data('train')
+    # compare_training_data('train')
+
+    # calculate_top10_relation_recall(
+    #     # 'data/WebQSP/relation_retrieval/candidate_relations_0714_xwu/WebQSP_test_cand_rels_sorted.json',
+    #     # '/home3/xwu/new_workspace/GMT-KBQA/data/WebQSP/generation/merged/WebQSP_test.json'
+    #     'data/CWQ/relation_retrieval/candidate_relations/CWQ_test_cand_rels_sorted.json',
+    #     '/home3/xwu/new_workspace/GMT-KBQA/data/CWQ/generation/merged_old/CWQ_test.json'
+    # )
+    # CWQ 
+    # for split in ['test']:
+        # substitude_relations_in_merged_file(
+        #     f'data/CWQ/generation/merged/CWQ_{split}.json',
+        #     f'data/CWQ/generation/merged_0715_retrain_new_data/CWQ_{split}.json',
+        #     f'data/CWQ/relation_retrieval/0715_retrain/CWQ_{split}_cand_rel_logits.json',
+        # )
+        # calculate_top10_relation_recall(
+        #     f'data/CWQ/relation_retrieval/0715_retrain/CWQ_{split}_cand_rels_sorted.json',
+        #     f'data/CWQ/generation/merged/CWQ_{split}.json',
+        # )
+        # validation_merged_file(
+        #     f'data/CWQ/generation/merged/CWQ_{split}.json',
+        #     f'data/CWQ/generation/merged_0715_retrain_new_data/CWQ_{split}.json',
+        # )
+        # validate_answer(
+        #     f'data/CWQ/origin/ComplexWebQuestions_{split}.json',
+        #     f'data/CWQ/generation/merged_old/CWQ_{split}.json',
+        # )
+    
+    # WebQSP
+    # for split in ['train', 'ptrain', 'pdev', 'test']:
+    for split in ['train', 'test']:
+        # substitude_relations_in_merged_file_with_addition(
+        #     f'data/WebQSP/generation/merged_old/WebQSP_{split}.json',
+        #     f'data/WebQSP/generation/merged_question_relation_ep3_2hop/WebQSP_{split}.json',
+        #     f'data/WebQSP/relation_retrieval_0717/candidate_relations/rich_relation_3epochs_question_relation_maxlen_34_ep3_2hop/WebQSP_{split}_cand_rel_logits.json',
+        #     f'data/WebQSP/relation_retrieval_0717/candidate_relations/rich_relation_3epochs_question_relation_maxlen_34_ep3/WebQSP_{split}_cand_rel_logits.json',
+        #     topk=10,
+        # )
+        # substitude_relations_in_merged_file(
+        #     f'data/WebQSP/generation/merged_old/WebQSP_{split}.json',
+        #     f'data/WebQSP/generation/merged_question_relation_ep3_2hop/WebQSP_{split}.json',
+        #     f'data/WebQSP/relation_retrieval_0717/candidate_relations/rich_relation_3epochs_question_relation_maxlen_34_ep3_2hop/WebQSP_{split}_cand_rel_logits.json',
+        #     topk=10,
+        # )
+        calculate_topk_relation_recall(
+            # f'data/WebQSP/relation_retrieval/candidate_relations_yhshu/WebQSP_{split}_cand_rels_sorted.json',
+            # f'data/WebQSP/relation_retrieval_0717/candidate_relations/rich_relation_3epochs_question_relation_maxlen_34_ep3_2hop/WebQSP_{split}_cand_rels_sorted.json',
+            f'data/WebQSP/generation/merged_question_relation_ep3_2hop/WebQSP_{split}.json',
+            f'data/WebQSP/generation/merged_old/WebQSP_{split}.json',
+            # f'data/WebQSP/relation_retrieval_0717/bi-encoder/WebQSP.{split}.goldenRelation.json',
+            topk=10
+        )
+        # validation_merged_file(
+        #     f'data/WebQSP/generation/merged_old/WebQSP_{split}.json',
+        #     f'data/WebQSP/generation/merged_question_relation_ep3_2hop/WebQSP_{split}.json',
+        # )
+        # calculate_disambiguated_el_res(
+        #     f'data/WebQSP/entity_retrieval/linking_results/merged_WebQSP_{split}_linking_results.json',
+        #     f'data/WebQSP/generation/merged_old/WebQSP_{split}.json'
+        # )
+        # calculate_disambiguated_el_res_rng(
+        #     f'data/WebQSP/relation_retrieval/cross-encoder/rng_linking_results/{split}_rng_elq.json',
+        #     f'data/WebQSP/generation/merged_old/WebQSP_{split}.json'
+        # )
+        # get_cross_encoder_tsv_max_len(f'data/WebQSP/relation_retrieval_0717/cross-encoder/rich_relation_3epochs_rich_entity_rich_relation_1parse/WebQSP.{split}.tsv')
+
+        # calculate_rng_2hop_recall(
+        #     f'data/WebQSP/relation_retrieval_0717/cross-encoder/rng_kbqa_linking_results/webqsp_{split}_rng_el_two_hop_relations.json',
+        #     f'data/WebQSP/relation_retrieval_0717/bi-encoder/WebQSP.{split}.goldenRelation.json'
+        # )
+
+        # calculate_bi_encoder_recall(
+        #     'data/common_data/freebase_relations_filtered.json',
+        #     f'data/WebQSP/relation_retrieval_0717/bi-encoder/WebQSP.{split}.goldenRelation.json',
+        #     'data/WebQSP/relation_retrieval_0717/bi-encoder/vectors/rich_relation_3epochs/WebQSP_{}_ep3_questions.pt'.format(split),
+        #     'data/WebQSP/relation_retrieval_0717/bi-encoder/index/rich_relation_3epochs/ep_3_flat.index',
+        #     top_k=100
+        # )
+    # error_analysis_new(
+    #     'exps/WebQSP_relation_entity_concat_add_prefix_warmup_epochs_5_20epochs_bs2/beam_50_top_k_predictions.json_gen_sexpr_results.json_new.json',
+    #     'exps/WebQSP_relation_entity_concat_add_prefix_warmup_epochs_5_20epochs_bs2/beam_50_top_k_predictions.json_gen_failed_results.json',
+    #     'exps/WebQSP_0715_retrain/beam_50_top_k_predictions.json_gen_sexpr_results.json_new.json',
+    #     'exps/WebQSP_0715_retrain/beam_50_top_k_predictions.json_gen_failed_results.json',
+    # )
+
+    # validate_tsv_positive_samples(
+    #     'data/WebQSP/relation_retrieval_0717/bi-encoder/WebQSP.train.sampled.tsv',
+    #     'data/WebQSP/relation_retrieval_0717/bi-encoder/WebQSP.train.sampled.normal.tsv',
+    # )
+
+    # get_bi_encoder_tsv_max_len(
+    #     'data/WebQSP/relation_retrieval_0717/bi-encoder/WebQSP.train.sampled.normal.tsv'
+    # )
+
+    # validate_ptrain_pdev_vectors(
+    #     'data/WebQSP/relation_retrieval_0717/bi-encoder/vectors/rich_relation_3epochs/WebQSP_ptrain_ep3_questions.pt',
+    #     'data/WebQSP/relation_retrieval_0717/bi-encoder/vectors/rich_relation_3epochs/WebQSP_pdev_ep3_questions.pt',
+    #     'data/WebQSP/relation_retrieval_0717/bi-encoder/vectors/rich_relation_3epochs/WebQSP_train_ep3_questions.pt',
+    #     'data/WebQSP/relation_retrieval_0717/bi-encoder/index/rich_relation_3epochs/ep_3_flat.index',
+    #     'data/WebQSP/relation_retrieval_0717/bi-encoder/WebQSP.ptrain.goldenRelation.json',
+    #     'data/WebQSP/relation_retrieval_0717/bi-encoder/WebQSP.pdev.goldenRelation.json',
+    #     'data/WebQSP/relation_retrieval_0717/bi-encoder/WebQSP.train.goldenRelation.json',
+    # )
+
+    # compare_generation_results(
+    #     'exps/WebQSP_0715_retrain/beam_50_top_k_predictions.json_gen_failed_results.json',
+    #     'exps/WebQSP_0715_retrain/beam_50_top_k_predictions.json_gen_sexpr_results_official_format.json_new.json',
+    #     'exps/WebQSP_relation_entity_concat_add_prefix_warmup_epochs_5_20epochs_bs2/beam_50_top_k_predictions.json_gen_failed_results.json',
+    #     'exps/WebQSP_relation_entity_concat_add_prefix_warmup_epochs_5_20epochs_bs2/beam_50_top_k_predictions.json_gen_sexpr_results.json_new.json',
+    # )
+
+    # calc_relation_num_influence(
+    #     'data/WebQSP/generation/merged_0719_9291/WebQSP_test.json',
+    #     'exps/WebQSP_question_relation_maxlen34/beam_50_top_k_predictions.json_gen_failed_results.json',
+    #     'exps/WebQSP_question_relation_maxlen34/beam_50_top_k_predictions.json_gen_sexpr_results.json'
+    # )
+

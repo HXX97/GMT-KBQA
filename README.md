@@ -69,16 +69,16 @@ The code for question answering is mainly in  `common`.
 The code for candidate relations retrieval is mainly in `relation_detection_and_linking`. -->
 
 
-## Reproducing the Results on CWQ
+## Reproducing the Results on CWQ and WebQSP
 TODO: 发现一个问题，旧的 merged 文件里头吧 sexpr == 'null' 的问题都过滤掉了, 后续看看要不要把过滤的问题补上
 
-(1) **Prepare dataset and pretrained checkpoints** (测试完毕，没问题)
+(1) **Prepare dataset and pretrained checkpoints**
 
 Download the CWQ dataset from [here](https://www.dropbox.com/sh/7pkwkrfnwqhsnpo/AACuu4v3YNkhirzBOeeaHYala) and put them under `data/CWQ/origin`. The dataset files should be named as `ComplexWebQuestions_test[train,dev].json`.
 
 Download the WebQSP dataset from [here](https://www.microsoft.com/en-us/research/publication/the-value-of-semantic-parse-labeling-for-knowledge-base-question-answering-2/) and put them under `data/WebQSP/origin`. The dataset files should be named as `WebQSP.test[train].json`.
 
-(2) **Parse SPARQL queries to S-expressions** (测试完毕，没有问题)
+(2) **Parse SPARQL queries to S-expressions** 
 
 As stated in the paper, we generate S-expressions which are not provided by the original dataset.
 Here we provide the scripts to parse SPARQL queries to S-expressions. 
@@ -124,7 +124,7 @@ If you want to retrive the candidate relations from scratch, follow the steps be
 
 1. Train the bi-encoder to encode questions and relations.
     - CWQ: Run `python run_relation_retriever.py sample_data --dataset CWQ --split train[dev]` to prepare training data. Then run `sh scripts/run_bi_encoder_CWQ.sh {YOUR_FOLDER_NAME}` to train bi-encoder model. Trained model will be saved in `data/CWQ/relation_retrieval/bi-encoder/saved_models/{YOUR_FOLDER_NAME}`.
-    - WebQSP: Run `python run_relation_retriever.py sample_data --dataset WebQSP --split train` to prepare training data. Then run `sh scripts/run_bi_encoder_WebQSP.sh {YOUR_FOLDER_NAME}` to train bi-encoder model. Trained model will be saved in `data/WebQSP/relation_retrieval/bi-encoder/saved_models/{YOUR_FOLDER_NAME}`.
+    - WebQSP: Run `python run_relation_retriever.py sample_data --dataset WebQSP --split train` to prepare training data. Then run `sh scripts/run_bi_encoder_WebQSP.sh {YOUR_FOLDER_NAME}` to train bi-encoder model. Trained model will be saved in `data/WebQSP/relation_retrieval/bi-encoder/saved_models/{YOUR_FOLDER_NAME}`. Besides, run `python run_relation_retriever.py prepare_2hop_relations --dataset WebQSP` to prepare linking entities' two-hop relations
 
 2. Build the index of encoded relations.
     - CWQ: To encode Freebase relations using trained bi-encoder, run `python relation_retrieval/bi-encoder/build_and_search_index.py encode_relation --dataset CWQ`. Then run `python relation_retrieval/bi-encoder/build_and_search_index.py build_index --dataset CWQ` to build the index of encoded relations. Index file will be saved as `data/CWQ/relation_retrieval/bi-encoder/index/flat.index`.
@@ -137,7 +137,7 @@ If you want to retrive the candidate relations from scratch, follow the steps be
 
 4. Train the cross-encoder to rank retrieved relations.
     - CWQ: To train, run `sh scripts/run_cross_encoder_CWQ.sh train {FOLDER_NAME}`. Trained models will be saved as `data/CWQ/relation_retrieval/cross-encoder/saved_models/{FOLDER_NAME}/{MODEL_NAME}`. To get inference results, run `sh scripts/run_cross_encoder_CWQ.sh predict {FOLDER_NAME} test[train/dev] {MODEL_NAME}`.  Inference result(logits) will be stored in `data/CWQ/relation_retrieval/cross-encoder/saved_models/{FOLDER_NAME}/{MODEL_NAME}_test[train/dev]]`.
-    - WebQSP: To train, run `sh scripts/run_cross_encoder_WebQSP.sh train {FOLDER_NAME}`. Trained models will be saved as `data/WebQSP/relation_retrieval/cross-encoder/saved_models/{FOLDER_NAME}/{MODEL_NAME}`. To get inference results, run `sh scripts/run_cross_encoder_WebQSP.sh predict {FOLDER_NAME} test/[train] {MODEL_NAME}`.Inference result(logits) will be stored in `data/WebQSP/relation_retrieval/cross-encoder/saved_models/{FOLDER_NAME}/{MODEL_NAME}_test/[train]`.
+    - WebQSP: To train, run `sh scripts/run_cross_encoder_WebQSP.sh train {FOLDER_NAME}`. Trained models will be saved as `data /WebQSP/relation_retrieval/cross-encoder/saved_models/{FOLDER_NAME}/{MODEL_NAME}`. To get inference results, run `sh scripts/run_cross_encoder_WebQSP.sh predict {FOLDER_NAME} test/[train] {MODEL_NAME}`.Inference result(logits) will be stored in `data/WebQSP/relation_retrieval/cross-encoder/saved_models/{FOLDER_NAME}/{MODEL_NAME}_test/[train]`.
 
 
 5. Merge the logits with relations to get sorted relations for each question.
