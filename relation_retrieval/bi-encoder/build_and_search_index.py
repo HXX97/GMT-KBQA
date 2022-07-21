@@ -693,7 +693,7 @@ def retrieve_cross_encoder_data_yhshu(
     
     write_json(output_id_index_path, id_index)
 
-def retrieve_cross_encoder_test_data_yhshu(
+def retrieve_cross_encoder_inference_data(
     rng_linking_result_path,
     dataset_path,
     output_path,
@@ -741,6 +741,186 @@ def retrieve_cross_encoder_test_data_yhshu(
             idx += 1
     
     write_json(output_id_index_path, id_index)
+
+# bug 版本，请勿使用
+# def retrieve_candidate_relations_prev(
+#     all_relations_path, 
+#     dataset_file, 
+#     question_vectors_path, 
+#     index_file, 
+#     entity_linking_path,
+#     output_path,
+#     id_index_path,
+#     prominent_type_path,
+#     split,
+#     validation_relations_path=None,
+#     relation_rich_map_path=None,
+#     vector_size=768, 
+#     index_buffer=50000, 
+#     top_k=200,
+#     validation_top_k=100,
+#     rich_entity=True,
+#     mask_mention=False,
+# ):
+#     """
+#     validation_relations_path: 从实体出发的一跳、二跳关系表，用于验证
+#     validation_top_k: 进行KB验证后保留的候选关系数量
+#     新的想法：训练集和验证集以选中的那个 parse 的关系作为正例，其他 parse 的关系加到负例中；然后再按照之前做法，添加其他关系
+#     测试集：就直接使用 bi-encoder + 二跳验证之后的结果
+#     """
+#     all_relations = load_json(all_relations_path)
+#     entity_linking_res = load_json(entity_linking_path)
+#     entity_linking_res = {item["id"]: item for item in entity_linking_res}
+#     prominent_type_map = load_json(prominent_type_path)
+#     if relation_rich_map_path:
+#         relation_rich_map = load_json(relation_rich_map_path)
+#     else:
+#         relation_rich_map = None
+    
+#     if validation_relations_path:
+#         validation_relations_map = load_json(validation_relations_path)
+    
+#     index = DenseFlatIndexer(vector_size, index_buffer)
+#     index.deserialize_from(index_file) 
+#     question_vectors = torch.load(question_vectors_path).cpu().detach().numpy()
+#     _, pred_relation_indexes = index.search_knn(question_vectors, top_k=top_k)
+#     pred_relations = pred_relation_indexes.tolist()
+#     pred_relations = [
+#         list([all_relations[index] for index in indexes])
+#         for indexes in pred_relation_indexes
+#     ]
+    
+#     input_data = load_json(dataset_file)
+    
+#     samples = []
+#     count = 0
+#     id_index = dict()
+
+#     print('split: {}'.format(split))
+
+#     assert len(input_data) == len(pred_relations)
+#     for idx in tqdm(range(len(input_data)), total=len(input_data)):
+#         id = input_data[idx]["QuestionId"]
+#         start = count
+#         question = input_data[idx]["ProcessedQuestion"]
+#         question = question.lower()
+#         if rich_entity:
+#             if id not in entity_linking_res:
+#                 continue
+#             for entity_idx in range(len(entity_linking_res[id]["freebase_ids"])):
+#                 entity_id = entity_linking_res[id]["freebase_ids"][entity_idx]
+#                 mention = entity_linking_res[id]['pred_tuples_string'][entity_idx][1]
+#                 label = entity_linking_res[id]['pred_tuples_string'][entity_idx][0]
+#                 prominent_type = prominent_type_map[entity_id][0] if entity_id in prominent_type_map else ''
+#                 question = question.replace(mention, '|'.join([mention, label, prominent_type]))
+#             # for entity_id in entity_linking_res[id]:
+#             #     mention = entity_linking_res[id][entity_id]['mention']
+#             #     label = entity_linking_res[id][entity_id]['label']
+#             #     prominent_type = prominent_type_map[entity_id][0] if entity_id in prominent_type_map else ''
+#             #     question = question.replace(mention, '|'.join([mention, label, prominent_type]))
+#         elif mask_mention:
+#             for entity_idx in range(len(entity_linking_res[id]["freebase_ids"])):
+#                 mention = entity_linking_res[id]['pred_tuples_string'][entity_idx][1]
+#                 question = question.replace(mention, BLANK_TOKEN)
+
+#         if relation_rich_map:
+#             golden_relations = list(set([relation_rich_map[relation] if relation in relation_rich_map else relation for relation in input_data[idx]["gold_relation_map"].keys()]))
+#         else:
+#             golden_relations = list(set([relation for relation in input_data[idx]["gold_relation_map"].keys()]))
+        
+#         if validation_relations_path:
+#             validation_relations = reduce(
+#                 lambda x,y: x+validation_relations_map[y] if y in validation_relations_map else x,
+#                 entity_linking_res[id]["freebase_ids"],
+#                 []
+#             )
+
+#         if validation_relations_path and relation_rich_map:
+#             validation_relations = [relation_rich_map[rel] if rel in relation_rich_map else rel for rel in validation_relations]
+        
+#         if validation_relations_path:
+#             missed_relations = []
+#             for pred_relation in pred_relations[idx]:
+#                 # 之前的 bug 长这样
+#                 # if split == 'train':
+#                 #     if pred_relation in golden_relations:
+#                 #         samples.append([question, pred_relation, '1'])
+#                 #         count += 1
+#                 #     elif pred_relation in validation_relations:
+#                 #         samples.append([question, pred_relation, '0'])
+#                 #         count += 1
+#                 #     else:
+#                 #         missed_relations.append(pred_relation)
+#                 # else:
+#                 #     if pred_relation in validation_relations:
+#                 #         if pred_relation in golden_relations:
+#                 #             samples.append([question, pred_relation, '1'])
+#                 #         else:
+#                 #             samples.append([question, pred_relation, '0'])
+#                 #         count += 1
+#                 #     else:
+#                 #         missed_relations.append(pred_relation)  
+#                 if pred_relation in validation_relations:
+#                     if split != 'test':
+#                         if pred_relation in golden_relations:
+#                             samples.append([question, pred_relation, '1'])
+#                         else:
+#                             samples.append([question, pred_relation, '0'])
+#                     else:
+#                         # test 统一标记为 '0'
+#                         samples.append([question, pred_relation, '0'])
+#                     count += 1
+#                 else:
+#                     missed_relations.append(pred_relation)  
+
+#             # 不再补齐 validation_top_k
+#             # 如果筛选后的关系数量不足 validation_top_k， 则补齐
+#             if count - start < validation_top_k:
+#                 # print(count - start)
+#                 for rel in missed_relations[:validation_top_k-(count - start)]:
+#                     if split != 'test':
+#                         if rel in golden_relations:
+#                             samples.append([question, rel, '1'])
+#                         else:
+#                             samples.append([question, rel, '0'])
+#                     else:
+#                         samples.append([question, rel, '0'])
+#                     count += 1
+#         else:
+#             for pred_relation in pred_relations[idx]:
+#                 if split != 'test':
+#                     if pred_relation in golden_relations:
+#                         samples.append([question, pred_relation, '1'])
+#                         count += 1
+#                     else:
+#                         samples.append([question, pred_relation, '0'])
+#                         count += 1
+#                 else:
+#                     samples.append([question, pred_relation, '0'])
+#                     count += 1
+        
+#         # 打一个补丁，不要 richRelation, 就普通 relation
+#         for sample in samples:
+#             sample[1] = sample[1].split('|')[0]
+        
+#         end = count - 1
+#         # map 中的 question 应该是原问题
+#         id_index[id] = {
+#             'start': start,
+#             'end': end
+#         }
+
+
+#     with open(output_path, 'w') as f:
+#         header = ['id', 'question', 'relation', 'label']
+#         writer = csv.writer(f, delimiter='\t')
+#         writer.writerow(header)
+#         idx = 0
+#         for line in samples:
+#             writer.writerow([str(idx)] + line)
+#             idx += 1
+    
+#     write_json(id_index_path, id_index)
     
 
 def retrieve_candidate_relations_webqsp(
@@ -751,8 +931,8 @@ def retrieve_candidate_relations_webqsp(
     entity_linking_path,
     output_path,
     id_index_path,
-    prominent_type_path,
     split,
+    prominent_type_path=None,
     validation_relations_path=None,
     relation_rich_map_path=None,
     vector_size=768, 
@@ -765,13 +945,15 @@ def retrieve_candidate_relations_webqsp(
     """
     validation_relations_path: 从实体出发的一跳、二跳关系表，用于验证
     validation_top_k: 进行KB验证后保留的候选关系数量
-    新的想法：训练集和验证集以选中的那个 parse 的关系作为正例，其他 parse 的关系加到负例中；然后再按照之前做法，添加其他关系
-    测试集：就直接使用 bi-encoder + 二跳验证之后的结果
     """
     all_relations = load_json(all_relations_path)
     entity_linking_res = load_json(entity_linking_path)
     entity_linking_res = {item["id"]: item for item in entity_linking_res}
-    prominent_type_map = load_json(prominent_type_path)
+
+    if prominent_type_path:
+        prominent_type_map = load_json(prominent_type_path)
+    else:
+        prominent_type_map = None
     if relation_rich_map_path:
         relation_rich_map = load_json(relation_rich_map_path)
     else:
@@ -779,6 +961,8 @@ def retrieve_candidate_relations_webqsp(
     
     if validation_relations_path:
         validation_relations_map = load_json(validation_relations_path)
+    else:
+        validation_relations_map = None
     
     index = DenseFlatIndexer(vector_size, index_buffer)
     index.deserialize_from(index_file) 
@@ -790,7 +974,7 @@ def retrieve_candidate_relations_webqsp(
         for indexes in pred_relation_indexes
     ]
     
-    input_data = load_json(dataset_file)
+    dataset = load_json(dataset_file)
     
     samples = []
     count = 0
@@ -798,68 +982,47 @@ def retrieve_candidate_relations_webqsp(
 
     print('split: {}'.format(split))
 
-    assert len(input_data) == len(pred_relations)
-    for idx in tqdm(range(len(input_data)), total=len(input_data)):
-        id = input_data[idx]["QuestionId"]
+    assert len(dataset) == len(pred_relations)
+    for idx in tqdm(range(len(dataset)), total=len(dataset)):
+        qid = dataset[idx]["QuestionId"]
         start = count
-        question = input_data[idx]["ProcessedQuestion"]
+        question = dataset[idx]["ProcessedQuestion"]
         question = question.lower()
         if rich_entity:
-            if id not in entity_linking_res:
+            if qid not in entity_linking_res:
                 continue
-            for entity_idx in range(len(entity_linking_res[id]["freebase_ids"])):
-                entity_id = entity_linking_res[id]["freebase_ids"][entity_idx]
-                mention = entity_linking_res[id]['pred_tuples_string'][entity_idx][1]
-                label = entity_linking_res[id]['pred_tuples_string'][entity_idx][0]
+            for entity_idx in range(len(entity_linking_res[qid]["freebase_ids"])):
+                entity_id = entity_linking_res[qid]["freebase_ids"][entity_idx]
+                mention = entity_linking_res[qid]['pred_tuples_string'][entity_idx][1]
+                label = entity_linking_res[qid]['pred_tuples_string'][entity_idx][0]
                 prominent_type = prominent_type_map[entity_id][0] if entity_id in prominent_type_map else ''
                 question = question.replace(mention, '|'.join([mention, label, prominent_type]))
-            # for entity_id in entity_linking_res[id]:
-            #     mention = entity_linking_res[id][entity_id]['mention']
-            #     label = entity_linking_res[id][entity_id]['label']
-            #     prominent_type = prominent_type_map[entity_id][0] if entity_id in prominent_type_map else ''
-            #     question = question.replace(mention, '|'.join([mention, label, prominent_type]))
         elif mask_mention:
-            for entity_idx in range(len(entity_linking_res[id]["freebase_ids"])):
-                mention = entity_linking_res[id]['pred_tuples_string'][entity_idx][1]
+            for entity_idx in range(len(entity_linking_res[qid]["freebase_ids"])):
+                mention = entity_linking_res[qid]['pred_tuples_string'][entity_idx][1]
                 question = question.replace(mention, BLANK_TOKEN)
 
-        if relation_rich_map:
-            golden_relations = list(set([relation_rich_map[relation] if relation in relation_rich_map else relation for relation in input_data[idx]["gold_relation_map"].keys()]))
+        if split != 'test':
+            if relation_rich_map:
+                golden_relations = list(set([relation_rich_map[relation] if relation in relation_rich_map else relation for relation in dataset[idx]["gold_relation_map"].keys()]))
+            else:
+                golden_relations = list(set([relation for relation in dataset[idx]["gold_relation_map"].keys()]))
         else:
-            golden_relations = list(set([relation for relation in input_data[idx]["gold_relation_map"].keys()]))
+            golden_relations = None
         
-        if validation_relations_path:
+        if validation_relations_map:
             validation_relations = reduce(
                 lambda x,y: x+validation_relations_map[y] if y in validation_relations_map else x,
-                entity_linking_res[id]["freebase_ids"],
+                entity_linking_res[qid]["freebase_ids"],
                 []
             )
 
-        if validation_relations_path and relation_rich_map:
+        if validation_relations_map and relation_rich_map:
             validation_relations = [relation_rich_map[rel] if rel in relation_rich_map else rel for rel in validation_relations]
         
-        if validation_relations_path:
+        if validation_relations_map:
             missed_relations = []
             for pred_relation in pred_relations[idx]:
-                # 之前的 bug 长这样
-                # if split == 'train':
-                #     if pred_relation in golden_relations:
-                #         samples.append([question, pred_relation, '1'])
-                #         count += 1
-                #     elif pred_relation in validation_relations:
-                #         samples.append([question, pred_relation, '0'])
-                #         count += 1
-                #     else:
-                #         missed_relations.append(pred_relation)
-                # else:
-                #     if pred_relation in validation_relations:
-                #         if pred_relation in golden_relations:
-                #             samples.append([question, pred_relation, '1'])
-                #         else:
-                #             samples.append([question, pred_relation, '0'])
-                #         count += 1
-                #     else:
-                #         missed_relations.append(pred_relation)  
                 if pred_relation in validation_relations:
                     if split != 'test':
                         if pred_relation in golden_relations:
@@ -867,16 +1030,14 @@ def retrieve_candidate_relations_webqsp(
                         else:
                             samples.append([question, pred_relation, '0'])
                     else:
-                        # test 统一标记为 '0'
+                        # for `test` split, label is set to '0' uniformly
                         samples.append([question, pred_relation, '0'])
                     count += 1
                 else:
                     missed_relations.append(pred_relation)  
 
-            # 不再补齐 validation_top_k
-            # 如果筛选后的关系数量不足 validation_top_k， 则补齐
+            # if sampled relations are less than `validation_top_k`, Filling up using `missed_relations`
             if count - start < validation_top_k:
-                # print(count - start)
                 for rel in missed_relations[:validation_top_k-(count - start)]:
                     if split != 'test':
                         if rel in golden_relations:
@@ -899,13 +1060,12 @@ def retrieve_candidate_relations_webqsp(
                     samples.append([question, pred_relation, '0'])
                     count += 1
         
-        # 打一个补丁，不要 richRelation, 就普通 relation
+        # convert rich relation from bi-encoder output to relation
         for sample in samples:
             sample[1] = sample[1].split('|')[0]
         
         end = count - 1
-        # map 中的 question 应该是原问题
-        id_index[id] = {
+        id_index[qid] = {
             'start': start,
             'end': end
         }
@@ -1263,11 +1423,11 @@ if __name__=='__main__':
             )
         elif args.dataset.lower() == 'webqsp':
             encode_relations(
-                'data/common_data/freebase_relations_filtered.json',
-                'data/WebQSP/relation_retrieval_0717/bi-encoder/saved_models/normal_relation_3epochs/WebQSP_ep_3.pt',
-                'data/WebQSP/relation_retrieval_0717/bi-encoder/vectors/normal_relation_3epochs/WebQSP_ep_3_relations.pt',
+                'data/common_data/freebase_richRelations_filtered.json', # depends on `normal relation` or `rich relation` biencoder was trained on
+                'data/WebQSP/relation_retrieval_0717/bi-encoder/saved_models/rich_relation_3epochs/WebQSP_ep_3.pt',
+                'data/WebQSP/relation_retrieval_0721/bi-encoder/vectors/rich_relation_3epochs/WebQSP_ep_3_relations.pt',
                 add_special_tokens=False,
-                max_len=34,
+                max_len=60, # consistent with training scripts, e.g.`run_bi_encoder_WebQSP.sh`
                 batch_size=128,
                 cache_dir=args.cache_dir
             )
@@ -1279,8 +1439,8 @@ if __name__=='__main__':
             )
         elif args.dataset.lower() == 'webqsp':
             build_index(
-                'data/WebQSP/relation_retrieval_0717/bi-encoder/index/normal_relation_3epochs/ep_3_flat.index',
-                'data/WebQSP/relation_retrieval_0717/bi-encoder/vectors/normal_relation_3epochs/WebQSP_ep_3_relations.pt'
+                'data/WebQSP/relation_retrieval_0721/bi-encoder/index/rich_relation_3epochs/ep_3_flat.index',
+                'data/WebQSP/relation_retrieval_0721/bi-encoder/vectors/rich_relation_3epochs/WebQSP_ep_3_relations.pt'
             )
     if action.lower() == 'encode_question':
         if args.dataset.lower() == 'cwq':
@@ -1300,9 +1460,9 @@ if __name__=='__main__':
             encode_questions(
                 'data/WebQSP/origin/WebQSP.{}.json'.format(args.split),
                 None,
-                'data/WebQSP/relation_retrieval_0717/bi-encoder/saved_models/normal_relation_3epochs/WebQSP_ep_3.pt',
-                'data/WebQSP/relation_retrieval_0717/bi-encoder/vectors/normal_relation_3epochs/WebQSP_{}_ep3_questions.pt'.format(args.split),
-                max_len=34,
+                'data/WebQSP/relation_retrieval_0717/bi-encoder/saved_models/rich_relation_3epochs/WebQSP_ep_3.pt',
+                'data/WebQSP/relation_retrieval_0721/bi-encoder/vectors/rich_relation_3epochs/WebQSP_{}_ep3_questions.pt'.format(args.split),
+                max_len=60, # consistent with training scripts, e.g.`run_bi_encoder_WebQSP.sh`
                 cache_dir='hfcache/bert-base-uncased',
                 add_special_tokens=False,
                 mask_mention=False,
@@ -1312,8 +1472,7 @@ if __name__=='__main__':
     if action.lower() == 'retrieve_relations':
         if args.dataset.lower() == 'cwq':
             retrieve_candidate_relations_cwq(
-                # 是不是 richRelation
-                'data/common_data/freebase_relations_filtered.json',
+                'data/common_data/freebase_relations_filtered.json', 
                 'data/CWQ/relation_retrieval/bi-encoder/CWQ.{}.relation.json'.format(args.split),
                 'data/CWQ/relation_retrieval/bi-encoder/vectors/xwu_test/CWQ_{}_questions.pt'.format(args.split),
                 'data/CWQ/relation_retrieval/bi-encoder/index/xwu_test/flat.index',
@@ -1383,37 +1542,41 @@ if __name__=='__main__':
             #     f'data/WebQSP/relation_retrieval_0717/cross-encoder/rich_relation_3epochs_question_relation_yhshu/WebQSP_{args.split}_id_index_map.json',
             #     negative_sample_num=20
             # )
+            
+            # 该方法得到WebQSP cross-encoder的推理数据；已确认得到的数据完全一致
+            if args.split in ['train', 'test']:
+                # 将 rng 实体链接结果中的所有二跳关系作为候选关系，利用 cross-encoder 来预测
+                retrieve_cross_encoder_inference_data(
+                    f'data/WebQSP/relation_retrieval_0717/cross-encoder/rng_kbqa_linking_results/webqsp_{args.split}_rng_el_two_hop_relations.json',
+                    f'data/WebQSP/origin/WebQSP.{args.split}.json',
+                    f'data/WebQSP/relation_retrieval_0721/cross-encoder/2hop_relations/WebQSP.{args.split}.tsv',
+                    f'data/WebQSP/relation_retrieval_0721/cross-encoder/2hop_relations/WebQSP_{args.split}_id_index_map.json',
+                )
 
-            # 将 rng 实体链接结果中的所有二跳关系作为候选关系，利用 cross-encoder 来预测
-            # retrieve_cross_encoder_test_data_yhshu(
-            #     f'data/WebQSP/relation_retrieval_0717/cross-encoder/rng_kbqa_linking_results/webqsp_{args.split}_rng_el_two_hop_relations.json',
-            #     f'data/WebQSP/origin/WebQSP.{args.split}.json',
-            #     f'data/WebQSP/relation_retrieval_0717/cross-encoder/2hop_relations/WebQSP.{args.split}.tsv',
-            #     f'data/WebQSP/relation_retrieval_0717/cross-encoder/2hop_relations/WebQSP_{args.split}_id_index_map.json',
-            # )
-
-
-            # 这些是旧的代码
+            # 该方法得到 WebQSP cross-encoder 的训练、验证数据
             # 第一个参数传 rich_relation, 得到 rich_relation; 传普通 relation, 得到普通 relation
-            retrieve_candidate_relations_webqsp(
-                'data/common_data/freebase_relations_filtered.json',
-                'data/WebQSP/relation_retrieval_0717/bi-encoder/WebQSP.{}.goldenRelation.json'.format(args.split),
-                'data/WebQSP/relation_retrieval_0717/bi-encoder/vectors/rich_relation_3epochs/WebQSP_{}_ep3_questions.pt'.format(args.split),
-                'data/WebQSP/relation_retrieval_0717/bi-encoder/index/rich_relation_3epochs/ep_3_flat.index',
-                'data/WebQSP/relation_retrieval_0717/cross-encoder/rng_kbqa_linking_results/webqsp_{}_rng_el_two_hop_relations.json'.format(args.split),
-                # 'data/WebQSP/entity_retrieval/linking_results/merged_WebQSP_{}_linking_results.json'.format(args.split),
-                'data/WebQSP/relation_retrieval_0717/cross-encoder/rich_relation_3epochs_question_relation_repeat/WebQSP.{}.tsv'.format(args.split),
-                'data/WebQSP/relation_retrieval_0717/cross-encoder/rich_relation_3epochs_question_relation_repeat/WebQSP_{}_id_index_map.json'.format(args.split),
-                'data/WebQSP/relation_retrieval/cross-encoder/rng_linking_results/WebQSP.entity.prominentType.map.rng.elq.json',
-                args.split,
-                validation_relations_path='data/WebQSP/relation_retrieval/cross-encoder/rng_linking_results/WebQSP.2hopRelations.rng.elq.candEntities.json',
-                # relation_rich_map_path='data/common_data/fb_relation_rich_map.json',
-                rich_entity=False,
-                # rich_entity=False,
-                validation_top_k=100,
-                mask_mention=False,
-                top_k=200
-            )
+            # 这就是生成 rich_relation_3epochs_question_relation 下采样数据的方法(会用到的是 train, 用于模型训练，后面应该是 ptrain 和 pdev)
+            # 已确认用这个方法可以生成完全一致的采样数据
+            if args.split in ['ptrain', 'pdev']:
+                retrieve_candidate_relations_webqsp(
+                    'data/common_data/freebase_relations_filtered.json', # determines what kind of sampled relations will be generated (normal/rich)
+                    'data/WebQSP/relation_retrieval_0721/bi-encoder/WebQSP.{}.goldenRelation.json'.format(args.split),
+                    'data/WebQSP/relation_retrieval_0721/bi-encoder/vectors/rich_relation_3epochs/WebQSP_{}_ep3_questions.pt'.format(args.split),
+                    'data/WebQSP/relation_retrieval_0721/bi-encoder/index/rich_relation_3epochs/ep_3_flat.index',
+                    'data/WebQSP/relation_retrieval_0717/cross-encoder/rng_kbqa_linking_results/webqsp_{}_rng_el_two_hop_relations.json'.format(args.split),
+                    # 'data/WebQSP/entity_retrieval/linking_results/merged_WebQSP_{}_linking_results.json'.format(args.split),
+                    'data/WebQSP/relation_retrieval_0721/cross-encoder/rich_relation_3epochs_question_relation/WebQSP.{}.tsv'.format(args.split),
+                    'data/WebQSP/relation_retrieval_0721/cross-encoder/rich_relation_3epochs_question_relation/WebQSP_{}_id_index_map.json'.format(args.split),
+                    args.split,
+                    prominent_type_path=None,
+                    validation_relations_path='data/WebQSP/relation_retrieval/cross-encoder/rng_linking_results/WebQSP.2hopRelations.rng.elq.candEntities.json',
+                    # relation_rich_map_path='data/common_data/fb_relation_rich_map.json',
+                    rich_entity=False,
+                    # rich_entity=False,
+                    top_k=200,
+                    validation_top_k=100,
+                    mask_mention=False,
+                )
 
             # subsplit = 'train' if args.split in ['train', 'ptrain', 'pdev'] else 'test'
             # retrieve_candidate_relations_webqsp_0720(
