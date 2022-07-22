@@ -46,26 +46,45 @@ def read_json(json_path):
 
 
 def data_process(args):
-    if args.dataset_type == 'WebQSP':
-        train_df = pd.read_csv('data/WebQSP/relation_retrieval_0717/cross-encoder/2hop_relations/WebQSP.train.tsv', sep='\t', error_bad_lines=False).dropna()
-        # train_df = pd.read_csv('data/WebQSP/relation_retrieval/cross-encoder/0715_retrain/WebQSP.train.tsv', sep='\t', error_bad_lines=False).dropna()
-        # train_df = pd.read_csv('data/WebQSP/relation_retrieval_0717/cross-encoder/rich_relation_3epochs_question_relation_top100/WebQSP.ptrain.tsv', sep='\t', error_bad_lines=False).dropna()
-        # train_df = pd.read_csv('data/WebQSP/relation_retrieval_0717/cross-encoder/rich_relation_3epochs_mask_mention_rich_relation/WebQSP.train.tsv', sep='\t', error_bad_lines=False).dropna()
-        # train_df = pd.read_csv('data/WebQSP/relation_retrieval/cross-encoder/0715_retrain_biencoder_ep5/WebQSP.train.tsv', sep='\t', error_bad_lines=False).dropna()
-        dev_df = pd.read_csv('data/WebQSP/relation_retrieval_0717/cross-encoder/rich_relation_3epochs_rich_entity_rich_relation_1parse/WebQSP.pdev.tsv', sep='\t', error_bad_lines=False).dropna()
-        # dev_df = pd.read_csv('data/WebQSP/relation_retrieval_0717/cross-encoder/rich_relation_3epochs_question_relation_top100/WebQSP.pdev.tsv', sep='\t', error_bad_lines=False).dropna()
-        # test_df = pd.read_csv('data/WebQSP/relation_retrieval_0717/cross-encoder/rich_relation_3epochs_question_relation_top100/WebQSP.test.tsv', sep='\t', error_bad_lines=False).dropna()
-        # test_df = pd.read_csv('data/WebQSP/relation_retrieval_0717/cross-encoder/rich_relation_3epochs_mask_mention_rich_relation/WebQSP.test.tsv', sep='\t', error_bad_lines=False).dropna()
-        test_df = pd.read_csv('data/WebQSP/relation_retrieval_0717/cross-encoder/2hop_relations/WebQSP.test.tsv', sep='\t', error_bad_lines=False).dropna()
-        # test_df = pd.read_csv('data/WebQSP/relation_retrieval/cross-encoder/0715_retrain/WebQSP.test.tsv', sep='\t', error_bad_lines=False).dropna()
-        # test_df = pd.read_csv('data/WebQSP/relation_retrieval/cross-encoder/WebQSP.test.biEncoder.train_all.richRelation.crossEncoder.train_all.richRelation.2hopValidation.richEntity.top100.1parse.tsv', sep='\t', error_bad_lines=False).dropna()
-    else:
-        train_df = pd.read_csv('data/CWQ/relation_retrieval/cross-encoder/0715_retrain/CWQ.train.tsv', sep='\t', error_bad_lines=False).dropna()
-        dev_df = pd.read_csv('data/CWQ/relation_retrieval/cross-encoder/0715_retrain/CWQ.dev.tsv', sep='\t', error_bad_lines=False).dropna()
-        # test_df = pd.read_csv('data/CWQ/relation_retrieval/cross-encoder/xwu_test/CWQ.test.tsv', sep='\t', error_bad_lines=False).dropna()
-        test_df = pd.read_csv('data/CWQ/relation_retrieval/cross-encoder/0715_retrain/CWQ.test.tsv', sep='\t', error_bad_lines=False).dropna()
+    if args.do_train or args.do_eval:
+        if args.dataset_type == 'WebQSP':
+            train_df = pd.read_csv('data/WebQSP/relation_retrieval_final/cross-encoder/rich_relation_3epochs_question_relation/WebQSP.train.tsv', delimiter='\t',dtype={"id":int, "question":str, "relation":str, 'label':int})
+            # train_df = pd.read_csv('data/WebQSP/relation_retrieval/cross-encoder/0715_retrain/WebQSP.train.tsv', sep='\t', error_bad_lines=False).dropna()
+            # train_df = pd.read_csv('data/WebQSP/relation_retrieval_0717/cross-encoder/rich_relation_3epochs_question_relation_top100/WebQSP.ptrain.tsv', sep='\t', error_bad_lines=False).dropna()
+            # train_df = pd.read_csv('data/WebQSP/relation_retrieval_0717/cross-encoder/rich_relation_3epochs_mask_mention_rich_relation/WebQSP.train.tsv', sep='\t', error_bad_lines=False).dropna()
+            # train_df = pd.read_csv('data/WebQSP/relation_retrieval/cross-encoder/0715_retrain_biencoder_ep5/WebQSP.train.tsv', sep='\t', error_bad_lines=False).dropna()
+            dev_df = None
+            # dev_df = pd.read_csv('data/WebQSP/relation_retrieval_0717/cross-encoder/rich_relation_3epochs_question_relation_top100/WebQSP.pdev.tsv', sep='\t', error_bad_lines=False).dropna()
+            # test_df = pd.read_csv('data/WebQSP/relation_retrieval_0717/cross-encoder/rich_relation_3epochs_question_relation_top100/WebQSP.test.tsv', sep='\t', error_bad_lines=False).dropna()
+            # test_df = pd.read_csv('data/WebQSP/relation_retrieval_0717/cross-encoder/rich_relation_3epochs_mask_mention_rich_relation/WebQSP.test.tsv', sep='\t', error_bad_lines=False).dropna()
+            test_df = None
+            # test_df = pd.read_csv('data/WebQSP/relation_retrieval/cross-encoder/0715_retrain/WebQSP.test.tsv', sep='\t', error_bad_lines=False).dropna()
+            # test_df = pd.read_csv('data/WebQSP/relation_retrieval/cross-encoder/WebQSP.test.biEncoder.train_all.richRelation.crossEncoder.train_all.richRelation.2hopValidation.richEntity.top100.1parse.tsv', sep='\t', error_bad_lines=False).dropna()
+        else:
+            train_df = pd.read_csv('data/CWQ/relation_retrieval/cross-encoder/0715_retrain/CWQ.train.tsv', sep='\t', error_bad_lines=False).dropna()
+            dev_df = pd.read_csv('data/CWQ/relation_retrieval/cross-encoder/0715_retrain/CWQ.dev.tsv', sep='\t', error_bad_lines=False).dropna()
+            # test_df = pd.read_csv('data/CWQ/relation_retrieval/cross-encoder/xwu_test/CWQ.test.tsv', sep='\t', error_bad_lines=False).dropna()
+            test_df = pd.read_csv('data/CWQ/relation_retrieval/cross-encoder/0715_retrain/CWQ.test.tsv', sep='\t', error_bad_lines=False).dropna()
+        return train_df, dev_df, test_df
+    elif args.do_predict:
+        print('do inference')
+        if args.dataset_type.lower() == 'webqsp':
+            train_2hop_df = pd.read_csv('data/WebQSP/relation_retrieval_final/cross-encoder/rich_relation_3epochs_question_relation/WebQSP.train_2hop.tsv', delimiter='\t', dtype={"id":int, "question":str, "relation":str, 'label':int})
+            train_df = pd.read_csv('data/WebQSP/relation_retrieval_final/cross-encoder/rich_relation_3epochs_question_relation/WebQSP.train.tsv', delimiter='\t',dtype={"id":int, "question":str, "relation":str, 'label':int})
+            test_2hop_df = pd.read_csv('data/WebQSP/relation_retrieval_final/cross-encoder/rich_relation_3epochs_question_relation/WebQSP.test_2hop.tsv', delimiter='\t', dtype={"id":int, "question":str, "relation":str, 'label':int})
+            # TODO: 如何区分这两个 test
+            test_df = pd.read_csv('data/WebQSP/relation_retrieval_final/cross-encoder/rich_relation_3epochs_question_relation/WebQSP.test.tsv', delimiter='\t', dtype={"id":int, "question":str, "relation":str, 'label':int})
+            return train_2hop_df, train_df, test_2hop_df, test_df
+        else:
+            # TODO:
+            train_df = pd.read_csv('data/CWQ/relation_retrieval/cross-encoder/0715_retrain/CWQ.train.tsv', sep='\t', error_bad_lines=False).dropna()
+            dev_df = pd.read_csv('data/CWQ/relation_retrieval/cross-encoder/0715_retrain/CWQ.dev.tsv', sep='\t', error_bad_lines=False).dropna()
+            # test_df = pd.read_csv('data/CWQ/relation_retrieval/cross-encoder/xwu_test/CWQ.test.tsv', sep='\t', error_bad_lines=False).dropna()
+            test_df = pd.read_csv('data/CWQ/relation_retrieval/cross-encoder/0715_retrain/CWQ.test.tsv', sep='\t', error_bad_lines=False).dropna()
+            return train_df, dev_df, test_df
+
     
-    return train_df, dev_df, test_df
+    
 
 def set_seed(seed):
     """ Set all seeds to make results reproducible """
@@ -459,13 +478,29 @@ def prediction_main(args):
     if args.mask_entity_mention:
         special_tokens_dict = {'additional_special_tokens': [BLANK_TOKEN]}
         tokenizer.add_special_tokens(special_tokens_dict)
-    train_df, dev_df, test_df = data_process(args)
-    if 'train' in args.predict_split:
-        data_set = CustomDataset(train_df, maxlen, tokenizer=tokenizer, bert_model=bert_model)
-    elif 'dev' in args.predict_split:
-        data_set = CustomDataset(dev_df, maxlen, tokenizer=tokenizer, bert_model=bert_model)
-    elif 'test' in args.predict_split:
-        data_set = CustomDataset(test_df, maxlen, tokenizer=tokenizer, bert_model=bert_model)
+    if args.dataset_type.lower() == 'webqsp':
+        print('webqsp')
+        train_2hop_df, train_df, test_2hop_df, test_df = data_process(args)
+        if args.predict_split == 'train_2hop':
+            print('train_2hop_df')
+            data_set = CustomDataset(train_2hop_df, maxlen, tokenizer=tokenizer, bert_model=bert_model)
+        elif args.predict_split == 'train':
+            print('train_df')
+            data_set = CustomDataset(train_df, maxlen, tokenizer=tokenizer, bert_model=bert_model)
+        elif args.predict_split == 'test_2hop':
+            print('test_2hop_df')
+            data_set = CustomDataset(test_2hop_df, maxlen, tokenizer=tokenizer, bert_model=bert_model)
+        elif args.predict_split == 'test':
+            print('test_df')
+            data_set = CustomDataset(test_df, maxlen, tokenizer=tokenizer, bert_model=bert_model)
+    else:
+        train_df, dev_df, test_df = data_process(args)
+        if 'train' in args.predict_split:
+            data_set = CustomDataset(train_df, maxlen, tokenizer=tokenizer, bert_model=bert_model)
+        elif 'dev' in args.predict_split:
+            data_set = CustomDataset(dev_df, maxlen, tokenizer=tokenizer, bert_model=bert_model)
+        elif 'test' in args.predict_split:
+            data_set = CustomDataset(test_df, maxlen, tokenizer=tokenizer, bert_model=bert_model)
 
     test_loader = DataLoader(data_set, batch_size=bs, num_workers=2)
     model = SentencePairClassifier(bert_model=bert_model, tokenizer=tokenizer)

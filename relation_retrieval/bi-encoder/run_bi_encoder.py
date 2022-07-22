@@ -34,7 +34,9 @@ def data_process(dataset_type):
         train_df = pd.read_csv('data/CWQ/relation_retrieval/bi-encoder/CWQ.train.sampled.tsv', sep='\t', error_bad_lines=False).dropna()
         dev_df = pd.read_csv('data/CWQ/relation_retrieval/bi-encoder/CWQ.dev.sampled.tsv', sep='\t', error_bad_lines=False).dropna()
     else:
-        train_df = pd.read_csv('data/WebQSP/relation_retrieval/bi-encoder/WebQSP.train.sampled.tsv', sep='\t', error_bad_lines=False).dropna()
+        # 固定轮数，直接取最后一轮结果
+        train_df = pd.read_csv('data/WebQSP/relation_retrieval_final/bi-encoder/WebQSP.train.sampled.tsv', delimiter='\t',dtype={"id":int, "question":str, "relation":str, 'label':int})
+        # train_df = pd.read_csv('data/WebQSP/relation_retrieval_0717/bi-encoder/WebQSP.train.sampled.tsv', sep='\t', error_bad_lines=False).dropna()
         dev_df = None
     
     return train_df, dev_df
@@ -131,6 +133,8 @@ def train_bert(model, opti, lr, lr_scheduler, train_loader, val_loader, epochs, 
     if log_path:
         log_w = open(log_path, 'w')
     scaler = GradScaler()
+    best_loss = np.Inf
+    best_epoch = 1
     
     for ep in range(epochs):
         model.train()
@@ -173,12 +177,13 @@ def train_bert(model, opti, lr, lr_scheduler, train_loader, val_loader, epochs, 
             if log_w:
                 log_w.write("Epoch {} complete! Validation Loss : {}\n".format(ep+1, val_loss))
                 log_w.write("Accuracy on dev data: {}\n".format(accuracy))
-        
+        # 记录 validation loss， 但是仍然把每个 epoch 的模型都保存下来
         model_copy = copy.deepcopy(model)
-        # if val_loss < best_loss:
-        #     print("Best validation loss improved from {} to {}".format(best_loss, val_loss))
-        #     print()
-        #     best_loss = val_loss
+        if val_loss < best_loss:
+            print("Best validation loss improved from {} to {}".format(best_loss, val_loss))
+            print()
+            best_loss = val_loss
+            best_epoch = ep+1
         
         model_path = os.path.join(model_save_path, '{}_ep_{}.pt'.format(dataset_type, ep+1))
         torch.save(model_copy.state_dict(), model_path)
@@ -186,6 +191,7 @@ def train_bert(model, opti, lr, lr_scheduler, train_loader, val_loader, epochs, 
 
     if log_w:
         log_w.close()
+    print('Best epoch is: {}, with validation loss: {}'.format(best_epoch, best_loss))
     del loss
     torch.cuda.empty_cache()
  

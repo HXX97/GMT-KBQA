@@ -111,25 +111,26 @@ def make_sorted_relation_dataset_from_logits(dataset, split):
 
     assert dataset in ['CWQ','WebQSP']
     if dataset == 'WebQSP':
-        assert split in ['test','train']
+        assert split in ['train', 'test', 'train_2hop', 'test_2hop']
     else:
         assert split in ['test','train','dev']
 
     # output_dir = f'data/{dataset}/relation_retrieval/candidate_relations'
     # logits_file = f'data/{dataset}/relation_retrieval/cross-encoder/saved_models/final/{split}/logits.pt'
-    output_dir = f'data/{dataset}/relation_retrieval_0717/candidate_relations/rich_relation_3epochs_question_relation_maxlen_34_ep3_2hop'
+    output_dir = f'data/{dataset}/relation_retrieval_final/candidate_relations/rich_relation_3epochs_question_relation'
     
     
     if dataset=='CWQ':
         # tsv_file = f'data/CWQ/relation_retrieval/cross-encoder/CWQ.{split}.biEncoder.train_all.maskMention.crossEncoder.2hopValidation.maskMention.richRelation.top100.tsv'
         tsv_file = f'data/CWQ/relation_retrieval/cross-encoder/0715_retrain/CWQ.{split}.tsv'
         logits_file = f'data/CWQ/relation_retrieval/cross-encoder/saved_models/0715_retrain/CWQ_ep_3.pt_{split}/logits.pt'
+        idmap = load_json(f'data/CWQ/relation_retrieval/cross-encoder/0715_retrain/CWQ_{split}_id_index_map.json')
     elif dataset=='WebQSP':
         # tsv_file = f'data/WebQSP/relation_retrieval/cross-encoder/WebQSP.{split}.biEncoder.train_all.richRelation.crossEncoder.train_all.richRelation.2hopValidation.richEntity.top100.1parse.tsv'
-        tsv_file = f'data/WebQSP/relation_retrieval_0717/cross-encoder/2hop_relations/WebQSP.{split}.tsv'
-        logits_file = f'data/WebQSP/relation_retrieval_0717/cross-encoder/saved_models/rich_relation_3epochs_question_relation_maxlen_34/WebQSP_ep_3.pt_{split}_2hop/logits.pt'
-
-
+        tsv_file = f'data/WebQSP/relation_retrieval_final/cross-encoder/rich_relation_3epochs_question_relation/WebQSP.{split}.tsv'
+        logits_file = f'data/WebQSP/relation_retrieval_final/cross-encoder/saved_models/rich_relation_3epochs_question_relation/WebQSP_ep_3.pt_{split}/logits.pt'
+        idmap = load_json(f'data/WebQSP/relation_retrieval_final/cross-encoder/rich_relation_3epochs_question_relation/WebQSP_{split}_id_index_map.json')
+    
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -156,19 +157,22 @@ def make_sorted_relation_dataset_from_logits(dataset, split):
     #     split_dataset = load_json(f'data/WebQSP/origin/WebQSP.{split}.json')
     # else:
     #     split_dataset = load_json(f'data/CWQ/sexpr/ComplexWebQuestions_{split}.json')
-
-    split_dataset = load_json(f'data/{dataset}/sexpr/{dataset}.{split}.expr.json')
+    if split in ['train_2hop', 'train']:
+        split_dataset = load_json(f'data/{dataset}/sexpr/{dataset}.train.expr.json')
+    elif split in ['test', 'test_2hop']:
+        split_dataset = load_json(f'data/{dataset}/sexpr/{dataset}.test.expr.json')
+    # print('split_dataset: {}'.format(split_dataset))
     # question2id = {x['question']:x['ID'] for x in split_dataset}
 
 
     rowid2qid = {} # map rowid to qid
 
-    if dataset=='CWQ':
-        # idmap = load_json(f'data/CWQ/relation_retrieval/cross-encoder/CWQ.{split}.biEncoder.train_all.maskMention.crossEncoder.2hopValidation.maskMention.richRelation.top100_CWQid_index_map.json')
-        idmap = load_json(f'data/CWQ/relation_retrieval/cross-encoder/0715_retrain/CWQ_{split}_id_index_map.json')
-    elif dataset=='WebQSP':
-        # idmap = load_json(f'data/WebQSP/relation_retrieval/cross-encoder/WebQSP.{split}.biEncoder.train_all.richRelation.crossEncoder.train_all.richRelation.2hopValidation.richEntity.top100.1parse_WebQSPid_index_map.json')
-        idmap = load_json(f'data/WebQSP/relation_retrieval_0717/cross-encoder/2hop_relations/WebQSP_{split}_id_index_map.json')
+    # if dataset=='CWQ':
+    #     # idmap = load_json(f'data/CWQ/relation_retrieval/cross-encoder/CWQ.{split}.biEncoder.train_all.maskMention.crossEncoder.2hopValidation.maskMention.richRelation.top100_CWQid_index_map.json')
+        
+    # elif dataset=='WebQSP':
+    #     # idmap = load_json(f'data/WebQSP/relation_retrieval/cross-encoder/WebQSP.{split}.biEncoder.train_all.richRelation.crossEncoder.train_all.richRelation.2hopValidation.richEntity.top100.1parse_WebQSPid_index_map.json')
+        
 
     for qid in idmap:
         rowid_start = idmap[qid]['start']
@@ -832,6 +836,76 @@ def merge_entity_linking_results_CWQ(split):
 
     dump_json(merged_el_results, f"data/CWQ/entity_retrieval/disamb_entities_xwu/merged_CWQ_{split}_linking_results.json", indent=4)
 
+def substitude_relations_in_merged_file(
+    prev_merged_path, 
+    output_path, 
+    sorted_relations_path,
+    addition_relations_path,
+    topk=10
+):
+    """
+    replace "cand_relation_list" property in previous merged data
+    with new relation logits
+    """
+    prev_merged = load_json(prev_merged_path)
+    sorted_relations = load_json(sorted_relations_path) # inference on 2hop
+    additional_relation = load_json(addition_relations_path) # inference on bi-encoder top100
+    new_merged = []
+    for example in tqdm(prev_merged, total=len(prev_merged)):
+        qid = example["ID"]
+        if qid not in sorted_relations or len(sorted_relations[qid]) < topk: # need exactly 10 relations
+            print(qid)
+            cand_relations = additional_relation[qid][:topk]
+        else:
+            cand_relations = sorted_relations[qid][:topk]
+        example["cand_relation_list"] = cand_relations
+        new_merged.append(example)
+    assert len(prev_merged) == len(new_merged)
+    dump_json(new_merged, output_path)
+
+def validation_merged_file(prev_file, new_file):
+    prev_data = load_json(prev_file)
+    new_data = load_json(new_file)
+    assert len(prev_data) == len(new_data), print(len(prev_data), len(new_data))
+    for (prev, new) in tqdm(zip(prev_data, new_data), total=len(prev_data)):
+        for key in prev.keys():
+            if key != 'cand_relation_list':
+                assert prev[key] == new[key]
+            else:
+                assert len(prev[key]) == 10
+                assert len(new[key]) == 10, print(len(new[key]))
+
+def train_dev_split_as_per_files(
+    prev_train_path,
+    split_train_path,
+    split_dev_path,
+    new_folder
+):
+    prev_train = load_json(prev_train_path)
+    split_train = load_json(split_train_path)
+    split_train = {item["QuestionId"]: item for item in split_train}
+    split_train_keys = split_train.keys()
+
+    split_dev = load_json(split_dev_path)
+    split_dev = {item["QuestionId"]: item for item in split_dev}
+    split_dev_keys = split_dev.keys()
+
+    new_train_data = []
+    new_dev_data = []
+    for example in prev_train:
+        qid = example["ID"]
+        if qid not in split_train_keys and qid not in split_dev_keys:
+            print(qid)
+        if qid in split_train_keys:
+            new_train_data.append(example)
+        elif qid in split_dev_keys:
+            new_dev_data.append(example)
+    print('prev_train: {}'.format(len(prev_train)))
+    print('new_train: {}'.format(len(new_train_data)))
+    print('new_dev: {}'.format(len(new_dev_data)))
+    dump_json(prev_train, os.path.join(new_folder, 'WebQSP_train_all.json'))
+    dump_json(new_train_data, os.path.join(new_folder, 'WebQSP_train.json'))
+    dump_json(new_dev_data, os.path.join(new_folder, 'WebQSP_dev.json'))
 
 if __name__=='__main__':
     
@@ -848,5 +922,25 @@ if __name__=='__main__':
     else:
         print('usage: data_process.py action [--dataset DATASET] --split SPLIT ')
 
+    for split in ['train', 'test']:
+        extract_entity_relation_type_label_from_dataset_webqsp('WebQSP', split)
+
+    # If you would like to substitude candidate relations only, you can refer to functions below
     # for split in ['train', 'test']:
-    #     extract_entity_relation_type_label_from_dataset_webqsp('WebQSP', split)
+    #     substitude_relations_in_merged_file(
+    #         f'data/WebQSP/generation/merged_old/WebQSP_{split}.json',
+    #         f'data/WebQSP/generation/merged_relation_final/WebQSP_{split}.json',
+    #         f'data/WebQSP/relation_retrieval_final/candidate_relations/rich_relation_3epochs_question_relation/WebQSP_{split}_2hop_cand_rel_logits.json',
+    #         f'data/WebQSP/relation_retrieval_final/candidate_relations/rich_relation_3epochs_question_relation/WebQSP_{split}_cand_rel_logits.json',
+    #         topk=10
+    #     )
+    #     validation_merged_file(
+    #         f'data/WebQSP/generation/merged_old/WebQSP_{split}.json',
+    #         f'data/WebQSP/generation/merged_relation_final/WebQSP_{split}.json',
+    #     )
+    # train_dev_split_as_per_files(
+    #     'data/WebQSP/generation/merged_relation_final/WebQSP_train.json',
+    #     'data/WebQSP/origin/WebQSP.ptrain.json',
+    #     'data/WebQSP/origin/WebQSP.pdev.json',
+    #     'data/WebQSP/generation/merged_relation_final/'
+    # )

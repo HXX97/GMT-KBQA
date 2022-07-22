@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import List, Tuple
 from SPARQLWrapper import SPARQLWrapper, JSON
 import json
@@ -1240,6 +1241,7 @@ def get_2hop_relations(entity: str):
 
     sparql.setQuery(query1)
     try:
+        print(query1)
         results = sparql.query().convert()
     except urllib.error.URLError:
         print(query1)
@@ -1730,6 +1732,187 @@ def query_rich_relation(relation):
         # elif '#label' in row[1]:
         #     print(row)
 
+"""
+DIY queries
+"""
+def get_relations_with_odbc(data_path, limit=100):
+    """Get all relations of Freebase"""
+    # build connection
+    global odbc_conn
+    if odbc_conn == None:
+        initialize_odbc_connection()
+    # {{ }} 两个花括号是为了转义
+    if limit > 0:
+        query = """
+        SPARQL SELECT DISTINCT ?p (COUNT(?p) as ?freq) WHERE {{
+            ?subject ?p ?object
+        }}
+        LIMIT {}
+        """.format(limit)
+    else:
+        query = """
+        SPARQL SELECT DISTINCT ?p (COUNT(?p) as ?freq) WHERE {{
+            ?subject ?p ?object
+        }}
+        """
+    print('query: {}'.format(query))
+    
+    try:
+        with odbc_conn.cursor() as cursor:
+            cursor.execute(query)
+            rows = cursor.fetchall()
+    except Exception:
+        print(f"Query Execution Failed:{query}")
+        exit(0)
+    
+    rtn = []
+    for row in rows:
+        rtn.append([row[0], int(row[1])])
+    
+    if len(rtn) != 0:
+        dump_json(data_path, rtn)
+
+def get_entities_with_odbc(data_path, limit=100):
+    """Get all entities in Freebase"""
+    # build connection
+    global odbc_conn
+    if odbc_conn == None:
+        initialize_odbc_connection()
+    # {{ }} 两个花括号是为了转义
+    if limit > 0:
+        query = """
+        SPARQL SELECT DISTINCT ?subject WHERE {{ 
+            ?subject ?p ?object
+        }} 
+        LIMIT {}
+        """.format(limit)
+    else:
+        query = """
+        SPARQL SELECT DISTINCT ?subject WHERE {{ 
+            ?subject ?p ?object
+        }} 
+        """
+    print('query: {}'.format(query))
+    
+    try:
+        with odbc_conn.cursor() as cursor:
+            cursor.execute(query)
+            rows = cursor.fetchall()
+    except Exception:
+        print(f"Query Execution Failed:{query}")
+        exit(0)
+    
+    rtn = []
+    for row in rows:
+        rtn.append(row[0])
+    
+    if len(rtn) != 0:
+        dump_json(data_path, rtn)
+
+def query_relation_domain_range_odbc(input_path, output_path):
+    """
+    对于输入的每个关系，取其 domain 和 range
+    最终结果是一个 relation: {domain: , range:, label:} 的映射表
+    """
+    # build connection
+    global odbc_conn
+    if odbc_conn == None:
+        initialize_odbc_connection()
+    with open(input_path, 'r') as f:
+        relations = json.load(f)
+    
+    res_dict = dict()
+    for relation in relations:
+    # {{ }} 两个花括号是为了转义
+        query = """
+        SPARQL DESCRIBE {}
+        """.format('<' + relation + '>')
+        print('query: {}'.format(query))
+        
+        try:
+            with odbc_conn.cursor() as cursor:
+                cursor.execute(query)
+                rows = cursor.fetchall()
+        except Exception:
+            print(f"Query Execution Failed:{query}")
+            exit(0)
+        
+        res_dict[relation] = dict()
+        for row in rows:
+            if '#domain' in row[1]:
+                res_dict[relation]["domain"] = row[2]
+            elif '#range' in row[1]:
+                res_dict[relation]["range"] = row[2]
+            elif '#label' in row[1]:
+                res_dict[relation]["label"] = row[2]
+
+        print(res_dict[relation])
+    
+    with open(output_path, 'w') as f:
+        json.dump(res_dict, fp=f, indent=4)
+
+def query_entity_type_with_odbc(entities_path, output_path):
+    # build connection
+    global odbc_conn
+    if odbc_conn == None:
+        initialize_odbc_connection()
+    
+    res_dict = defaultdict(list)
+    entities = load_json(entities_path)
+    count = 0
+    for entity in entities:
+    # {{ }} 两个花括号是为了转义
+        query = """
+        SPARQL DESCRIBE {}
+        """.format('<' + entity + '>')
+        print('count: {}'.format(count))
+        count += 1
+        
+        try:
+            with odbc_conn.cursor() as cursor:
+                cursor.execute(query)
+                rows = cursor.fetchall()
+            for row in rows:
+                if row[1] == 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type':
+                    if row[2].startswith('http://dbpedia.org/ontology/'):
+                        res_dict[entity].append(row[2])
+        except Exception:
+            print(f"Query Execution Failed:{query}")
+            # exit(0)
+    
+    dump_json(output_path, res_dict)
+
+def freebase_query_entity_type_with_odbc(entities_path, output_path):
+    # build connection
+    global odbc_conn
+    if odbc_conn == None:
+        initialize_odbc_connection()
+    
+    res_dict = defaultdict(list)
+    entities = load_json(entities_path)
+    count = 0
+    for entity in entities:
+    # {{ }} 两个花括号是为了转义
+        query = """
+        SPARQL DESCRIBE {}
+        """.format('ns:' + entity)
+        print('count: {}'.format(count))
+        count += 1
+        
+        try:
+            with odbc_conn.cursor() as cursor:
+                cursor.execute(query)
+                rows = cursor.fetchall()
+            for row in rows:
+                if row[1] == 'http://rdf.freebase.com/ns/kg.object_profile.prominent_type':
+                    if row[2].startswith('http://rdf.freebase.com/ns/'):
+                        # res_dict[entity].append(row[2])
+                        res_dict[entity].append(row[2].replace('http://rdf.freebase.com/ns/', ''))
+        except Exception:
+            print(f"Query Execution Failed:{query}")
+            # exit(0)
+    
+    dump_json(output_path, res_dict)
 
 if __name__=='__main__':
     
@@ -1774,5 +1957,9 @@ if __name__=='__main__':
 
     # get_entity_labels()
     # query_rich_relation('ns:m.04tfqf')
-    in_relations, out_relations, paths = get_2hop_relations_with_odbc_wo_filter('m.04904')
-    print(in_relations, out_relations)
+    # print(get_2hop_relations('m.01n4w'))
+    in_relations, out_relations, paths = get_2hop_relations('m.03krjv')
+    print(len(in_relations))
+    print(len(out_relations))
+    # in_relations, out_relations, paths = get_2hop_relations_with_odbc_wo_filter('m.04904')
+    # print(in_relations, out_relations)

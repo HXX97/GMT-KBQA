@@ -116,15 +116,15 @@ If you want to retrieve the candidate entities from scratch, follow the steps be
 
 
 
-(4) **Retrieve Candidate Relations**
+(4) **Retrieve Candidate Relations** （可以参考 test_new.py 里面的单元测试）
 
 This step can also be ***skipped*** , as we've provided t he candidate relations in `data/CWQ/relation_retrieval/`
 
 If you want to retrive the candidate relations from scratch, follow the steps below:
 
 1. Train the bi-encoder to encode questions and relations.
-    - CWQ: Run `python run_relation_retriever.py sample_data --dataset CWQ --split train[dev]` to prepare training data. Then run `sh scripts/run_bi_encoder_CWQ.sh {YOUR_FOLDER_NAME}` to train bi-encoder model. Trained model will be saved in `data/CWQ/relation_retrieval/bi-encoder/saved_models/{YOUR_FOLDER_NAME}`.
-    - WebQSP: Run `python run_relation_retriever.py sample_data --dataset WebQSP --split train` to prepare training data. Then run `sh scripts/run_bi_encoder_WebQSP.sh {YOUR_FOLDER_NAME}` to train bi-encoder model. Trained model will be saved in `data/WebQSP/relation_retrieval/bi-encoder/saved_models/{YOUR_FOLDER_NAME}`. Besides, run `python run_relation_retriever.py prepare_2hop_relations --dataset WebQSP` to prepare linking entities' two-hop relations
+    - CWQ: Run `python run_relation_data_process.py sample_data --dataset CWQ --split train[dev]` to prepare training data. Then run `sh scripts/run_bi_encoder_CWQ.sh {YOUR_FOLDER_NAME}` to train bi-encoder model. Trained model will be saved in `data/CWQ/relation_retrieval/bi-encoder/saved_models/{YOUR_FOLDER_NAME}`.
+    - WebQSP: Run `python run_relation_data_process.py sample_data --dataset WebQSP --split train[ptrain, pdev]` to prepare training data. Then run `sh scripts/run_bi_encoder_WebQSP.sh {YOUR_FOLDER_NAME}` to train bi-encoder model. Trained model will be saved in `data/WebQSP/relation_retrieval/bi-encoder/saved_models/{YOUR_FOLDER_NAME}`. For WebQSP, linking entities' two-hop relations will be queried and cached.
 
 2. Build the index of encoded relations.
     - CWQ: To encode Freebase relations using trained bi-encoder, run `python relation_retrieval/bi-encoder/build_and_search_index.py encode_relation --dataset CWQ`. Then run `python relation_retrieval/bi-encoder/build_and_search_index.py build_index --dataset CWQ` to build the index of encoded relations. Index file will be saved as `data/CWQ/relation_retrieval/bi-encoder/index/flat.index`.
@@ -132,17 +132,20 @@ If you want to retrive the candidate relations from scratch, follow the steps be
 
 3. Retrieve candidate relations using index.
     - CWQ: First encode questions into vector by running `python relation_retrieval/bi-encoder/build_and_search_index.py encode_question --dataset CWQ --split test[train, dev]`. Then candidate relations can be retrieved using index by running `python relation_retrieval/bi-encoder/build_and_search_index.py retrieve_relations --dataset CWQ --split test[train, dev]`. The retrieved relations will be saved as the training data of cross-encoder in `data/CWQ/relation_retrieval/cross-encoder/CWQ_test[train,dev].tsv`.
-    - WebQSP: First encode questions into vector by running `python relation_retrieval/bi-encoder/build_and_search_index.py encode_question --dataset WebQSP --split test[train]`. Then candidate relations can be retrieved using index by running `python relation_retrieval/bi-encoder/build_and_search_index.py retrieve_relations --dataset WebQSP --split test[train, ptrain, pdev](注意ptrain pdev 和 train test 调用不同的函数)`. The retrieved relations will be saved as the training data of cross-encoder in `data/WebQSP/relation_retrieval/cross-encoder/WebQSP_test[train,dev].tsv`.
+    - WebQSP: First encode questions into vector by running `python relation_retrieval/bi-encoder/build_and_search_index.py encode_question --dataset WebQSP --split train[ptrain, pdev, test]`. Then candidate relations can be retrieved using index by running `python relation_retrieval/bi-encoder/build_and_search_index.py retrieve_relations --dataset WebQSP --split test_2hop[train_2hop, train, test]`. The retrieved relations will be saved as the training data of cross-encoder in `data/WebQSP/relation_retrieval/cross-encoder/WebQSP_test[train,dev].tsv`.
     - TODO: `CWQ.2hopRelations.candEntities.json` 这个文件是如何获得的
 
 4. Train the cross-encoder to rank retrieved relations.
     - CWQ: To train, run `sh scripts/run_cross_encoder_CWQ.sh train {FOLDER_NAME}`. Trained models will be saved as `data/CWQ/relation_retrieval/cross-encoder/saved_models/{FOLDER_NAME}/{MODEL_NAME}`. To get inference results, run `sh scripts/run_cross_encoder_CWQ.sh predict {FOLDER_NAME} test[train/dev] {MODEL_NAME}`.  Inference result(logits) will be stored in `data/CWQ/relation_retrieval/cross-encoder/saved_models/{FOLDER_NAME}/{MODEL_NAME}_test[train/dev]]`.
-    - (TODO: 还需要确认在原模型上进行推理得到的结果是完全一致的)WebQSP: To train, run `sh scripts/run_cross_encoder_WebQSP.sh train {FOLDER_NAME}`. Trained models will be saved as `data /WebQSP/relation_retrieval/cross-encoder/saved_models/{FOLDER_NAME}/{MODEL_NAME}`. To get inference results, run `sh scripts/run_cross_encoder_WebQSP.sh predict {FOLDER_NAME} test/[train] {MODEL_NAME}`.Inference result(logits) will be stored in `data/WebQSP/relation_retrieval/cross-encoder/saved_models/{FOLDER_NAME}/{MODEL_NAME}_test/[train]`.
+    - (TODO: 还需要确认在原模型上进行推理得到的结果是完全一致的)WebQSP: To train, run `sh scripts/run_cross_encoder_WebQSP.sh train {FOLDER_NAME}`. Trained models will be saved as `data /WebQSP/relation_retrieval/cross-encoder/saved_models/{FOLDER_NAME}/{MODEL_NAME}`. To get inference results, run `sh scripts/run_cross_encoder_WebQSP.sh predict {FOLDER_NAME} test/[train, train_2hop, test_2hop] {MODEL_NAME}`.Inference result(logits) will be stored in `data/WebQSP/relation_retrieval/cross-encoder/saved_models/{FOLDER_NAME}/{MODEL_NAME}_test/[train, train_2hop, test_2hop]`.
+    - 补充，WebQSP 使用的是`run_cross_encoder_WebQSP_question_relation.sh` 脚本
 
 
 5. Merge the logits with relations to get sorted relations for each question.
     - CWQ: run `python data_process.py merge_relation --dataset CWQ --split test[train,dev]`. The sorted relations will be saved as `data/CWQ/relation_retrieval/candidate_relations/CWQ_test[train,dev]_cand_rels_sorted.json`
-    - WebQSP: run `python data_process.py merge_relation --dataset WebQSP --split test[train]`. The sorted relations will be saved as `data/WebQSP/relation_retrieval/candidate_relations/WebQSP_test[train]_cand_rels_sorted.json`
+    - WebQSP: run `python data_process.py merge_relation --dataset WebQSP --split test[train, train_2hop, test_2hop]`. The sorted relations will be saved as `data/WebQSP/relation_retrieval/candidate_relations/WebQSP_test[train]_cand_rels_sorted.json`
+
+6. (optional) To only substitude candidate relations in previous merged file, please refer to `substitude_relations_in_merged_file()` in `data_process.py`.
 
 (5) **Generate Logical Forms through multi-task learning**
 

@@ -4,6 +4,8 @@ Usage of faiss index
 Generating relation/question vectors
 Construct training/testing data for cross-encoder
 """
+from collections import defaultdict
+import collections
 import json
 import csv
 from functools import reduce
@@ -1016,7 +1018,6 @@ def retrieve_candidate_relations_webqsp(
                 entity_linking_res[qid]["freebase_ids"],
                 []
             )
-
         if validation_relations_map and relation_rich_map:
             validation_relations = [relation_rich_map[rel] if rel in relation_rich_map else rel for rel in validation_relations]
         
@@ -1299,6 +1300,16 @@ def validate_data_sequence(
 # ):
 #     tsv_df = pd.read_csv(tsv_file_path, sep='\t', error_bad_lines=False).dropna()
 
+def get_cross_encoder_tsv_max_len(tsv_file):
+    tsv_df = pd.read_csv(tsv_file, sep='\t', error_bad_lines=False).dropna()
+    tokenizer = AutoTokenizer.from_pretrained('hfcache/bert-base-uncased')
+    length_dict = defaultdict(int)
+    for idx in tqdm(range(len(tsv_df)), total=len(tsv_df)):
+        question = tsv_df.loc[idx, 'question']
+        relation = tsv_df.loc[idx, 'relation']
+        tokenized = tokenizer.tokenize(question, relation)
+        length_dict[len(tokenized)] += 1
+    print(collections.OrderedDict(sorted(length_dict.items())))
 
 def main():
     # Save all freebase relations as vectors using trained Bi-encoder
@@ -1424,8 +1435,8 @@ if __name__=='__main__':
         elif args.dataset.lower() == 'webqsp':
             encode_relations(
                 'data/common_data/freebase_richRelations_filtered.json', # depends on `normal relation` or `rich relation` biencoder was trained on
-                'data/WebQSP/relation_retrieval_0717/bi-encoder/saved_models/rich_relation_3epochs/WebQSP_ep_3.pt',
-                'data/WebQSP/relation_retrieval_0721/bi-encoder/vectors/rich_relation_3epochs/WebQSP_ep_3_relations.pt',
+                'data/WebQSP/relation_retrieval_final/bi-encoder/saved_models/rich_relation_3epochs/WebQSP_ep_3.pt',
+                'data/WebQSP/relation_retrieval_final/bi-encoder/vectors/rich_relation_3epochs/WebQSP_ep_3_relations.pt',
                 add_special_tokens=False,
                 max_len=60, # consistent with training scripts, e.g.`run_bi_encoder_WebQSP.sh`
                 batch_size=128,
@@ -1439,8 +1450,8 @@ if __name__=='__main__':
             )
         elif args.dataset.lower() == 'webqsp':
             build_index(
-                'data/WebQSP/relation_retrieval_0721/bi-encoder/index/rich_relation_3epochs/ep_3_flat.index',
-                'data/WebQSP/relation_retrieval_0721/bi-encoder/vectors/rich_relation_3epochs/WebQSP_ep_3_relations.pt'
+                'data/WebQSP/relation_retrieval_final/bi-encoder/index/rich_relation_3epochs/ep_3_flat.index',
+                'data/WebQSP/relation_retrieval_final/bi-encoder/vectors/rich_relation_3epochs/WebQSP_ep_3_relations.pt'
             )
     if action.lower() == 'encode_question':
         if args.dataset.lower() == 'cwq':
@@ -1460,8 +1471,8 @@ if __name__=='__main__':
             encode_questions(
                 'data/WebQSP/origin/WebQSP.{}.json'.format(args.split),
                 None,
-                'data/WebQSP/relation_retrieval_0717/bi-encoder/saved_models/rich_relation_3epochs/WebQSP_ep_3.pt',
-                'data/WebQSP/relation_retrieval_0721/bi-encoder/vectors/rich_relation_3epochs/WebQSP_{}_ep3_questions.pt'.format(args.split),
+                'data/WebQSP/relation_retrieval_final/bi-encoder/saved_models/rich_relation_3epochs/WebQSP_ep_3.pt',
+                'data/WebQSP/relation_retrieval_final/bi-encoder/vectors/rich_relation_3epochs/WebQSP_{}_ep3_questions.pt'.format(args.split),
                 max_len=60, # consistent with training scripts, e.g.`run_bi_encoder_WebQSP.sh`
                 cache_dir='hfcache/bert-base-uncased',
                 add_special_tokens=False,
@@ -1495,24 +1506,24 @@ if __name__=='__main__':
             )
         elif args.dataset.lower() == 'webqsp':
             # 如果测试集还没划分好的话，先划分
-            if not os.path.exists('data/WebQSP/origin/WebQSP.pdev.json'):
-                print('dev split')
-                make_partial_train_dev('data/WebQSP/origin/WebQSP.train.json')
+            # if not os.path.exists('data/WebQSP/origin/WebQSP.pdev.json'):
+            #     print('dev split')
+            #     make_partial_train_dev('data/WebQSP/origin/WebQSP.train.json')
             # 相应的, goldenRelation.json 也要有相同的划分
-            if not os.path.exists('data/WebQSP/relation_retrieval_0717/bi-encoder/WebQSP.pdev.goldenRelation.json'):
-                print('splitting dev')
-                split_file(
-                    'data/WebQSP/relation_retrieval_0717/bi-encoder/WebQSP.train.goldenRelation.json',
-                    'data/WebQSP/origin/WebQSP.ptrain.json',
-                    'data/WebQSP/origin/WebQSP.pdev.json',
-                    'data/WebQSP/relation_retrieval_0717/bi-encoder/WebQSP.ptrain.goldenRelation.json',
-                    'data/WebQSP/relation_retrieval_0717/bi-encoder/WebQSP.pdev.goldenRelation.json',
-                )
-                for split in ['ptrain', 'pdev']:
-                    validate_data_sequence(
-                        f'data/WebQSP/origin/WebQSP.{split}.json',
-                        f'data/WebQSP/relation_retrieval_0717/bi-encoder/WebQSP.{split}.goldenRelation.json',
-                    )
+            # if not os.path.exists('data/WebQSP/relation_retrieval_0717/bi-encoder/WebQSP.pdev.goldenRelation.json'):
+            #     print('splitting dev')
+            #     split_file(
+            #         'data/WebQSP/relation_retrieval_0717/bi-encoder/WebQSP.train.goldenRelation.json',
+            #         'data/WebQSP/origin/WebQSP.ptrain.json',
+            #         'data/WebQSP/origin/WebQSP.pdev.json',
+            #         'data/WebQSP/relation_retrieval_0717/bi-encoder/WebQSP.ptrain.goldenRelation.json',
+            #         'data/WebQSP/relation_retrieval_0717/bi-encoder/WebQSP.pdev.goldenRelation.json',
+            #     )
+            #     for split in ['ptrain', 'pdev']:
+            #         validate_data_sequence(
+            #             f'data/WebQSP/origin/WebQSP.{split}.json',
+            #             f'data/WebQSP/relation_retrieval_0717/bi-encoder/WebQSP.{split}.goldenRelation.json',
+            #         )
             # if args.split in ['ptrain']:
             #     retrieve_train_candidate_relations_webqsp(
             #         'data/common_data/freebase_relations_filtered.json',
@@ -1544,32 +1555,34 @@ if __name__=='__main__':
             # )
             
             # 该方法得到WebQSP cross-encoder的推理数据；已确认得到的数据完全一致
-            if args.split in ['train', 'test']:
+            if args.split in ['train_2hop', 'test_2hop']:
                 # 将 rng 实体链接结果中的所有二跳关系作为候选关系，利用 cross-encoder 来预测
+                subsp = 'train' if args.split == 'train_2hop' else 'test'
                 retrieve_cross_encoder_inference_data(
-                    f'data/WebQSP/relation_retrieval_0717/cross-encoder/rng_kbqa_linking_results/webqsp_{args.split}_rng_el_two_hop_relations.json',
-                    f'data/WebQSP/origin/WebQSP.{args.split}.json',
-                    f'data/WebQSP/relation_retrieval_0721/cross-encoder/2hop_relations/WebQSP.{args.split}.tsv',
-                    f'data/WebQSP/relation_retrieval_0721/cross-encoder/2hop_relations/WebQSP_{args.split}_id_index_map.json',
+                    f'data/WebQSP/relation_retrieval_final/cross-encoder/rng_kbqa_linking_results/webqsp_{subsp}_rng_el_two_hop_relations.json',
+                    f'data/WebQSP/origin/WebQSP.{subsp}.json',
+                    f'data/WebQSP/relation_retrieval_final/cross-encoder/rich_relation_3epochs_question_relation/WebQSP.{args.split}.tsv',
+                    f'data/WebQSP/relation_retrieval_final/cross-encoder/rich_relation_3epochs_question_relation/WebQSP_{args.split}_id_index_map.json',
                 )
 
             # 该方法得到 WebQSP cross-encoder 的训练、验证数据
             # 第一个参数传 rich_relation, 得到 rich_relation; 传普通 relation, 得到普通 relation
             # 这就是生成 rich_relation_3epochs_question_relation 下采样数据的方法(会用到的是 train, 用于模型训练，后面应该是 ptrain 和 pdev)
             # 已确认用这个方法可以生成完全一致的采样数据
-            if args.split in ['ptrain', 'pdev']:
+            if args.split in ['train', 'ptrain', 'pdev', 'test']:
+                # TODO: 2hop 关系直接利用数据集里头的 "2hop_relations"
                 retrieve_candidate_relations_webqsp(
                     'data/common_data/freebase_relations_filtered.json', # determines what kind of sampled relations will be generated (normal/rich)
-                    'data/WebQSP/relation_retrieval_0721/bi-encoder/WebQSP.{}.goldenRelation.json'.format(args.split),
-                    'data/WebQSP/relation_retrieval_0721/bi-encoder/vectors/rich_relation_3epochs/WebQSP_{}_ep3_questions.pt'.format(args.split),
-                    'data/WebQSP/relation_retrieval_0721/bi-encoder/index/rich_relation_3epochs/ep_3_flat.index',
-                    'data/WebQSP/relation_retrieval_0717/cross-encoder/rng_kbqa_linking_results/webqsp_{}_rng_el_two_hop_relations.json'.format(args.split),
+                    'data/WebQSP/relation_retrieval_final/bi-encoder/WebQSP.{}.goldenRelation.json'.format(args.split),
+                    'data/WebQSP/relation_retrieval_final/bi-encoder/vectors/rich_relation_3epochs/WebQSP_{}_ep3_questions.pt'.format(args.split),
+                    'data/WebQSP/relation_retrieval_final/bi-encoder/index/rich_relation_3epochs/ep_3_flat.index',
+                    'data/WebQSP/relation_retrieval_final/cross-encoder/rng_kbqa_linking_results/webqsp_train_rng_el_two_hop_relations.json' if args.split in ['train', 'ptrain', 'pdev'] else 'data/WebQSP/relation_retrieval_final/cross-encoder/rng_kbqa_linking_results/webqsp_test_rng_el_two_hop_relations.json',
                     # 'data/WebQSP/entity_retrieval/linking_results/merged_WebQSP_{}_linking_results.json'.format(args.split),
-                    'data/WebQSP/relation_retrieval_0721/cross-encoder/rich_relation_3epochs_question_relation/WebQSP.{}.tsv'.format(args.split),
-                    'data/WebQSP/relation_retrieval_0721/cross-encoder/rich_relation_3epochs_question_relation/WebQSP_{}_id_index_map.json'.format(args.split),
+                    'data/WebQSP/relation_retrieval_final/cross-encoder/rich_relation_3epochs_question_relation/WebQSP.{}.tsv'.format(args.split),
+                    'data/WebQSP/relation_retrieval_final/cross-encoder/rich_relation_3epochs_question_relation/WebQSP_{}_id_index_map.json'.format(args.split),
                     args.split,
                     prominent_type_path=None,
-                    validation_relations_path='data/WebQSP/relation_retrieval/cross-encoder/rng_linking_results/WebQSP.2hopRelations.rng.elq.candEntities.json',
+                    validation_relations_path='data/WebQSP/relation_retrieval_final/cross-encoder/rng_kbqa_linking_results/WebQSP.2hopRelations.rng.elq.candEntities.json',
                     # relation_rich_map_path='data/common_data/fb_relation_rich_map.json',
                     rich_entity=False,
                     # rich_entity=False,
@@ -1577,6 +1590,11 @@ if __name__=='__main__':
                     validation_top_k=100,
                     mask_mention=False,
                 )
+
+            # Help to decide max length of cross-encoder training, 34 is suggested
+            # get_cross_encoder_tsv_max_len(
+            #     'data/WebQSP/relation_retrieval_final/cross-encoder/rich_relation_3epochs_question_relation/WebQSP.train.tsv'
+            # )
 
             # subsplit = 'train' if args.split in ['train', 'ptrain', 'pdev'] else 'test'
             # retrieve_candidate_relations_webqsp_0720(
