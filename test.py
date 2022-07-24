@@ -505,8 +505,8 @@ def calculate_topk_relation_recall(
     r_list = []
     p_list = []
     dataset = load_json(dataset_file)
-    dataset = {example["ID"]: example for example in dataset}
-    # dataset = {example["QuestionId"]: example for example in dataset}
+    # dataset = {example["ID"]: example for example in dataset}
+    dataset = {example["QuestionId"]: example for example in dataset}
     sorted_relations = load_json(sorted_file)
     sorted_relations = {item["ID"]: item for item in sorted_relations}
     # assert len(sorted_relations) == len(dataset), print(len(dataset), len(sorted_relations))
@@ -979,9 +979,21 @@ def calc_relation_num_influence(
     print('positive: {} {}'.format(len(positive_samples), list(positive_samples)))
     print('negative: {} {}'.format(len(negative_samples), list(negative_samples)))
 
+def compare_answers(json_path_1, json_path_2):
+    json_1 = load_json(json_path_1)
+    json_1 = {example["ID"]: example["answer"] for example in json_1}
+    json_2 = load_json(json_path_2)
+    json_2 = {example["ID"]: example["answer"] for example in json_2}
+    for qid in json_1:
+        assert qid in json_2
+        assert set(json_1[qid]) == set(json_2[qid]), print(qid)
 
 
 if __name__=='__main__':
+    # compare_answers(
+    #     'data/CWQ/origin/ComplexWebQuestions_test.json',
+    #     'data/CWQ/generation/merged/CWQ_test.json'
+    # )
     # xwu_test_get_merged_disambiguated_entities('CWQ', 'test')
     # check_disambiguated_cand_entity()
     # error_analysis()
@@ -1016,15 +1028,15 @@ if __name__=='__main__':
     #     '/home3/xwu/new_workspace/GMT-KBQA/data/CWQ/generation/merged_old/CWQ_test.json'
     # )
     # CWQ 
-    # for split in ['test']:
-        # substitude_relations_in_merged_file(
-        #     f'data/CWQ/generation/merged/CWQ_{split}.json',
-        #     f'data/CWQ/generation/merged_0715_retrain_new_data/CWQ_{split}.json',
-        #     f'data/CWQ/relation_retrieval/0715_retrain/CWQ_{split}_cand_rel_logits.json',
-        # )
-        # calculate_top10_relation_recall(
-        #     f'data/CWQ/relation_retrieval/0715_retrain/CWQ_{split}_cand_rels_sorted.json',
-        #     f'data/CWQ/generation/merged/CWQ_{split}.json',
+    # for split in ['test', 'dev', 'train']:
+    #     # substitude_relations_in_merged_file(
+    #     #     f'data/CWQ/generation/merged/CWQ_{split}.json',
+    #     #     f'data/CWQ/generation/merged_0715_retrain_new_data/CWQ_{split}.json',
+    #     #     f'data/CWQ/relation_retrieval/0715_retrain/CWQ_{split}_cand_rel_logits.json',
+    #     # )
+        # calculate_topk_relation_recall(
+        #     f'data/CWQ/generation/merged_0724_ep1/CWQ_{split}.json',
+        #     f'data/CWQ/generation/merged_old/CWQ_{split}.json',
         # )
         # validation_merged_file(
         #     f'data/CWQ/generation/merged/CWQ_{split}.json',
@@ -1054,9 +1066,9 @@ if __name__=='__main__':
         calculate_topk_relation_recall(
             # f'data/WebQSP/relation_retrieval/candidate_relations_yhshu/WebQSP_{split}_cand_rels_sorted.json',
             # f'data/WebQSP/relation_retrieval_0717/candidate_relations/rich_relation_3epochs_question_relation_maxlen_34_ep3_2hop/WebQSP_{split}_cand_rels_sorted.json',
-            f'data/WebQSP/generation/merged_question_relation_ep3_2hop/WebQSP_{split}.json',
-            f'data/WebQSP/generation/merged_old/WebQSP_{split}.json',
-            # f'data/WebQSP/relation_retrieval_0717/bi-encoder/WebQSP.{split}.goldenRelation.json',
+            f'data/WebQSP/generation/merged_corrected_relation_final/WebQSP_{split}.json',
+            # f'data/WebQSP/generation/merged_old/WebQSP_{split}.json',
+            f'data/WebQSP/relation_retrieval_0717/bi-encoder/WebQSP.{split}.goldenRelation.json',
             topk=10
         )
         # validation_merged_file(
@@ -1074,16 +1086,16 @@ if __name__=='__main__':
         # get_cross_encoder_tsv_max_len(f'data/WebQSP/relation_retrieval_0717/cross-encoder/rich_relation_3epochs_rich_entity_rich_relation_1parse/WebQSP.{split}.tsv')
 
         # calculate_rng_2hop_recall(
-        #     f'data/WebQSP/relation_retrieval_0717/cross-encoder/rng_kbqa_linking_results/webqsp_{split}_rng_el_two_hop_relations.json',
-        #     f'data/WebQSP/relation_retrieval_0717/bi-encoder/WebQSP.{split}.goldenRelation.json'
+        #     f'data/WebQSP/relation_retrieval_0722/cross-encoder/rng_kbqa_linking_results/webqsp_{split}_rng_el_two_hop_relations.json',
+        #     f'data/WebQSP/relation_retrieval_0722/bi-encoder/WebQSP.{split}.goldenRelation.json'
         # )
 
         # calculate_bi_encoder_recall(
         #     'data/common_data/freebase_relations_filtered.json',
-        #     f'data/WebQSP/relation_retrieval_0717/bi-encoder/WebQSP.{split}.goldenRelation.json',
-        #     'data/WebQSP/relation_retrieval_0717/bi-encoder/vectors/rich_relation_3epochs/WebQSP_{}_ep3_questions.pt'.format(split),
-        #     'data/WebQSP/relation_retrieval_0717/bi-encoder/index/rich_relation_3epochs/ep_3_flat.index',
-        #     top_k=100
+        #     f'data/WebQSP/relation_retrieval_0722/bi-encoder/WebQSP.{split}.goldenRelation.json',
+        #     'data/WebQSP/relation_retrieval_0722/bi-encoder/vectors/relation_3epochs/WebQSP_{}_ep3_questions.pt'.format(split),
+        #     'data/WebQSP/relation_retrieval_0722/bi-encoder/index/relation_3epochs/ep_3_flat.index',
+        #     top_k=200
         # )
     # error_analysis_new(
     #     'exps/WebQSP_relation_entity_concat_add_prefix_warmup_epochs_5_20epochs_bs2/beam_50_top_k_predictions.json_gen_sexpr_results.json_new.json',

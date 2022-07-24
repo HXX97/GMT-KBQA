@@ -79,6 +79,7 @@ def _parse_args():
     parser.add_argument('--server_ip', default=None, help='server ip for debugging')
     parser.add_argument('--server_port', default=None, help='server port for debugging')
     parser.add_argument('--qid',default=None,type=str, help='single qid for debug, None by default' )
+    parser.add_argument('--test_batch_size', default=2)
     parser.add_argument('--dataset', default='CWQ', type=str, help='dataset type, can be `CWQ、`WebQSP`')
 
     args = parser.parse_args()
@@ -217,7 +218,7 @@ def denormalize_s_expr_new(normed_expr,
                                 find_sim_entity = False
                                 for ent_label in entity_label_map:
                                     string_sim = difflib.SequenceMatcher(None, cur_seg.lower(), ent_label).quick_ratio()
-                                    if string_sim >= 0.8: # highly similar
+                                    if string_sim >= 0.7: # highly similar
                                         cur_seg = entity_label_map[ent_label]
                                         find_sim_entity = True
                                         break
@@ -314,15 +315,18 @@ def execute_normed_s_expr_from_label_maps(normed_expr,
 
 
 
-def aggressive_top_k_eval_new(split, predict_file, dataset):
+def aggressive_top_k_eval_new(split, predict_file, dataset, test_batch_size):
     """Run top k predictions, using linear origin map"""
     if dataset == "CWQ":
-        train_gen_dataset = load_json('data/CWQ/generation/merged_0715_retrain_new_data/CWQ_train.json')
-        test_gen_dataset = load_json('data/CWQ/generation/merged_0715_retrain_new_data/CWQ_test.json')
-        dev_gen_dataset = load_json('data/CWQ/generation/merged_0715_retrain_new_data/CWQ_dev.json')
+        train_gen_dataset = load_json('data/CWQ/generation/merged_0723_ep2/CWQ_train.json')
+        test_gen_dataset = load_json('data/CWQ/generation/merged_0723_ep2/CWQ_test.json')
+        dev_gen_dataset = load_json('data/CWQ/generation/merged_0723_ep2/CWQ_dev.json')
     elif dataset == "WebQSP":
-        train_gen_dataset = load_json('data/WebQSP/generation/merged_rich_entity_rich_relation_1parse/WebQSP_train.json')
-        test_gen_dataset = load_json('data/WebQSP/generation/merged_rich_entity_rich_relation_1parse/WebQSP_test.json')
+        # train_gen_dataset = load_json('data/WebQSP/generation/0722/merged_question_relation_ep3_2hop/WebQSP_train.json')
+        # test_gen_dataset = load_json('data/WebQSP/generation/0722/merged_question_relation_ep3_2hop/WebQSP_test.json')
+        # dev_gen_dataset = load_json('data/WebQSP/generation/0722/merged_question_relation_ep3_2hop/WebQSP_dev.json')
+        train_gen_dataset = load_json('data/WebQSP/generation/merged_relation_final/WebQSP_train.json')
+        test_gen_dataset = load_json('data/WebQSP/generation/merged_relation_final/WebQSP_test.json')
         dev_gen_dataset = None
     # if dataset == "CWQ":
     #     train_gen_dataset = load_json('../data/CWQ/generation/merged_old/CWQ_train.json')
@@ -359,8 +363,13 @@ def aggressive_top_k_eval_new(split, predict_file, dataset):
         train_entity_map = load_json(f"data/CWQ/generation/label_maps/CWQ_train_entity_label_map.json")
         train_entity_map = {l.lower():e for e,l in train_entity_map.items()}
     elif dataset == "WebQSP":
-        gold_label_maps = load_json(f"data/WebQSP/generation/label_maps/WebQSP_{split}_label_maps.json")
-        train_entity_map = load_json(f"data/WebQSP/generation/label_maps/WebQSP_train_entity_label_map.json")
+        if split == 'train' or split == 'dev':
+            gold_label_maps = load_json("data/WebQSP/generation/label_maps_all_parses/WebQSP_train_label_maps.json")
+            print('data/WebQSP/generation/label_maps_all_parses/WebQSP_train_label_maps.json')
+        else:
+            gold_label_maps = load_json("data/WebQSP/generation/label_maps_all_parses/WebQSP_test_label_maps.json")
+            print('data/WebQSP/generation/label_maps_all_parses/WebQSP_test_label_maps.json')
+        train_entity_map = load_json(f"data/WebQSP/generation/label_maps_all_parses/WebQSP_train_entity_label_map.json")
         train_entity_map = {l.lower():e for e,l in train_entity_map.items()}
 
     if not use_goldEnt:
@@ -381,15 +390,19 @@ def aggressive_top_k_eval_new(split, predict_file, dataset):
             train_type_map = load_json(f"data/CWQ/generation/label_maps/CWQ_train_type_label_map.json")
             train_type_map = {l.lower():t for t,l in train_type_map.items()}
         elif dataset == "WebQSP":
-            if os.path.exists(os.path.join(dirname, f"WebQSP_{split}_candidate_entity_map.json")):
-                candidate_entity_map = load_json(os.path.join(dirname, f"WebQSP_{split}_candidate_entity_map.json"))
+            if os.path.exists(os.path.join(dirname, f"WebQSP_{split}_{test_batch_size}_candidate_entity_map.json")):
+                candidate_entity_map = load_json(os.path.join(dirname, f"WebQSP_{split}_{test_batch_size}_candidate_entity_map.json"))
             else:
                 # candidate_entity_map = load_json(f'data/WebQSP/entity_retrieval/disamb_entities/WebQSP_merged_{split}_disamb_entities.json')
                 # print(f'loading data/WebQSP/entity_retrieval/disamb_entities/WebQSP_merged_{split}_disamb_entities.json')
-                candidate_entity_map = load_json(f'data/WebQSP/entity_retrieval/linking_results/merged_WebQSP_{split}_linking_results.json')
-                print(f'loading data/WebQSP/entity_retrieval/linking_results/merged_WebQSP_{split}_linking_results.json')
+                if split == 'train' or split == 'dev':
+                    candidate_entity_map = load_json(f'data/WebQSP/entity_retrieval/linking_results/merged_WebQSP_train_linking_results.json')
+                    print(f'loading data/WebQSP/entity_retrieval/linking_results/merged_WebQSP_train_linking_results.json')
+                else:
+                    candidate_entity_map = load_json(f'data/WebQSP/entity_retrieval/linking_results/merged_WebQSP_test_linking_results.json')
+                    print(f'loading data/WebQSP/entity_retrieval/linking_results/merged_WebQSP_test_linking_results.json')
                 use_linking_results = True
-            train_type_map = load_json(f"data/WebQSP/generation/label_maps/WebQSP_train_type_label_map.json")
+            train_type_map = load_json(f"data/WebQSP/generation/label_maps_all_parses/WebQSP_train_type_label_map.json")
             train_type_map = {l.lower():t for t,l in train_type_map.items()}
         
     if not use_goldRel:
@@ -397,7 +410,7 @@ def aggressive_top_k_eval_new(split, predict_file, dataset):
             train_relation_map = load_json(f"data/CWQ/generation/label_maps/CWQ_train_relation_label_map.json")
             train_relation_map = {l.lower():r for r,l in train_relation_map.items()}
         elif dataset == "WebQSP":
-            train_relation_map = load_json(f"data/WebQSP/generation/label_maps/WebQSP_train_relation_label_map.json")
+            train_relation_map = load_json(f"data/WebQSP/generation/label_maps_all_parses/WebQSP_train_relation_label_map.json")
             train_relation_map = {l.lower():r for r,l in train_relation_map.items()}
     
     # load FACC1 Index
@@ -536,12 +549,13 @@ def aggressive_top_k_eval_new(split, predict_file, dataset):
     }, os.path.join(dirname,f'{filename}_statistics.json'),indent=4)
 
     # evaluate
-    # args.pred_file = result_file
-    args.pred_file = official_results_file
     if dataset == "CWQ":
+        args.pred_file = result_file
         cwq_evaluate_valid_results(args)
-    elif dataset == "WebQSP":
+    else:
+        args.pred_file = official_results_file
         webqsp_evaluate_valid_results(args)
+        
 
 
 if __name__=='__main__':
@@ -558,5 +572,5 @@ if __name__=='__main__':
     if args.qid:
         pass
     else:
-        aggressive_top_k_eval_new(args.split, args.pred_file, args.dataset)
+        aggressive_top_k_eval_new(args.split, args.pred_file, args.dataset, args.test_batch_size)
         

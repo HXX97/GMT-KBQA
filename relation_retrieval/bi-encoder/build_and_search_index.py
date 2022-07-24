@@ -356,6 +356,7 @@ def retrieve_candidate_relations_cwq(
     samples = []
     count = 0
     CWQid_index = dict()
+    debug = True
     for idx in tqdm(range(len(input_data)), total=len(input_data)):
         start = count
         question = input_data[idx]["question"]
@@ -408,8 +409,11 @@ def retrieve_candidate_relations_cwq(
                 #         count += 1
                 #     else:
                 #         missed_relations.append(pred_relation)
+                if debug:
+                    print('pred_relation: {}'.format(pred_relation))
+                    print('validation_relations: {}'.format(validation_relations[0]))
                 if pred_relation in validation_relations:
-                    if pred_relation in golden_relations:
+                    if split != 'test' and pred_relation in golden_relations:
                         pred_relation_rich = relation_rich_map[pred_relation] if (pred_relation in relation_rich_map and target_rich_relation) else pred_relation
                         samples.append([question, pred_relation_rich, '1'])
                     else:
@@ -422,7 +426,7 @@ def retrieve_candidate_relations_cwq(
             # 如果筛选后的关系数量不足 validation_top_k， 则补齐
             if count - start < validation_top_k:
                 for rel in missed_relations[:validation_top_k-(count - start)]:
-                    if rel in golden_relations:
+                    if split != 'test' and rel in golden_relations:
                         rel_rich = relation_rich_map[rel] if (rel in relation_rich_map and target_rich_relation) else rel
                         samples.append([question, rel_rich, '1'])
                     else:
@@ -431,7 +435,7 @@ def retrieve_candidate_relations_cwq(
                     count += 1
         else:
             for pred_relation in pred_relations[idx]:
-                if pred_relation in golden_relations:
+                if split != 'test' and pred_relation in golden_relations:
                     pred_relation = relation_rich_map[pred_relation] if (pred_relation in relation_rich_map and target_rich_relation) else pred_relation
                     samples.append([question, pred_relation, '1'])
                     count += 1
@@ -444,6 +448,8 @@ def retrieve_candidate_relations_cwq(
             'start': start,
             'end': end
         }
+
+        debug = False
 
 
     with open(output_path, 'w') as f:
@@ -1425,8 +1431,8 @@ if __name__=='__main__':
         if args.dataset.lower() == 'cwq':
             encode_relations(
                 'data/common_data/freebase_relations_filtered.json',
-                'data/CWQ/relation_retrieval/bi-encoder/saved_models/CWQ_ep_1.pt',
-                'data/CWQ/relation_retrieval/bi-encoder/vectors/CWQ_ep_1_relations.pt',
+                'data/CWQ/relation_retrieval_0723/bi-encoder/saved_models/CWQ_ep_1.pt',
+                'data/CWQ/relation_retrieval_0723/bi-encoder/vectors/CWQ_ep_1_relations.pt',
                 add_special_tokens=True,
                 max_len=32,
                 batch_size=128,
@@ -1445,8 +1451,8 @@ if __name__=='__main__':
     if action.lower() == 'build_index':
         if args.dataset.lower() == 'cwq':
             build_index(
-                'data/CWQ/relation_retrieval/bi-encoder/index/flat.index',
-                'data/CWQ/relation_retrieval/bi-encoder/vectors/CWQ_ep_1_relations.pt'
+                'data/CWQ/relation_retrieval_0723/bi-encoder/index/ep_1_flat.index',
+                'data/CWQ/relation_retrieval_0723/bi-encoder/vectors/CWQ_ep_1_relations.pt'
             )
         elif args.dataset.lower() == 'webqsp':
             build_index(
@@ -1458,8 +1464,8 @@ if __name__=='__main__':
             encode_questions(
                 'data/CWQ/origin/ComplexWebQuestions_{}.json'.format(args.split),
                 'data/CWQ/entity_retrieval/merged_linking_results/merged_CWQ_{}_linking_results.json'.format(args.split),
-                'data/CWQ/relation_retrieval/bi-encoder/saved_models/CWQ_ep_1.pt',
-                'data/CWQ/relation_retrieval/bi-encoder/vectors/xwu_test/CWQ_{}_questions.pt'.format(args.split),
+                'data/CWQ/relation_retrieval_0723/bi-encoder/saved_models/CWQ_ep_1.pt',
+                'data/CWQ/relation_retrieval_0723/bi-encoder/vectors/CWQ_{}_questions.pt'.format(args.split),
                 max_len=32,
                 cache_dir='hfcache/bert-base-uncased',
                 add_special_tokens=True,
@@ -1484,26 +1490,32 @@ if __name__=='__main__':
         if args.dataset.lower() == 'cwq':
             retrieve_candidate_relations_cwq(
                 'data/common_data/freebase_relations_filtered.json', 
-                'data/CWQ/relation_retrieval/bi-encoder/CWQ.{}.relation.json'.format(args.split),
-                'data/CWQ/relation_retrieval/bi-encoder/vectors/xwu_test/CWQ_{}_questions.pt'.format(args.split),
-                'data/CWQ/relation_retrieval/bi-encoder/index/xwu_test/flat.index',
-                'data/CWQ/relation_retrieval/cross-encoder/0715_retrain/CWQ.{}.tsv'.format(args.split),
-                'data/CWQ/relation_retrieval/cross-encoder/0715_retrain/CWQ_{}_id_index_map.json'.format(args.split),
+                'data/CWQ/relation_retrieval_0723/bi-encoder/CWQ.{}.goldenRelation.json'.format(args.split),
+                'data/CWQ/relation_retrieval_0723/bi-encoder/vectors/CWQ_{}_questions.pt'.format(args.split),
+                'data/CWQ/relation_retrieval_0723/bi-encoder/index/ep_1_flat.index',
+                'data/CWQ/relation_retrieval_0723/cross-encoder/mask_mention_1epoch_question_relation/CWQ.{}.tsv'.format(args.split),
+                'data/CWQ/relation_retrieval_0723/cross-encoder/mask_mention_1epoch_question_relation/CWQ_{}_id_index_map.json'.format(args.split),
                 'data/CWQ/entity_retrieval/merged_linking_results/merged_CWQ_{}_linking_results.json'.format(args.split),
                 args.split,
-                validation_relations_path='data/CWQ/relation_retrieval/bi-encoder/CWQ.2hopRelations.candEntities.json',
+                validation_relations_path='data/CWQ/relation_retrieval_0723/bi-encoder/CWQ.2hopRelations.candEntities.json',
                 relation_rich_map_path='data/common_data/fb_relation_rich_map.json',
                 source_rich_relation=False,
-                target_rich_relation=True,
-                mask_mention=True,
+                # target_rich_relation=True,
+                # mask_mention=True,
+                target_rich_relation=False,
+                mask_mention=False
             )
             calculate_recall_cwq(
-                'data/CWQ/relation_retrieval/bi-encoder/CWQ.{}.relation.json'.format(args.split),
-                'data/CWQ/relation_retrieval/cross-encoder/0715_retrain/CWQ_{}_id_index_map.json'.format(args.split),
-                'data/CWQ/relation_retrieval/cross-encoder/0715_retrain/CWQ.{}.tsv'.format(args.split),
+                'data/CWQ/relation_retrieval_0723/bi-encoder/CWQ.{}.goldenRelation.json'.format(args.split),
+                'data/CWQ/relation_retrieval_0723/cross-encoder/mask_mention_1epoch_question_relation/CWQ_{}_id_index_map.json'.format(args.split),
+                'data/CWQ/relation_retrieval_0723/cross-encoder/mask_mention_1epoch_question_relation/CWQ.{}.tsv'.format(args.split),
                 # 'data/CWQ/relation_retrieval/cross-encoder/CWQ.test.biEncoder.train_all.maskMention.crossEncoder.2hopValidation.maskMention.richRelation.top100_CWQid_index_map.json',
                 # 'data/CWQ/relation_retrieval/cross-encoder/CWQ.test.biEncoder.train_all.maskMention.crossEncoder.2hopValidation.maskMention.richRelation.top100.tsv'
             )
+            # Help to decide max length of cross-encoder training, 50 is suggested
+            # get_cross_encoder_tsv_max_len(
+            #     'data/CWQ/relation_retrieval_0723/cross-encoder/mask_mention_1epoch_question_relation/CWQ.{}.tsv'.format(args.split),
+            # )
         elif args.dataset.lower() == 'webqsp':
             # 如果测试集还没划分好的话，先划分
             # if not os.path.exists('data/WebQSP/origin/WebQSP.pdev.json'):

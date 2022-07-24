@@ -61,10 +61,9 @@ def data_process(args):
             # test_df = pd.read_csv('data/WebQSP/relation_retrieval/cross-encoder/0715_retrain/WebQSP.test.tsv', sep='\t', error_bad_lines=False).dropna()
             # test_df = pd.read_csv('data/WebQSP/relation_retrieval/cross-encoder/WebQSP.test.biEncoder.train_all.richRelation.crossEncoder.train_all.richRelation.2hopValidation.richEntity.top100.1parse.tsv', sep='\t', error_bad_lines=False).dropna()
         else:
-            train_df = pd.read_csv('data/CWQ/relation_retrieval/cross-encoder/0715_retrain/CWQ.train.tsv', sep='\t', error_bad_lines=False).dropna()
-            dev_df = pd.read_csv('data/CWQ/relation_retrieval/cross-encoder/0715_retrain/CWQ.dev.tsv', sep='\t', error_bad_lines=False).dropna()
-            # test_df = pd.read_csv('data/CWQ/relation_retrieval/cross-encoder/xwu_test/CWQ.test.tsv', sep='\t', error_bad_lines=False).dropna()
-            test_df = pd.read_csv('data/CWQ/relation_retrieval/cross-encoder/0715_retrain/CWQ.test.tsv', sep='\t', error_bad_lines=False).dropna()
+            train_df = pd.read_csv('data/CWQ/relation_retrieval_0723/cross-encoder/mask_mention_1epoch_question_relation/CWQ.train.tsv', delimiter='\t', dtype={"id":int, "question":str, "relation":str, 'label':int})
+            dev_df = pd.read_csv('data/CWQ/relation_retrieval_0723/cross-encoder/mask_mention_1epoch_question_relation/CWQ.dev.tsv', delimiter='\t', dtype={"id":int, "question":str, "relation":str, 'label':int})
+            test_df = pd.read_csv('data/CWQ/relation_retrieval_0723/cross-encoder/mask_mention_1epoch_question_relation/CWQ.test.tsv', delimiter='\t', dtype={"id":int, "question":str, "relation":str, 'label':int})
         return train_df, dev_df, test_df
     elif args.do_predict:
         print('do inference')
@@ -76,11 +75,9 @@ def data_process(args):
             test_df = pd.read_csv('data/WebQSP/relation_retrieval_final/cross-encoder/rich_relation_3epochs_question_relation/WebQSP.test.tsv', delimiter='\t', dtype={"id":int, "question":str, "relation":str, 'label':int})
             return train_2hop_df, train_df, test_2hop_df, test_df
         else:
-            # TODO:
-            train_df = pd.read_csv('data/CWQ/relation_retrieval/cross-encoder/0715_retrain/CWQ.train.tsv', sep='\t', error_bad_lines=False).dropna()
-            dev_df = pd.read_csv('data/CWQ/relation_retrieval/cross-encoder/0715_retrain/CWQ.dev.tsv', sep='\t', error_bad_lines=False).dropna()
-            # test_df = pd.read_csv('data/CWQ/relation_retrieval/cross-encoder/xwu_test/CWQ.test.tsv', sep='\t', error_bad_lines=False).dropna()
-            test_df = pd.read_csv('data/CWQ/relation_retrieval/cross-encoder/0715_retrain/CWQ.test.tsv', sep='\t', error_bad_lines=False).dropna()
+            train_df = pd.read_csv('data/CWQ/relation_retrieval_0723/cross-encoder/mask_mention_1epoch_question_relation/CWQ.train.tsv', delimiter='\t', dtype={"id":int, "question":str, "relation":str, 'label':int})
+            dev_df = pd.read_csv('data/CWQ/relation_retrieval_0723/cross-encoder/mask_mention_1epoch_question_relation/CWQ.dev.tsv', delimiter='\t', dtype={"id":int, "question":str, "relation":str, 'label':int})
+            test_df = pd.read_csv('data/CWQ/relation_retrieval_0723/cross-encoder/mask_mention_1epoch_question_relation/CWQ.test.tsv', delimiter='\t', dtype={"id":int, "question":str, "relation":str, 'label':int})
             return train_df, dev_df, test_df
 
     
@@ -287,6 +284,7 @@ def train_bert(args, net, criterion, opti, lr, lr_scheduler, train_loader, val_l
             model_to_save = copy.deepcopy(net) # 每一轮都保存
         else:
             print("Epoch {} complete!".format(ep+1))
+            log_w.write("Epoch {} complete!".format(ep+1))
             model_to_save = copy.deepcopy(net)  # save a copy of the model
         
         # Save model every epoch
@@ -294,6 +292,7 @@ def train_bert(args, net, criterion, opti, lr, lr_scheduler, train_loader, val_l
             model_save_path = os.path.join(output_dir, '{}_ep_{}.pt'.format(args.dataset_type, ep+1))
             torch.save(model_to_save.state_dict(), model_save_path)
             print("The model of epoch {} has been saved in {}; best epoch is: {}".format(ep+1, model_save_path, best_epoch))
+            log_w.write("The model of epoch {} has been saved in {}; best epoch is: {}".format(ep+1, model_save_path, best_epoch))
 
     log_w.close()
     del loss
@@ -495,11 +494,11 @@ def prediction_main(args):
             data_set = CustomDataset(test_df, maxlen, tokenizer=tokenizer, bert_model=bert_model)
     else:
         train_df, dev_df, test_df = data_process(args)
-        if 'train' in args.predict_split:
+        if args.predict_split == 'train':
             data_set = CustomDataset(train_df, maxlen, tokenizer=tokenizer, bert_model=bert_model)
-        elif 'dev' in args.predict_split:
+        elif args.predict_split == 'dev':
             data_set = CustomDataset(dev_df, maxlen, tokenizer=tokenizer, bert_model=bert_model)
-        elif 'test' in args.predict_split:
+        elif args.predict_split == 'test':
             data_set = CustomDataset(test_df, maxlen, tokenizer=tokenizer, bert_model=bert_model)
 
     test_loader = DataLoader(data_set, batch_size=bs, num_workers=2)

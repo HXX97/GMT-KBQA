@@ -89,7 +89,6 @@ def sample_data_mask_entity_mention(
     all_relations = load_json(all_relations_file)
     entity_linking_res = load_json(entity_linking_file)
     items = load_json(golden_file)
-    # TODO: 应该用 qid 作为标识符
     for item in items:
         # mask entity mention in question
         question = item["question"].lower()
@@ -261,14 +260,14 @@ def sample_data(dataset, split):
     if dataset.lower() == 'cwq':
         extract_golden_relations_cwq(
             'data/CWQ/sexpr/CWQ.{}.expr.json'.format(split),
-            'data/CWQ/relation_retrieval/bi-encoder/CWQ.{}.relation.json'.format(split)
+            'data/CWQ/relation_retrieval_0723/bi-encoder/CWQ.{}.goldenRelation.json'.format(split)
         )
         if split != 'test':
             sample_data_mask_entity_mention(
-                'data/CWQ/relation_retrieval/bi-encoder/CWQ.{}.relation.json'.format(split),
+                'data/CWQ/relation_retrieval_0723/bi-encoder/CWQ.{}.goldenRelation.json'.format(split),
                 'data/CWQ/entity_retrieval/merged_linking_results/merged_CWQ_{}_linking_results.json'.format(split),
                 'data/common_data/freebase_relations_filtered.json',
-                'data/CWQ/relation_retrieval/bi-encoder/CWQ.{}.sampled.tsv'.format(split)
+                'data/CWQ/relation_retrieval_0723/bi-encoder/CWQ.{}.sampled.tsv'.format(split)
             )
     elif dataset.lower() == 'webqsp':
         if not os.path.exists('data/WebQSP/origin/WebQSP.pdev.json'):

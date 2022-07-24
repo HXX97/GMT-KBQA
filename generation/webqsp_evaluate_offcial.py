@@ -16,7 +16,10 @@ def load_json(fname, mode="r", encoding="utf8"):
         return json.load(f)
 
 def webqsp_evaluate_valid_results(args):
-    res = main(args.pred_file, f'data/WebQSP/origin/WebQSP.{args.split}.json')
+    if args.split == 'dev':
+        res = main(args.pred_file, f'data/WebQSP/origin/WebQSP.pdev.json')
+    else:
+        res = main(args.pred_file, f'data/WebQSP/origin/WebQSP.{args.split}.json')
     dirname = os.path.dirname(args.pred_file)
     filename = os.path.basename(args.pred_file)
     with open (os.path.join(dirname,f'{filename}_final_eval_results_official.txt'),'w') as f:
@@ -78,7 +81,9 @@ def main(pred_data, dataset_data):
     precSum = 0.0
     numCorrect = 0
     prediction_res = []
-    for entry in goldData["Questions"]:
+    if "Questions" in goldData:
+        goldData = goldData["Questions"]
+    for entry in goldData:
 
         skip = True
         for pidx in range(0,len(entry["Parses"])):
@@ -135,7 +140,7 @@ def main(pred_data, dataset_data):
     print("Average f1 over questions (accuracy): %.3f" % (f1sum / total))
     print("F1 of average recall and average precision: %.3f" % (2 * (recSum / total) * (precSum / total) / (recSum / total + precSum / total)))
     print("True accuracy (ratio of questions answered exactly correctly): %.3f" % (numCorrect / total))
-    res = f'Number of questions:{int(total)}, Average precision over questions: {(precSum / total)}, Average recall over questions: {(f1sum / total)}, Average f1 over questions (accuracy): {(f1sum / total)}, F1 of average recall and average precision: {(2 * (recSum / total) * (precSum / total) / (recSum / total + precSum / total))}, True accuracy (ratio of questions answered exactly correctly): {(numCorrect / total)}'
+    res = f'Number of questions:{int(total)}\n, Average precision over questions: {(precSum / total)}\n, Average recall over questions: {(f1sum / total)}\n, Average f1 over questions (accuracy): {(f1sum / total)}\n, F1 of average recall and average precision: {(2 * (recSum / total) * (precSum / total) / (recSum / total + precSum / total))}\n, True accuracy (ratio of questions answered exactly correctly): {(numCorrect / total)}'
     dirname = os.path.dirname(pred_data)
     filename = os.path.basename(pred_data)
     dump_json(prediction_res, os.path.join(dirname, f'{filename}_new.json'))
