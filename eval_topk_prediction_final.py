@@ -318,9 +318,9 @@ def execute_normed_s_expr_from_label_maps(normed_expr,
 def aggressive_top_k_eval_new(split, predict_file, dataset, test_batch_size):
     """Run top k predictions, using linear origin map"""
     if dataset == "CWQ":
-        train_gen_dataset = load_json('data/CWQ/generation/merged_0723_ep2/CWQ_train.json')
-        test_gen_dataset = load_json('data/CWQ/generation/merged_0723_ep2/CWQ_test.json')
-        dev_gen_dataset = load_json('data/CWQ/generation/merged_0723_ep2/CWQ_dev.json')
+        train_gen_dataset = load_json('data/CWQ/generation/merged_0724_ep1/CWQ_train.json')
+        test_gen_dataset = load_json('data/CWQ/generation/merged_0724_ep1/CWQ_test.json')
+        dev_gen_dataset = load_json('data/CWQ/generation/merged_0724_ep1/CWQ_dev.json')
     elif dataset == "WebQSP":
         # train_gen_dataset = load_json('data/WebQSP/generation/0722/merged_question_relation_ep3_2hop/WebQSP_train.json')
         # test_gen_dataset = load_json('data/WebQSP/generation/0722/merged_question_relation_ep3_2hop/WebQSP_test.json')
@@ -375,32 +375,28 @@ def aggressive_top_k_eval_new(split, predict_file, dataset, test_batch_size):
     if not use_goldEnt:
         use_linking_results = False
         if dataset == "CWQ":
-            if os.path.exists(os.path.join(dirname, f'CWQ_{split}_candidate_entity_map.json')):
-                candidate_entity_map = load_json(os.path.join(dirname, f'CWQ_{split}_candidate_entity_map.json'))
+            if os.path.exists(os.path.join(dirname, f'CWQ_{split}_{test_batch_size}_candidate_entity_map.json')):
+                print(f'candidate_entity_map: CWQ_{split}_{test_batch_size}_candidate_entity_map.json')
+                candidate_entity_map = load_json(os.path.join(dirname, f'CWQ_{split}_{test_batch_size}_candidate_entity_map.json'))
             else:
                 candidate_entity_map = load_json(f'data/CWQ/entity_retrieval/merged_linking_results/merged_CWQ_{split}_linking_results.json')
-                # candidate_entity_map = load_json(f'data/CWQ/entity_retrieval/disamb_entities_xwu/merged_CWQ_{split}_linking_results.json')
-                print(f'data/CWQ/entity_retrieval/merged_linking_results/merged_CWQ_{split}_linking_results.json')
-                # candidate_entity_map = load_json(f'../data/CWQ/entity_retrieval/disamb_entities/CWQ_merged_{split}_disamb_entities.json')
-                # print(f'loading: ../data/CWQ/entity_retrieval/disamb_entities/CWQ_merged_{split}_disamb_entities.json')
-                # TODO: revert!!
-                # candidate_entity_map = load_json(f'../data/CWQ/entity_retrieval/xwu_test/CWQ_merged_test_disamb_entities.json')
-                # print(f'loading: ../data/CWQ/entity_retrieval/xwu_test/CWQ_merged_test_disamb_entities.json')
+                print(f'candidate_entity_map: data/CWQ/entity_retrieval/merged_linking_results/merged_CWQ_{split}_linking_results.json')
                 use_linking_results = True
             train_type_map = load_json(f"data/CWQ/generation/label_maps/CWQ_train_type_label_map.json")
             train_type_map = {l.lower():t for t,l in train_type_map.items()}
         elif dataset == "WebQSP":
             if os.path.exists(os.path.join(dirname, f"WebQSP_{split}_{test_batch_size}_candidate_entity_map.json")):
+                print(f'candidate_entity_map: WebQSP_{split}_{test_batch_size}_candidate_entity_map.json')
                 candidate_entity_map = load_json(os.path.join(dirname, f"WebQSP_{split}_{test_batch_size}_candidate_entity_map.json"))
             else:
                 # candidate_entity_map = load_json(f'data/WebQSP/entity_retrieval/disamb_entities/WebQSP_merged_{split}_disamb_entities.json')
                 # print(f'loading data/WebQSP/entity_retrieval/disamb_entities/WebQSP_merged_{split}_disamb_entities.json')
                 if split == 'train' or split == 'dev':
                     candidate_entity_map = load_json(f'data/WebQSP/entity_retrieval/linking_results/merged_WebQSP_train_linking_results.json')
-                    print(f'loading data/WebQSP/entity_retrieval/linking_results/merged_WebQSP_train_linking_results.json')
+                    print(f'candidate_entity_map: data/WebQSP/entity_retrieval/linking_results/merged_WebQSP_train_linking_results.json')
                 else:
                     candidate_entity_map = load_json(f'data/WebQSP/entity_retrieval/linking_results/merged_WebQSP_test_linking_results.json')
-                    print(f'loading data/WebQSP/entity_retrieval/linking_results/merged_WebQSP_test_linking_results.json')
+                    print(f'candidate_entity_map: data/WebQSP/entity_retrieval/linking_results/merged_WebQSP_test_linking_results.json')
                 use_linking_results = True
             train_type_map = load_json(f"data/WebQSP/generation/label_maps_all_parses/WebQSP_train_type_label_map.json")
             train_type_map = {l.lower():t for t,l in train_type_map.items()}

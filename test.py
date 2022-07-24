@@ -702,13 +702,21 @@ def calculate_disambiguated_el_res_rng(src_path, golden_path):
 
 def validate_answer(prev_path, new_path):
     prev_data = load_json(prev_path)
+    prev_data = {example["ID"]: example for example in prev_data}
     new_data = load_json(new_path)
+    new_data = {example["ID"]: example for example in new_data}
     diff = set()
-    assert len(prev_data) == len(new_data)
-    for (prev, new) in zip(prev_data, new_data):
-        assert prev["ID"] == new["ID"]
-        if set(prev["answer"]) != set(new["answer"]):
-            diff.add(prev["ID"])
+    print(len(prev_data), len(new_data))
+    # for (prev, new) in zip(prev_data, new_data):
+    #     assert prev["ID"] == new["ID"]
+    #     if set(prev["answer"]) != set(new["answer"]):
+    #         diff.add(prev["ID"])
+    for qid in new_data:
+        assert qid in prev_data, print(qid)
+        if 'answer' not in prev_data[qid]:
+            print(qid)
+        if set(prev_data[qid]["answer"]) != set(new_data[qid]["answer"]):
+            diff.add(qid)
     print(len(diff), list(diff))
 
 def error_analysis_new(
@@ -931,7 +939,7 @@ def compare_generation_results(
         if qid in generation_succeed_a:
             if generation_succeed_a[qid]["f1"] < generation_succeed_b[qid]["f1"]:
                 diff2.add(qid)
-    print('A has less f1: {}'.format(list(diff2)))
+    print('A has less f1: {}'.format(len(diff2)))
 
 
 def calc_relation_num_influence(
@@ -1028,7 +1036,7 @@ if __name__=='__main__':
     #     '/home3/xwu/new_workspace/GMT-KBQA/data/CWQ/generation/merged_old/CWQ_test.json'
     # )
     # CWQ 
-    # for split in ['test', 'dev', 'train']:
+    for split in ['test']:
     #     # substitude_relations_in_merged_file(
     #     #     f'data/CWQ/generation/merged/CWQ_{split}.json',
     #     #     f'data/CWQ/generation/merged_0715_retrain_new_data/CWQ_{split}.json',
@@ -1039,17 +1047,17 @@ if __name__=='__main__':
         #     f'data/CWQ/generation/merged_old/CWQ_{split}.json',
         # )
         # validation_merged_file(
-        #     f'data/CWQ/generation/merged/CWQ_{split}.json',
-        #     f'data/CWQ/generation/merged_0715_retrain_new_data/CWQ_{split}.json',
-        # )
-        # validate_answer(
-        #     f'data/CWQ/origin/ComplexWebQuestions_{split}.json',
+        #     f'data/CWQ/generation/merged_0724_ep1/CWQ_{split}.json',
         #     f'data/CWQ/generation/merged_old/CWQ_{split}.json',
         # )
+        validate_answer(
+            f'data/CWQ/origin/ComplexWebQuestions_{split}.json',
+            f'data/CWQ/generation/merged_0724_ep1/CWQ_{split}.json',
+        )
     
     # WebQSP
     # for split in ['train', 'ptrain', 'pdev', 'test']:
-    for split in ['train', 'test']:
+    # for split in ['train', 'test']:
         # substitude_relations_in_merged_file_with_addition(
         #     f'data/WebQSP/generation/merged_old/WebQSP_{split}.json',
         #     f'data/WebQSP/generation/merged_question_relation_ep3_2hop/WebQSP_{split}.json',
@@ -1063,14 +1071,14 @@ if __name__=='__main__':
         #     f'data/WebQSP/relation_retrieval_0717/candidate_relations/rich_relation_3epochs_question_relation_maxlen_34_ep3_2hop/WebQSP_{split}_cand_rel_logits.json',
         #     topk=10,
         # )
-        calculate_topk_relation_recall(
-            # f'data/WebQSP/relation_retrieval/candidate_relations_yhshu/WebQSP_{split}_cand_rels_sorted.json',
-            # f'data/WebQSP/relation_retrieval_0717/candidate_relations/rich_relation_3epochs_question_relation_maxlen_34_ep3_2hop/WebQSP_{split}_cand_rels_sorted.json',
-            f'data/WebQSP/generation/merged_corrected_relation_final/WebQSP_{split}.json',
-            # f'data/WebQSP/generation/merged_old/WebQSP_{split}.json',
-            f'data/WebQSP/relation_retrieval_0717/bi-encoder/WebQSP.{split}.goldenRelation.json',
-            topk=10
-        )
+        # calculate_topk_relation_recall(
+        #     # f'data/WebQSP/relation_retrieval/candidate_relations_yhshu/WebQSP_{split}_cand_rels_sorted.json',
+        #     # f'data/WebQSP/relation_retrieval_0717/candidate_relations/rich_relation_3epochs_question_relation_maxlen_34_ep3_2hop/WebQSP_{split}_cand_rels_sorted.json',
+        #     f'data/WebQSP/generation/merged_corrected_relation_final/WebQSP_{split}.json',
+        #     # f'data/WebQSP/generation/merged_old/WebQSP_{split}.json',
+        #     f'data/WebQSP/relation_retrieval_0717/bi-encoder/WebQSP.{split}.goldenRelation.json',
+        #     topk=10
+        # )
         # validation_merged_file(
         #     f'data/WebQSP/generation/merged_old/WebQSP_{split}.json',
         #     f'data/WebQSP/generation/merged_question_relation_ep3_2hop/WebQSP_{split}.json',
@@ -1124,10 +1132,10 @@ if __name__=='__main__':
     # )
 
     # compare_generation_results(
-    #     'exps/WebQSP_0715_retrain/beam_50_top_k_predictions.json_gen_failed_results.json',
-    #     'exps/WebQSP_0715_retrain/beam_50_top_k_predictions.json_gen_sexpr_results_official_format.json_new.json',
-    #     'exps/WebQSP_relation_entity_concat_add_prefix_warmup_epochs_5_20epochs_bs2/beam_50_top_k_predictions.json_gen_failed_results.json',
-    #     'exps/WebQSP_relation_entity_concat_add_prefix_warmup_epochs_5_20epochs_bs2/beam_50_top_k_predictions.json_gen_sexpr_results.json_new.json',
+    #     'exps/CWQ_0724_ep1/beam_50_test_4_top_k_predictions.json_gen_failed_results.json',
+    #     'exps/CWQ_0724_ep1/beam_50_test_4_top_k_predictions.json_gen_sexpr_results.json_new.json',
+    #     'exps/CWQ_0715_retrain/beam_50_top_k_predictions.json_gen_failed_results.json',
+    #     'exps/CWQ_0715_retrain/beam_50_top_k_predictions.json_gen_sexpr_results.json_new.json',
     # )
 
     # calc_relation_num_influence(

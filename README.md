@@ -131,18 +131,17 @@ If you want to retrive the candidate relations from scratch, follow the steps be
     - WebQSP: To encode Freebase relations using trained bi-encoder, run `python relation_retrieval/bi-encoder/build_and_search_index.py encode_relation --dataset WebQSP`. Then run `python relation_retrieval/bi-encoder/build_and_search_index.py build_index --dataset WebQSP` to build the index of encoded relations. Index file will be saved as `data/WebQSP/relation_retrieval/bi-encoder/index/ep_{EPOCH}_flat.index`.
 
 3. Retrieve candidate relations using index.
-    - CWQ: First encode questions into vector by running `python relation_retrieval/bi-encoder/build_and_search_index.py encode_question --dataset CWQ --split test[train, dev]`. Then candidate relations can be retrieved using index by running `python relation_retrieval/bi-encoder/build_and_search_index.py retrieve_relations --dataset CWQ --split test[train, dev]`. The retrieved relations will be saved as the training data of cross-encoder in `data/CWQ/relation_retrieval/cross-encoder/mask_mention_1epoch/CWQ_test[train,dev].tsv`.
+    - CWQ: First encode questions into vector by running `python relation_retrieval/bi-encoder/build_and_search_index.py encode_question --dataset CWQ --split test[train, dev]`. Then candidate relations can be retrieved using index by running `python relation_retrieval/bi-encoder/build_and_search_index.py retrieve_relations --dataset CWQ --split test[train, dev]`. The retrieved relations will be saved as the training data of cross-encoder in `data/CWQ/relation_retrieval/cross-encoder/mask_mention_1epoch_question_relation/CWQ_test[train,dev].tsv`.
     - WebQSP: First encode questions into vector by running `python relation_retrieval/bi-encoder/build_and_search_index.py encode_question --dataset WebQSP --split train[ptrain, pdev, test]`. Then candidate relations can be retrieved using index by running `python relation_retrieval/bi-encoder/build_and_search_index.py retrieve_relations --dataset WebQSP --split test_2hop[train_2hop, train, test]`. The retrieved relations will be saved as the training data of cross-encoder in `data/WebQSP/relation_retrieval/cross-encoder/WebQSP_test[train,dev].tsv`.
     - TODO: `CWQ.2hopRelations.candEntities.json` 这个文件是如何获得的
 
 4. Train the cross-encoder to rank retrieved relations.
-    - CWQ: To train, run `sh scripts/run_cross_encoder_CWQ.sh train {FOLDER_NAME}`. Trained models will be saved as `data/CWQ/relation_retrieval/cross-encoder/saved_models/{FOLDER_NAME}/{MODEL_NAME}`. To get inference results, run `sh scripts/run_cross_encoder_CWQ.sh predict {FOLDER_NAME} test[train/dev] {MODEL_NAME}`.  Inference result(logits) will be stored in `data/CWQ/relation_retrieval/cross-encoder/saved_models/{FOLDER_NAME}/{MODEL_NAME}_test[train/dev]]`.
-    - (TODO: 还需要确认在原模型上进行推理得到的结果是完全一致的)WebQSP: To train, run `sh scripts/run_cross_encoder_WebQSP.sh train {FOLDER_NAME}`. Trained models will be saved as `data /WebQSP/relation_retrieval/cross-encoder/saved_models/{FOLDER_NAME}/{MODEL_NAME}`. To get inference results, run `sh scripts/run_cross_encoder_WebQSP.sh predict {FOLDER_NAME} test/[train, train_2hop, test_2hop] {MODEL_NAME}`.Inference result(logits) will be stored in `data/WebQSP/relation_retrieval/cross-encoder/saved_models/{FOLDER_NAME}/{MODEL_NAME}_test/[train, train_2hop, test_2hop]`.
-    - 补充，WebQSP 使用的是`run_cross_encoder_WebQSP_question_relation.sh` 脚本
+    - CWQ: To train, run `sh scripts/run_cross_encoder_CWQ_question_relation.sh train {FOLDER_NAME}`. Trained models will be saved as `data/CWQ/relation_retrieval/cross-encoder/saved_models/{FOLDER_NAME}/{MODEL_NAME}`. To get inference results, run `sh scripts/run_cross_encoder_CWQ_question_relation.sh predict {FOLDER_NAME} test[train/dev] {MODEL_NAME}`.  Inference result(logits) will be stored in `data/CWQ/relation_retrieval/cross-encoder/saved_models/{FOLDER_NAME}/{MODEL_NAME}_test[train/dev]]`.
+    - WebQSP: To train, run `sh scripts/run_cross_encoder_WebQSP_question_relation.sh train {FOLDER_NAME}`. Trained models will be saved as `data/WebQSP/relation_retrieval/cross-encoder/saved_models/{FOLDER_NAME}/{MODEL_NAME}`. To get inference results, run `sh scripts/run_cross_encoder_WebQSP_question_relation.sh predict {FOLDER_NAME} test/[train, train_2hop, test_2hop] {MODEL_NAME}`.Inference result(logits) will be stored in `data/WebQSP/relation_retrieval/cross-encoder/saved_models/{FOLDER_NAME}/{MODEL_NAME}_test/[train, train_2hop, test_2hop]`.
 
 
 5. Merge the logits with relations to get sorted relations for each question.
-    - CWQ: run `python data_process.py merge_relation --dataset CWQ --split test[train,dev]`. The sorted relations will be saved as `data/CWQ/relation_retrieval/candidate_relations/CWQ_test[train,dev]_cand_rels_sorted.json`
+    - CWQ: run `python data_process.py merge_relation --dataset CWQ --split test[train,dev]`. The sorted relations will be saved as `data/CWQ/relation_retrieval/candidate_relations/mask_mention_1epoch_question_relation_ep1/CWQ_test[train,dev]_cand_rels_sorted.json`
     - WebQSP: run `python data_process.py merge_relation --dataset WebQSP --split test[train, train_2hop, test_2hop]`. The sorted relations will be saved as `data/WebQSP/relation_retrieval/candidate_relations/WebQSP_test[train]_cand_rels_sorted.json`
 
 6. (optional) To only substitude candidate relations in previous merged file, please refer to `substitude_relations_in_merged_file()` in `data_process.py`.
@@ -227,3 +226,44 @@ ablation_exps.py includes code for following ablation experiments:
 ## Contact
 
 For any question, please contact [TODO:](TODO)
+
+
+## 测试进度说明
+- 以本说明为准，不要重复测试了
+### Parse SPARQL queries to S-expressions
+- 测试过了
+### Retrieve Candidate Entities
+#### WebQSP
+- 最后的结果在 `data/WebQSP/entity_retrieval`目录下; 这里头的结果和论文所使用的的结果基本上完全一致
+- **tldr: 只有 disamb_entities，用代码生成的结果和论文中使用的结果差距比较大；其他文件的差距都很小，可忽略**
+    - 需要做的: 可能要分别用 linking_results/目录下的消岐结果和 disamb_entities/下的消岐结果跑一下没有实体链接的模型；或者在 github 中说明这部分使用的文件与代码不同
+- 其他:
+    - _elq 文件和之前的完全一致
+    - _facc1_unranked 之前没有生成，无法比较
+    - _facc1 文件 train 和 test 各有10来处不同，但经过检查，主要都是 logit 的细微变化，导致实体排序的细微变化，没什么影响，不考虑了
+    - _merged_eql_facc1.json: train 10 处, test 5处，同样基本上就是一些实体的顺序问题，无影响
+    - disamb_entities: 对比 data/WebQSP/entity_retrieval_0724/disamb_entities 和 /home3/xwu/workspace/QDT2SExpr/CWQ/all_data_bk/WebQSP/final/entity_linking_results/
+        - 这一项的差距很大，train 有 2380 个不同，test 有 462 个不同（其实我们只会用到 test）-- 只考虑 id 和 label 的情况下
+
+#### CWQ
+- 最后的结果在 `data/CWQ/entity_retrieval`目录下; 这里头的结果和论文所使用的的结果基本上完全一致
+- **tldr: 只有 disamb_entities，用代码生成的结果和论文中使用的结果差距比较大；其他文件的差距都很小，可忽略**
+    - 需要做的: 可能要分别用 merged_linking_results/目录下的消岐结果和 disamb_entities/下的消岐结果跑一下没有实体链接的模型；或者在 github 中说明这部分使用的文件与代码不同
+- 其他
+    - _elq 文件是直接从论文对应的数据那边复制过来的
+    - _facc1_unranked 也直接从 candidate_entities 那边 复制过来
+    - _facc1 文件的格式不一样，不直接比较
+    - 直接比较 merged_ 文件: （考虑 id 和 label）
+        - train: 78 处不同
+        - dev： 15 处不同
+        - test: 13 处不同
+        - 这基本上就没关系了
+    - disamb_entities
+        - train 有 22135 处不同
+        - dev 2837 处不同
+        - test 2837 处不同
+### Retrieve Candidate Relations
+#### WebQSP
+- 已全部测试过了，bug 也修复了，最后的结果都在`data/WebQSP/relation_retrieval_final`目录下，使用的 merged 文件在`data/WebQSP/generation/merged_relation_final`下
+#### CWQ
+- 已经全部测试过了（新跑了一遍生成），最后的结果在`data/CWQ/relation_retrieval_0723` 目录下，使用的 merged 文件在 `data/CWQ/generation/merged_0724_ep1`

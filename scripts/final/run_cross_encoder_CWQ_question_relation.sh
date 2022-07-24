@@ -20,12 +20,11 @@ if [ "$ACTION" = "train" ]; then
     fi
     python relation_retrieval/cross-encoder/cross_encoder_main.py \
                             --do_train \
-                            --max_len 70 \
+                            --max_len 50 \
                             --batch_size 128 \
-                            --epochs 3 \
+                            --epochs 6 \
                             --log_dir ${log_dir} \
                             --dataset_type CWQ \
-                            --mask_entity_mention \
                             --model_save_path ${exp_prefix} \
                             --output_dir ${exp_prefix} \
                             --cache_dir hfcache/bert-base-uncased \
@@ -37,12 +36,11 @@ elif [ "$ACTION" = "eval" ]; then
     python relation_retrieval/cross-encoder/cross_encoder_main.py \
                             --do_eval \
                             --predict_split ${split} \
-                            --max_len 70 \
+                            --max_len 50 \
                             --batch_size 128 \
-                            --epochs 3 \
+                            --epochs 6 \
                             --log_dir ${log_dir} \
                             --dataset_type CWQ \
-                            --mask_entity_mention \
                             --model_save_path "${exp_prefix}${model_name}" \
                             --output_dir "${exp_prefix}${model_name}_${split}/" \
                             --cache_dir hfcache/bert-base-uncased \
@@ -59,12 +57,11 @@ elif [ "$ACTION" = "predict" ]; then
     python relation_retrieval/cross-encoder/cross_encoder_main.py \
                             --do_predict \
                             --predict_split ${split} \
-                            --max_len 70 \
+                            --max_len 50 \
                             --batch_size 128 \
-                            --epochs 3 \
+                            --epochs 6 \
                             --log_dir ${log_dir} \
                             --dataset_type CWQ \
-                            --mask_entity_mention \
                             --model_save_path "${exp_prefix}${model_name}" \
                             --output_dir "${exp_prefix}${model_name}_${split}/" \
                             --cache_dir hfcache/bert-base-uncased \

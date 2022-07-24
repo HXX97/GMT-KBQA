@@ -16,6 +16,50 @@ def compare_json_file_set(file_1_path, file_2_path):
     print(file_1 == file_2)
     assert file_1 == file_2
 
+def compare_json_disamb_entities(file_1_path, file_2_path):
+    print(file_1_path)
+    file_1 = load_json(file_1_path)
+    file_2 = load_json(file_2_path)
+    assert len(file_1) == len(file_2), print(len(file_1), len(file_2))
+    not_equal_num = 0
+    for qid in file_1:
+        assert qid in file_2, print(qid)
+        if len(file_1[qid]) == 0:
+            file_1_items = []
+        else:
+            file_1_items = [{
+                'id': key,
+                'label': value['label']
+            } for (key, value) in file_1[qid].items()]
+
+        file_2_items = [{
+            'id': item["id"],
+            'label': item["label"]
+        } for item in file_2[qid]]
+        if file_1_items != file_2_items:
+           not_equal_num += 1
+    print('not_equal_num: {}'.format(not_equal_num))
+
+
+def compare_merged_entities(file_1_path, file_2_path):
+    """
+    1. 随机采样的实体不进行对比（特点，没有 label）
+    2. 只考虑实体的 id
+    """
+    print(file_1_path)
+    print(file_2_path)
+    file_1 = load_json(file_1_path)
+    file_2 = load_json(file_2_path)
+    assert len(file_1) == len(file_2), print(len(file_1), len(file_2))
+    not_equal_num = 0
+    for qid in file_1:
+        assert qid in file_2, print('qid not found: {}'.format(qid))
+        file_1_entities = [(ent['id'], ent['label']) for ent in file_1[qid] if 'mention' in ent]
+        file_2_entities = [(ent['id'], ent['label']) for ent in file_2[qid] if 'mention' in ent]
+        if file_1_entities != file_2_entities:
+            not_equal_num += 1
+    print('not_equal: {}'.format(not_equal_num))
+
 def compare_json_file_diy(file_1_path, file_2_path):
     print(file_1_path)
     file_1 = load_json(file_1_path)
@@ -124,6 +168,26 @@ def compare_sorted_relations(sorted_relations_1_path, sorted_relations_2_path):
             if set(relations_1_top10) != set(relations_2_top10):
                 # 会出现一些不同，应该是 logits 过于接近的情况
                 print(qid)
+
+def compare_json_label_mention_id(json_path_1, json_path_2):
+    print(json_path_1)
+    file_1 = load_json(json_path_1)
+    file_2 = load_json(json_path_2)
+    for qid in file_1:
+        if qid not in file_2:
+            print('qid not found: {}'.format(qid))
+        file_1_item = [{
+            'id': item["id"],
+            'label': item["label"],
+            'mention': item["mention"]
+        } for item in file_1[qid]]
+        file_2_item = [{
+            'id': item["id"],
+            'label': item["label"],
+            'mention': item["mention"]
+        } for item in file_2[qid]]
+        if file_1_item != file_2_item:
+            print('not equal: {}'.format(qid))
 
 def relation_data_process_unit_test():
     """
@@ -259,9 +323,76 @@ def compare_2hop_relations():
         'data/WebQSP/relation_retrieval_final/cross-encoder/rng_kbqa_linking_results/entities_2hop_relations.json'
     )
 
+def compare_elq_cand_entities(dataset):
+    if dataset.lower() == 'webqsp':
+        for split in ['train', 'test']:
+            compare_json_file(
+                f'data/WebQSP/entity_retrieval/candidate_entities/WebQSP_{split}_cand_entities_elq.json',
+                f'/home3/xwu/workspace/QDT2SExpr/CWQ/all_data_bk/WebQSP/entity_linking_0423/WEBQSP_{split}_cand_entities_elq.json'
+            )
+    else:
+        for split in ['train', 'dev', 'test']:
+            compare_json_file(
+                f'data/CWQ/entity_retrieval_0724/candidate_entities/CWQ_{split}_cand_entities_elq.json',
+                f'/home3/xwu/workspace/QDT2SExpr/CWQ/all_data_bk/CWQ/entity_linking_0414/CWQ_{split}_cand_entities_elq.json'
+            )
+
+def compare_facc1_ranked_entities(dataset):
+    if dataset.lower() == 'webqsp':
+        for split in ['train', 'test']:
+            compare_json_label_mention_id(
+                f'data/WebQSP/entity_retrieval/candidate_entities/WebQSP_{split}_cand_entities_facc1.json',
+                f'/home3/xwu/workspace/QDT2SExpr/CWQ/all_data_bk/WebQSP/entity_linking_0423/WEBQSP_{split}_cand_entities_facc1.json'
+            )
+    else:
+        for split in ['train', 'dev', 'test']:
+            compare_json_label_mention_id(
+                f'data/CWQ/entity_retrieval_0724/candidate_entities/CWQ_{split}_cand_entities_facc1.json',
+                f'/home3/xwu/workspace/QDT2SExpr/CWQ/all_data_bk/CWQ/entity_linking_0414/CWQ_{split}_entities_FACC1_disamb.json'
+            )
+    
+
+def compare_combined_entities(dataset):
+    if dataset.lower() == 'webqsp':
+        for split in ['train', 'test']:
+            compare_merged_entities(
+                f'data/WebQSP/entity_retrieval/candidate_entities/WebQSP_{split}_merged_cand_entities_elq_facc1.json',
+                f'/home3/xwu/workspace/QDT2SExpr/CWQ/all_data_bk/WebQSP/entity_linking_0423/WEBQSP_{split}_cand_entities_merged_elq_FACC1.json'
+            )
+    else:
+        for split in ['train', 'dev', 'test']:
+            compare_merged_entities(
+                f'data/CWQ/entity_retrieval/candidate_entities/CWQ_{split}_merged_cand_entities_elq_facc1.json',
+                f'/home3/xwu/workspace/QDT2SExpr/CWQ/all_data_bk/CWQ/entity_linking_0414/CWQ_{split}_merged_elq_FACC1.json'
+            )
+
+def compare_disamb_entities(dataset):
+    if dataset.lower() == 'webqsp':
+        for split in ['train', 'test']:
+            compare_json_disamb_entities(
+                f'/home3/xwu/workspace/QDT2SExpr/CWQ/all_data_bk/WebQSP/final/entity_linking_results/merged_WebQSP_{split}_linking_results.json',
+                f'data/WebQSP/entity_retrieval/disamb_entities/WebQSP_merged_{split}_disamb_entities.json'
+            )
+    else:
+        for split in ['train', 'dev', 'test']:
+            compare_json_disamb_entities(
+                f'data/CWQ/entity_retrieval/merged_linking_results/merged_CWQ_{split}_linking_results.json',
+                f'data/CWQ/entity_retrieval/disamb_entities/CWQ_merged_{split}_disamb_entities.json'
+            )
+
+def entity_retrieval_unit_test(dataset='WebQSP'):
+    # compare_elq_cand_entities(dataset)
+    # compare_facc1_ranked_entities(dataset)
+    # compare_combined_entities(dataset)
+    compare_disamb_entities(dataset)
+
+
         
 
 def main():
+    # 实体检索相关单元测试
+    # entity_retrieval_unit_test('CWQ')
+
     # 关系检索相关的单元测试
     # relation_data_process_unit_test()
     # relation_retrieval_unit_test()
@@ -269,8 +400,8 @@ def main():
     # compare_2hop_relations()
     for split in ['train', 'test']:
         compare_json_file(
-            f'data/WebQSP/generation/merged_question_relation_ep3_2hop/WebQSP_{split}.json',
-            f'data/WebQSP/generation/merged_relation_final/WebQSP_{split}.json'
+            f'data/CWQ/generation/merged_0724_ep1/CWQ_{split}.json',
+            f'data/CWQ/generation/merged_old/CWQ_{split}.json'
         )
 
 if __name__=='__main__':
