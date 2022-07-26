@@ -89,6 +89,41 @@ def type_checker(token:str):
 
     return token
 
+def test_date_post_process():
+    test_cases = [
+        'm.07tnkvw', 
+        '1906-04-18 05:12:00',
+        '1996-01-01',
+        '1883-01-01',
+        '1775-05-10',
+        '1906-04-18 05:12:00',
+        '1786-01-01',
+        '1921-09-01',
+    ]
+    for case in test_cases:
+        print('{}: {}'.format(case, date_post_process(case)))
+
+
+def date_post_process(date_string):
+    """
+    我们的知识库查询结果，会自动补全一个日期
+    例如:
+        - 1996 --> 1996-01-01
+        - 1906-04-18 --> 1906-04-18 05:12:00
+    """
+    pattern_year_month_date = r"^\d{4}-\d{2}-\d{2}$"
+    pattern_year_month_date_moment = r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$"
+
+    if re.match(pattern_year_month_date_moment, date_string):
+        if date_string.endswith('05:12:00'):
+            date_string = date_string.replace('05:12:00', '').strip()
+    elif re.match(pattern_year_month_date, date_string):
+        if date_string.endswith('-01-01'):
+            date_string = date_string.replace('-01-01', '').strip()
+    return date_string
+        
+
+
 def denormalize_s_expr_new(normed_expr, 
                             entity_label_map,
                             entity_mention_map,
@@ -146,26 +181,43 @@ def denormalize_s_expr_new(normed_expr,
                     processed = True
                 else: # relation or unlinked entity
                     if ' , ' in cur_seg: 
+                        # view it as entity. Entity like `Martin Luther King, Jr.` will be normalized to `Martin Luther King , Jr.`, denorm it
+                        cur_seg_entity = cur_seg.lower().replace(' , ', ', ')
                         if cur_seg.lower() in rel_label_map: # relation
                             cur_seg = rel_label_map[cur_seg.lower()]
-                        elif cur_seg.lower() in train_entity_map: # entity in trainset
-                            cur_seg = train_entity_map[cur_seg.lower()]
+                        elif cur_seg_entity in entity_label_map: # entity
+                            print(cur_seg_entity, "L154")
+                            cur_seg = entity_label_map[cur_seg_entity]
+                        elif cur_seg_entity in train_entity_map: # entity in trainset
+                            print(cur_seg_entity, "L157")
+                            cur_seg = train_entity_map[cur_seg_entity]
                         else: 
-                            # try to link entity by FACC1
-                            facc1_cand_entities = surface_index.get_indexrange_entity_el_pro_one_mention(cur_seg,top_k=1)
-                            if facc1_cand_entities:
-                                cur_seg = list(facc1_cand_entities.keys())[0] # take the first entity
-                            else: 
-                                if is_number(cur_seg):
-                                    # check if it is a number
-                                    cur_seg = cur_seg.replace(" , ",".")
-                                    cur_seg = cur_seg.replace(" ,",".")
-                                    cur_seg = cur_seg.replace(", ",".")
+                            find_sim_entity = False
+                            for ent_label in entity_label_map:
+                                string_sim = difflib.SequenceMatcher(None, cur_seg_entity, ent_label).quick_ratio()
+                                if string_sim >= 0.6: # highly similar
+                                    # 举个例子，生成的是Victoria, 链接到的label 是 victoria, british columbia； 所以这个阈值设的小一些还是有一定道理的
+                                    # 用规则处理这种？其实确实是生成的问题，最好不要手动去改
+                                    cur_seg = entity_label_map[ent_label]
+                                    find_sim_entity = True
+                                    print('L203: {}'.format(cur_seg))
+                                    break
+                            if not find_sim_entity:
+                                # try to link entity by FACC1
+                                facc1_cand_entities = surface_index.get_indexrange_entity_el_pro_one_mention(cur_seg_entity,top_k=1)
+                                if facc1_cand_entities:
+                                    cur_seg = list(facc1_cand_entities.keys())[0] # take the first entity
                                 else:
-                                    # view as relation
-                                    cur_seg = cur_seg.replace(' , ',',')
-                                    cur_seg = cur_seg.replace(',','.')
-                                    cur_seg = cur_seg.replace(' ', '_')
+                                    if is_number(cur_seg):
+                                        # check if it is a number
+                                        cur_seg = cur_seg.replace(" , ",".")
+                                        cur_seg = cur_seg.replace(" ,",".")
+                                        cur_seg = cur_seg.replace(", ",".")
+                                    else:
+                                        # view as relation
+                                        cur_seg = cur_seg.replace(' , ',',')
+                                        cur_seg = cur_seg.replace(',','.')
+                                        cur_seg = cur_seg.replace(' ', '_')
                         processed = True
                     else:
                         # unlinked entity    
@@ -178,13 +230,14 @@ def denormalize_s_expr_new(normed_expr,
                                 cur_seg = cur_seg.replace(" ,",".")
                                 cur_seg = cur_seg.replace(", ",".")
                                 cur_seg = cur_seg.replace(",","")
-                                
                             else:
                                 # find most similar entity label from candidate entity label map
                                 find_sim_entity = False
                                 for ent_label in entity_label_map:
                                     string_sim = difflib.SequenceMatcher(None, cur_seg.lower(), ent_label).quick_ratio()
-                                    if string_sim >= 0.7: # highly similar
+                                    if string_sim >= 0.6: # highly similar
+                                        # 举个例子，生成的是Victoria, 链接到的label 是 victoria, british columbia； 所以这个阈值设的小一些还是有一定道理的
+                                        # 用规则处理这种？其实确实是生成的问题，最好不要手动去改
                                         cur_seg = entity_label_map[ent_label]
                                         find_sim_entity = True
                                         break
@@ -230,7 +283,7 @@ def denormalize_s_expr_new(normed_expr,
                         # TODO # can be a date string, e.g., 1997
                         if t != ')':
                             if t.lower() in entity_label_map:
-                                t = entity_label_map[t]
+                                t = entity_label_map[t.lower()]
                             else:
                                 t = type_checker(t) # number
                         segments.append(t)
@@ -446,7 +499,10 @@ def aggressive_top_k_eval_new(split, predict_file, dataset, test_batch_size):
                                                 rel_label_map, 
                                                 train_entity_map,
                                                 surface_index)
-            answers = list(answers)
+            # answers = list(answers)
+
+            # 加一个对日期的后处理
+            answers = [date_post_process(ans) for ans in list(answers)]
             
             denormed_pred.append(lf)
 
@@ -544,4 +600,6 @@ if __name__=='__main__':
         aggressive_top_k_eval_new(args.split, args.pred_file, args.dataset, args.test_batch_size)
 
     # test_type_checker()
+
+    # test_date_post_process()
         

@@ -8,7 +8,10 @@ from transformers import AutoTokenizer
 import torch
 import logging
 import faiss
+import difflib
 logger = logging.getLogger()
+from executor.logic_form_util import lisp_to_sparql
+from executor.sparql_executor import execute_query_with_odbc
 class DenseIndexer(object):
     def __init__(self, buffer_size: int = 50000):
         self.buffer_size = buffer_size
@@ -989,13 +992,71 @@ def calc_relation_num_influence(
 
 def compare_answers(json_path_1, json_path_2):
     json_1 = load_json(json_path_1)
-    json_1 = {example["ID"]: example["answer"] for example in json_1}
+    json_1 = {example["qid"]: example["answer"] for example in json_1}
     json_2 = load_json(json_path_2)
-    json_2 = {example["ID"]: example["answer"] for example in json_2}
+    json_2 = {example["qid"]: example["answer"] for example in json_2}
     for qid in json_1:
-        assert qid in json_2
-        assert set(json_1[qid]) == set(json_2[qid]), print(qid)
+        if qid not in json_2:
+            print(qid)
+            continue
+        if set(json_1[qid]) != set(json_2[qid]):
+            print(qid)
+            print(list(set(json_1[qid])))
+            print(list(set(json_2[qid])))
 
+
+def error_analysis_0726(
+    gen_failed_path,
+    gen_succeed_path,
+    gen_prf1_path
+):
+    gen_failed = load_json(gen_failed_path)
+    gen_succeed = load_json(gen_succeed_path)
+    gen_succeed = {example["qid"]: example for example in gen_succeed}
+    gen_prf1 = load_json(gen_prf1_path)
+    gen_prf1 = {example["qid"]: example for example in gen_prf1}
+    qids = set()
+
+    # 生成失败里头，normed contains exact_match 的
+    # for example in gen_failed:
+    #     pred_normed = example["pred"]["predictions"]
+    #     gt_normed = example["gt_normed_sexpr"]
+    #     if any([pred.lower() == gt_normed.lower() for pred in pred_normed]):
+    #         qids.add(example["qid"])
+    
+    # gen_sexor_results 里头，normed contains exact_match, "logical_form" 没有 exact_match
+    for qid in gen_succeed:
+        assert qid in gen_prf1, print(qid)
+        # 答对了那就无所谓
+        if gen_prf1[qid]["f1"] == 1.0:
+            continue
+        example = gen_succeed[qid]
+        execute_index = example["execute_index"]
+        pred_normed = example["pred"]["predictions"][execute_index]
+        gt_normed = example["gt_normed_sexpr"]
+        if pred_normed.lower() == gt_normed.lower():
+            if example["logical_form"].lower() != example["gt_sexpr"]:
+                if example["gt_sexpr"] != "null":
+                    qids.add(example["qid"])
+    # print(len(qids), list(qids))
+    for qid in qids:
+        print(qid)
+        print(gen_succeed[qid]["answer"])
+
+def string_sim(cur_seg, ent_label):
+    string_sim = difflib.SequenceMatcher(None, cur_seg.lower(), ent_label).quick_ratio()
+    return string_sim
+
+def check_execution_res(pred_sexpr, golden_sparql):
+    pred_sparql = lisp_to_sparql(pred_sexpr)
+    pred_denotation = execute_query_with_odbc(pred_sparql)
+    pred_denotation = [res.replace("http://rdf.freebase.com/ns/",'') for res in pred_denotation]
+
+    golden_denation = execute_query_with_odbc(golden_sparql)
+    golden_denation = [res.replace("http://rdf.freebase.com/ns/",'') for res in golden_denation]
+    print(f'pred_sparql: {pred_sparql}')
+    print(f'pred_answer: {len(pred_denotation)} {pred_denotation}')
+    print(f'golden_answer: {len(golden_denation)} {golden_denation}')
 
 if __name__=='__main__':
     # compare_answers(
@@ -1036,7 +1097,7 @@ if __name__=='__main__':
     #     '/home3/xwu/new_workspace/GMT-KBQA/data/CWQ/generation/merged_old/CWQ_test.json'
     # )
     # CWQ 
-    for split in ['test']:
+    # for split in ['test', 'dev', 'train']:
     #     # substitude_relations_in_merged_file(
     #     #     f'data/CWQ/generation/merged/CWQ_{split}.json',
     #     #     f'data/CWQ/generation/merged_0715_retrain_new_data/CWQ_{split}.json',
@@ -1050,10 +1111,10 @@ if __name__=='__main__':
         #     f'data/CWQ/generation/merged_0724_ep1/CWQ_{split}.json',
         #     f'data/CWQ/generation/merged_old/CWQ_{split}.json',
         # )
-        validate_answer(
-            f'data/CWQ/origin/ComplexWebQuestions_{split}.json',
-            f'data/CWQ/generation/merged_0724_ep1/CWQ_{split}.json',
-        )
+        # validate_answer(
+        #     f'data/CWQ/origin/ComplexWebQuestions_{split}.json',
+        #     f'data/CWQ/generation/merged_0724_ep1/CWQ_{split}.json',
+        # )
     
     # WebQSP
     # for split in ['train', 'ptrain', 'pdev', 'test']:
@@ -1143,4 +1204,22 @@ if __name__=='__main__':
     #     'exps/WebQSP_question_relation_maxlen34/beam_50_top_k_predictions.json_gen_failed_results.json',
     #     'exps/WebQSP_question_relation_maxlen34/beam_50_top_k_predictions.json_gen_sexpr_results.json'
     # )
+    # error_analysis_0726(
+    #     'exps/WebQSP_question_relation_maxlen34_2hop/beam_50_top_k_predictions.json_gen_failed_results.json',
+    #     'exps/WebQSP_question_relation_maxlen34_2hop/beam_50_top_k_predictions.json_gen_sexpr_results.json',
+    #     'exps/WebQSP_question_relation_maxlen34_2hop/beam_50_top_k_predictions.json_gen_sexpr_results_official_format.json_new.json'
+    #     # 'exps/CWQ_0724_ep1/beam_50_test_4_top_k_predictions.json_gen_failed_results.json',
+    #     # 'exps/CWQ_0724_ep1/beam_50_test_4_top_k_predictions.json_gen_sexpr_results.json',
+    #     # 'exps/CWQ_0724_ep1/beam_50_test_4_top_k_predictions.json_gen_sexpr_results.json_new.json'
+    # )
+    # print(string_sim('midland', "midland, texas"))
 
+    # check_execution_res(
+    #     "(JOIN (R time.event.start_date) m.01f6rm)",
+    #     "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.01f6rm)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.01f6rm ns:time.event.start_date ?x .\n}\n",
+    # )
+
+    compare_answers(
+        'exps/WebQSP_t5_generation_20epochs_bs2/beam_50_top_k_predictions.json_gen_sexpr_results.json',
+        'exps/WebQSP_t5_generation_20epochs_bs2/prev/beam_50_top_k_predictions.json_gen_sexpr_results.json'
+    )
