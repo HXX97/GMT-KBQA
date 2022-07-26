@@ -3,7 +3,6 @@ import os
 import copy
 import random
 import argparse
-from xmlrpc.client import boolean
 import numpy as np
 from transformers import AdamW, AutoTokenizer, get_linear_schedule_with_warmup
 from generation.models.T5_models_final import (
@@ -13,7 +12,7 @@ from generation.models.T5_models_final import (
     T5_MultiTask_Relation_Entity_Concat,
     T5_Multitask_Entity_Concat
 )
-from input_dataset.gen_mtl_dataset import MTLGenDataset, MTLGenerationExample
+from inputDataset.gen_mtl_dataset import MTLGenDataset, MTLGenerationExample
 from components.utils import dump_json, load_json
 from torch.utils.data import DataLoader
 from torch.cuda.amp import autocast, GradScaler
@@ -26,9 +25,25 @@ Important: Edit this when change source data
 """ 
 def load_data(split, args):
     if args.dataset_type == "CWQ":
-        data_file_name = 'data/CWQ/generation/merged/CWQ_{}.json'.format(split)
+        data_file_name = 'data/CWQ/generation/merged_0724_ep1/CWQ_{}.json'.format(split)
+        # data_file_name = 'data/CWQ/generation/merged_0715_retrain/CWQ_{}.json'.format(split)
+        # data_file_name = 'data/CWQ/generation/merged/CWQ_{}.json'.format(split)
+        # data_file_name = 'data/CWQ/generation/merged_0714/CWQ_{}.json'.format(split)
+        # data_file_name = 'data/CWQ/generation/merged_old/CWQ_{}.json'.format(split)
+        # data_file_name = 'data/CWQ/generation/xwu_merged_new/CWQ_{}.json'.format(split)
     elif args.dataset_type == "WebQSP":
-        data_file_name = 'data/WebQSP/generation/merged/WebQSP_{}.json'.format(split)
+        # data_file_name = 'data/WebQSP/generation/0722/merged_question_relation_ep3_2hop/WebQSP_{}.json'.format(split)
+        data_file_name = 'data/WebQSP/generation/merged_relation_final/WebQSP_{}.json'.format(split)
+        # data_file_name = 'data/WebQSP/generation/merged_yhshu/WebQSP_{}.json'.format(split)
+        # data_file_name = 'data/WebQSP/generation/merged_0715_retrain_biencoder_ep5_reserve_150/WebQSP_{}.json'.format(split)
+        # data_file_name = 'data/WebQSP/generation/merged_0715_retrain_biencoder_ep5/WebQSP_{}.json'.format(split)
+        # data_file_name = 'data/WebQSP/generation/merged_0715_retrain/WebQSP_{}.json'.format(split)
+        # if split == 'train':
+        #     data_file_name = 'data/WebQSP/generation/merged_old/WebQSP_{}.json'.format(split)
+        # elif split == 'test':
+        #     data_file_name = 'data/WebQSP/generation/merged_0714/WebQSP_test.json'
+        # data_file_name = 'data/WebQSP/generation/merged_old/WebQSP_{}.json'.format(split)
+        # data_file_name = 'data/WebQSP/generation/xwu_merged_new/WebQSP_{}.json'.format(split)
     print('Loading data from:',data_file_name)
     data_dict = load_json(data_file_name)
     return data_dict
@@ -53,7 +68,7 @@ def _parse_args():
     parser.add_argument('--epochs',default=15,type=int,help='epochs')
     parser.add_argument('--iters_to_accumulate',default=1,type=int,help='the gradient accumulation adds gradients over an effective batch of size : bs * iters_to_accumulate. If set to "1", you get the usual batch size')
     parser.add_argument('--print_every',default=100,type=int,help='every steps to print training information')
-    parser.add_argument('--save_every_epochs',default=5,type=int,help='save the model every n eopchs')
+    parser.add_argument('--save_every_epochs',default=10,type=int,help='save the model every n eopchs')
     parser.add_argument('--warmup_ratio',default=0.1,type=float,help='the ratio of warm up steps')
     parser.add_argument('--output_dir',default='exps/gen_multitask',help='where to save model')
     parser.add_argument('--overwrite_output_dir',default=False,action='store_true',help='whether to overwrite the output dir')
@@ -111,30 +126,9 @@ def generate_candidate_entity_map_classification_res(predictions, dirname, datas
                 }
     
     if args.dataset_type == "CWQ":
-        dump_json(predicted_entities, os.path.join(dirname, f'CWQ_{args.predict_split}_candidate_entity_map.json'))
+        dump_json(predicted_entities, os.path.join(dirname, f'CWQ_{args.predict_split}_{args.test_batch_size}_candidate_entity_map.json'))
     elif args.dataset_type == "WebQSP":
-        dump_json(predicted_entities, os.path.join(dirname, f'WebQSP_{args.predict_split}_candidate_entity_map.json'))
-
-
-def generate_candidate_entity_map_from_source_file(dirname, dataset, args):
-    """
-    generate candidate_entity_map from "cand_entity_list" in source data
-    """
-    all_entity_label_map = {}
-    for data in dataset:
-        qid = data["ID"]
-        entity_label_map = {}
-        for item in data["cand_entity_list"]:
-            if item['label'].lower() not in entity_label_map:
-                entity_label_map[item['label'].lower()] = {
-                    'id': item['id']
-                }
-        all_entity_label_map[qid] = entity_label_map
-    
-    if args.dataset_type == "CWQ":
-        dump_json(all_entity_label_map, os.path.join(dirname, 'CWQ_candidate_entity_map.json'))
-    elif args.dataset_type == "WebQSP":
-        dump_json(all_entity_label_map, os.path.join(dirname, 'WebQSP_candidate_entity_map.json'))
+        dump_json(predicted_entities, os.path.join(dirname, f'WebQSP_{args.predict_split}_{args.test_batch_size}_candidate_entity_map.json'))
 
 
 def _collate_fn(data,tokenizer):
@@ -443,6 +437,7 @@ def train_model(args,model,tokenizer,device,train_dataloader,dev_dataloader=None
     torch.cuda.empty_cache()
     # save final model
     save_model(model_save_dir,model_to_save,epochs,is_final_epoch=True)
+    print('Best epoch is: {}'.format(best_epoch))
     
     return model_to_save
     
@@ -740,9 +735,9 @@ def run_prediction(args,model,device,dataloader,tokenizer,output_dir,output_pred
 
         
     if output_predictions:
-        file_path = os.path.join(output_dir,f'beam_{args.eval_beams}_top_k_predictions.json')
+        file_path = os.path.join(output_dir,f'beam_{args.eval_beams}_{args.predict_split}_{args.test_batch_size}_top_k_predictions.json')
         
-        gen_statistics_file_path = os.path.join(output_dir,f'beam_{args.eval_beams}_gen_statistics.json')
+        gen_statistics_file_path = os.path.join(output_dir,f'beam_{args.eval_beams}_{args.predict_split}_{args.test_batch_size}_gen_statistics.json')
         gen_statistics = {
             'total':len(output_list),
             'exmatch_num': ex_cnt,
@@ -756,9 +751,25 @@ def run_prediction(args,model,device,dataloader,tokenizer,output_dir,output_pred
         dump_json(output_list, file_path, indent=4)
         dump_json(gen_statistics, gen_statistics_file_path,indent=4)
         if args.dataset_type == 'CWQ':
-            dataset = load_json(f'data/CWQ/generation/merged/CWQ_{args.predict_split}.json')
+            dataset = load_json(f'data/CWQ/generation/merged_0724_ep1/CWQ_{args.predict_split}.json')
+            # dataset = load_json(f'data/CWQ/generation/merged_0715_retrain/CWQ_{args.predict_split}.json')
+            # dataset = load_json(f'data/CWQ/generation/merged_0714/CWQ_{args.predict_split}.json')
+            # dataset = load_json(f'data/CWQ/generation/merged/CWQ_{args.predict_split}.json')
+            # dataset = load_json(f'data/CWQ/generation/merged_old/CWQ_{args.predict_split}.json')
+            # dataset = load_json(f'data/CWQ/generation/xwu_merged_new/CWQ_{args.predict_split}.json')
         elif args.dataset_type == 'WebQSP':
-            dataset = load_json(f'data/WebQSP/generation/merged/WebQSP_{args.predict_split}.json')
+            dataset = load_json(f'data/WebQSP/generation/merged_relation_final/WebQSP_{args.predict_split}.json')
+            # dataset = load_json(f'data/WebQSP/generation/0722/merged_question_relation_ep3_2hop/WebQSP_{args.predict_split}.json')
+            # dataset = load_json(f'data/WebQSP/generation/merged_yhshu/WebQSP_{args.predict_split}.json')
+            # dataset = load_json(f'data/WebQSP/generation/merged_0715_retrain_biencoder_ep5/WebQSP_{args.predict_split}.json')
+            # dataset = load_json(f'data/WebQSP/generation/merged_0715_retrain/WebQSP_{args.predict_split}.json')
+            # if args.predict_split == 'train':
+            #     dataset = load_json('data/WebQSP/generation/merged_old/WebQSP_{}.json'.format(args.predict_split))
+            # elif args.predict_split == 'test':
+            #     dataset = load_json('data/WebQSP/generation/merged_0714/WebQSP_test.json')
+            # dataset = load_json(f'data/WebQSP/generation/merged_corrected/WebQSP_{args.predict_split}.json')
+            # dataset = load_json(f'data/WebQSP/generation/merged_old/WebQSP_{args.predict_split}.json')
+            #  dataset = load_json(f'data/WebQSP/generation/xwu_merged_new/WebQSP_{args.predict_split}.json')
         if len(all_entity_clf_predictions) > 0:
             generate_candidate_entity_map_classification_res(output_list, output_dir, dataset, args)
 

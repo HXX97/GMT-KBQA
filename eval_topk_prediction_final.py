@@ -18,41 +18,6 @@ import os
 from entity_retrieval import surface_index_memory
 import difflib
 
-def is_value_tok(t):
-    if t[0].isalpha():
-        return False
-    return (process_literal(t) != 'null')
-
-# copied from grail value extractor
-def process_literal(value: str):  # process datetime mention; append data type
-    pattern_date = r"(?:(?:jan.|feb.|mar.|apr.|may|jun.|jul.|aug.|sep.|oct.|nov.|dec.) the \d+(?:st|nd|rd|th), \d{4}|\d{4}-\d{2}-\d{2}|\d{2}/\d{2}/\d{4})"
-    pattern_datetime = r"\d{4}-\d{2}-\d{2}t[\d:z-]+"
-    pattern_float = r"(?:[-]*\d+[.]*\d*e[+-]\d+|(?<= )[-]*\d+[.]\d*|^[-]*\d+[.]\d*)"
-    pattern_yearmonth = r"\d{4}-\d{2}"
-    pattern_year = r"(?:(?<= )\d{4}|^\d{4})"
-    pattern_int = r"(?:(?<= )[-]*\d+|^[-]*\d+)"
-    if len(re.findall(pattern_datetime, value)) == 1:
-        value = value.replace('t', "T").replace('z', 'Z')
-        return f'{value}^^http://www.w3.org/2001/XMLSchema#dateTime'
-    elif len(re.findall(pattern_date, value)) == 1:
-        if value.__contains__('-'):
-            return f'{value}^^http://www.w3.org/2001/XMLSchema#date'
-        elif value.__contains__('/'):
-            fields = value.split('/')
-            value = f"{fields[2]}-{fields[0]}-{fields[1]}"
-            return f'{value}^^http://www.w3.org/2001/XMLSchema#date'
-    elif len(re.findall(pattern_yearmonth, value)) == 1:
-        return f'{value}^^http://www.w3.org/2001/XMLSchema#gYearMonth'
-    elif len(re.findall(pattern_float, value)) == 1:
-        return f'{value}^^http://www.w3.org/2001/XMLSchema#float'
-    elif len(re.findall(pattern_year, value)) == 1 and int(value) <= 2015:
-        return f'{value}^^http://www.w3.org/2001/XMLSchema#gYear'
-    elif len(re.findall(pattern_int, value)) == 1:
-        return f'{value}^^http://www.w3.org/2001/XMLSchema#integer'
-    else:
-        return 'null'
-
-
 def is_number(t):
     t = t.replace(" , ",".")
     t = t.replace(", ",".")
@@ -91,6 +56,7 @@ def test_type_checker():
     test_cases = [
         '1875-07-26', 
         '2009',
+        '3001',
         '1933-03-04',
         '1775-05-10',
         '5732212',
@@ -112,7 +78,8 @@ def type_checker(token:str):
     pattern_year_month = r"^\d{4}-\d{2}$"
     pattern_year_month_date = r"^\d{4}-\d{2}-\d{2}$"
     if re.match(pattern_year, token):
-        token = token+"^^http://www.w3.org/2001/XMLSchema#dateTime"
+        if int(token) < 3000: # low possibility to meet 1000 years later
+            token = token+"^^http://www.w3.org/2001/XMLSchema#dateTime"
     elif re.match(pattern_year_month, token):
         token = token+"^^http://www.w3.org/2001/XMLSchema#dateTime"
     elif re.match(pattern_year_month_date, token):
@@ -132,7 +99,6 @@ def denormalize_s_expr_new(normed_expr,
     
     
     expr = normed_expr
-
 
     convert_map ={
         '( greater equal': '( ge',
@@ -366,10 +332,15 @@ def aggressive_top_k_eval_new(split, predict_file, dataset, test_batch_size):
         if split == 'train' or split == 'dev':
             gold_label_maps = load_json("data/WebQSP/generation/label_maps_all_parses/WebQSP_train_label_maps.json")
             print('data/WebQSP/generation/label_maps_all_parses/WebQSP_train_label_maps.json')
+            # gold_label_maps = load_json("data/WebQSP/generation/label_maps/WebQSP_train_label_maps.json")
+            # print('data/WebQSP/generation/label_maps/WebQSP_train_label_maps.json')
         else:
             gold_label_maps = load_json("data/WebQSP/generation/label_maps_all_parses/WebQSP_test_label_maps.json")
             print('data/WebQSP/generation/label_maps_all_parses/WebQSP_test_label_maps.json')
+            # gold_label_maps = load_json("data/WebQSP/generation/label_maps/WebQSP_test_label_maps.json")
+            # print('data/WebQSP/generation/label_maps/WebQSP_test_label_maps.json')
         train_entity_map = load_json(f"data/WebQSP/generation/label_maps_all_parses/WebQSP_train_entity_label_map.json")
+        # train_entity_map = load_json(f"data/WebQSP/generation/label_maps/WebQSP_train_entity_label_map.json")
         train_entity_map = {l.lower():e for e,l in train_entity_map.items()}
 
     if not use_goldEnt:
@@ -399,6 +370,7 @@ def aggressive_top_k_eval_new(split, predict_file, dataset, test_batch_size):
                     print(f'candidate_entity_map: data/WebQSP/entity_retrieval/linking_results/merged_WebQSP_test_linking_results.json')
                 use_linking_results = True
             train_type_map = load_json(f"data/WebQSP/generation/label_maps_all_parses/WebQSP_train_type_label_map.json")
+            # train_type_map = load_json(f"data/WebQSP/generation/label_maps/WebQSP_train_type_label_map.json")
             train_type_map = {l.lower():t for t,l in train_type_map.items()}
         
     if not use_goldRel:
@@ -407,6 +379,7 @@ def aggressive_top_k_eval_new(split, predict_file, dataset, test_batch_size):
             train_relation_map = {l.lower():r for r,l in train_relation_map.items()}
         elif dataset == "WebQSP":
             train_relation_map = load_json(f"data/WebQSP/generation/label_maps_all_parses/WebQSP_train_relation_label_map.json")
+            # train_relation_map = load_json(f"data/WebQSP/generation/label_maps/WebQSP_train_relation_label_map.json")
             train_relation_map = {l.lower():r for r,l in train_relation_map.items()}
     
     # load FACC1 Index
@@ -437,10 +410,10 @@ def aggressive_top_k_eval_new(split, predict_file, dataset, test_batch_size):
             # entity label map, Dict[label:mid]
             if qid in candidate_entity_map:
                 if use_linking_results:
-                    entity_label_map = {value['label']:key for key,value in candidate_entity_map[qid].items()}
+                    entity_label_map = {value['label'].lower():key for key,value in candidate_entity_map[qid].items()}
                     # entity_label_map = {item['label']:item['id'] for item in candidate_entity_map[qid]}
                 else:
-                    entity_label_map = {key:value['id'] for key,value in candidate_entity_map[qid].items()}
+                    entity_label_map = {key.lower():value['id'] for key,value in candidate_entity_map[qid].items()}
             else:
                 entity_label_map = {}
             
@@ -569,4 +542,6 @@ if __name__=='__main__':
         pass
     else:
         aggressive_top_k_eval_new(args.split, args.pred_file, args.dataset, args.test_batch_size)
+
+    # test_type_checker()
         
