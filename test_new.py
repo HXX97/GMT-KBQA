@@ -2,6 +2,21 @@ from components.utils import dump_json, load_json
 import pandas as pd
 from tqdm import tqdm
 
+def compare_json_file_qid_diff(file_1_path, file_2_path):
+    print(file_1_path)
+    file_1 = load_json(file_1_path)
+    file_2 = load_json(file_2_path)
+    diff_qids = set()
+    for qid in file_1:
+        if qid not in file_2:
+            diff_qids.add(qid)
+            continue
+        if file_1[qid] != file_2[qid]:
+            diff_qids.add(qid)
+            continue
+    print(len(diff_qids), list(diff_qids))
+
+
 
 def compare_json_file(file_1_path, file_2_path):
     print(file_1_path)
@@ -207,6 +222,59 @@ def compare_json_label_mention_id(json_path_1, json_path_2):
         if file_1_item != file_2_item:
             print('not equal: {}'.format(qid))
 
+def compare_merged_file(json_path_1, json_path_2, split):
+    json_1 = load_json(json_path_1)
+    json_1 = {example["ID"]: example for example in json_1}
+    json_2 = load_json(json_path_2)
+    json_2 = {example["ID"]: example for example in json_2}
+    if split == 'test':
+        assert len(json_1) == len(json_2), print(len(json_1), len(json_2))
+    count = 0
+    sparql_count = 0
+    keys = []
+    for qid in tqdm(json_1, total=len(json_1)):
+        sexpr = json_1[qid]["sexpr"]
+        if split != 'test' and sexpr == 'null':
+            continue
+        if qid not in json_2:
+            print(f'not found: {qid}')
+            continue
+        json_1_item = json_1[qid]
+        json_2_item = json_2[qid]
+        for key in ['question', 'sparql', 'sexpr', 'normed_sexpr', 'gold_relation_map', 'gold_entity_map', 'gold_type_map']:
+            if json_1_item[key] != json_2_item[key]:
+                count += 1
+                if key == 'sparql':
+                    sparql_count += 1
+                keys.append(key)
+        json_1_answer = set(json_1[qid]["answer"])
+        json_2_answer = set(json_2[qid]["answer"])
+        if json_1_answer != json_2_answer:
+            count += 1
+            keys.append("answer")
+        
+        json_1_cand_entity = [(item["id"], item["label"]) for item in json_1_item["cand_entity_list"][:5]]
+        json_2_cand_entity = [(item["id"], item["label"]) for item in json_2_item["cand_entity_list"][:5]]
+        if json_1_cand_entity != json_2_cand_entity:
+            count += 1
+            keys.append("cand_entity_list")
+        
+        json_1_cand_rel = [rel[0] for rel in json_1_item["cand_relation_list"]]
+        json_2_cand_rel = [rel[0] for rel in json_2_item["cand_relation_list"]]
+        if json_1_cand_rel != json_2_cand_rel:
+            count += 1
+            keys.append("cand_relation_list")
+        
+        json_1_disamb_entities = [(item["id"], item["label"]) for item in json_1_item["disambiguated_cand_entity"]]
+        json_2_disamb_entities = [(item["id"], item["label"]) for item in json_2_item["disambiguated_cand_entity"]]
+        if json_1_disamb_entities != json_2_disamb_entities:
+            count += 1
+            keys.append("disambiguated_cand_entity")
+        
+    print(f'count: {count}')
+    print(f'sparql_count: {sparql_count}')
+    print(f'key: {list(set(keys))}')
+
 def relation_data_process_unit_test():
     """
     CWQ
@@ -410,6 +478,55 @@ def entity_retrieval_unit_test(dataset='WebQSP'):
     compare_disamb_entities(dataset)
 
 
+def logical_form_generation_unit_test(dataset='CWQ'):
+    if dataset.lower() == 'cwq':
+        for split in ['train', 'dev', 'test']:
+            compare_merged_file(
+                f'data/CWQ/generation/merged_test/CWQ_{split}.json',
+                f'data/CWQ/generation/merged/CWQ_{split}.json',
+                split
+            )
+            compare_json_file_qid_diff(
+                f'data/CWQ/generation/label_maps_test/CWQ_{split}_label_maps.json',
+                f'data/CWQ/generation/label_maps/CWQ_{split}_label_maps.json'
+            )
+            compare_json_file_qid_diff(
+                f'data/CWQ/generation/label_maps_test/CWQ_{split}_entity_label_map.json',
+                f'data/CWQ/generation/label_maps/CWQ_{split}_entity_label_map.json'
+            )
+            compare_json_file_qid_diff(
+                f'data/CWQ/generation/label_maps_test/CWQ_{split}_relation_label_map.json',
+                f'data/CWQ/generation/label_maps/CWQ_{split}_relation_label_map.json'
+            )
+            compare_json_file_qid_diff(
+                f'data/CWQ/generation/label_maps_test/CWQ_{split}_type_label_map.json',
+                f'data/CWQ/generation/label_maps/CWQ_{split}_type_label_map.json'
+            )
+    else:
+        for split in ['train', 'test']:
+            compare_merged_file(
+                f'data/WebQSP/generation/merged_test/WebQSP_{split}.json',
+                f'data/WebQSP/generation/merged/WebQSP_{split}.json',
+                split
+            )
+            compare_json_file(
+                f'data/WebQSP/generation/label_maps_test/WebQSP_{split}_label_maps.json',
+                f'data/WebQSP/generation/label_maps_all_parses/WebQSP_{split}_label_maps.json'
+            )
+            compare_json_file(
+                f'data/WebQSP/generation/label_maps_test/WebQSP_{split}_entity_label_map.json',
+                f'data/WebQSP/generation/label_maps_all_parses/WebQSP_{split}_entity_label_map.json'
+            )
+            compare_json_file(
+                f'data/WebQSP/generation/label_maps_test/WebQSP_{split}_relation_label_map.json',
+                f'data/WebQSP/generation/label_maps_all_parses/WebQSP_{split}_relation_label_map.json'
+            )
+            compare_json_file(
+                f'data/WebQSP/generation/label_maps_test/WebQSP_{split}_type_label_map.json',
+                f'data/WebQSP/generation/label_maps_all_parses/WebQSP_{split}_type_label_map.json'
+            )
+
+
         
 
 def main():
@@ -419,7 +536,7 @@ def main():
     # 关系检索相关的单元测试
     # relation_data_process_unit_test()
     # relation_retrieval_unit_test()
-    merge_logits_unit_test()
+    # merge_logits_unit_test()
     # compare_2hop_relations()
     # for split in ['train', 'test']:
     #     compare_json_file(
@@ -427,5 +544,7 @@ def main():
     #         f'data/CWQ/generation/merged_old/CWQ_{split}.json'
     #     )
 
+    # Logical form generation 相关单元测试
+    logical_form_generation_unit_test('CWQ')
 if __name__=='__main__':
     main()

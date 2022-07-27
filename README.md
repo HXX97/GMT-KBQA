@@ -118,30 +118,30 @@ If you want to retrieve the candidate entities from scratch, follow the steps be
 
 (4) **Retrieve Candidate Relations** （可以参考 test_new.py 里面的单元测试）
 
-This step can also be ***skipped*** , as we've provided the candidate relations in `data/{dataset}/relation_retrieval/`
+This step can also be ***skipped*** , as we've provided the candidate relations in `data/{DATASET}/relation_retrieval/`
 
 If you want to retrive the candidate relations from scratch, follow the steps below:
 
 1. Train the bi-encoder to encode questions and relations.
-    - CWQ: Run `python run_relation_data_process.py sample_data --dataset CWQ --split train[dev]` to prepare training data. Then run `sh scripts/run_bi_encoder_CWQ.sh {YOUR_FOLDER_NAME}` to train bi-encoder model. Trained model will be saved in `data/CWQ/relation_retrieval/bi-encoder/saved_models/{YOUR_FOLDER_NAME}`.
-    - WebQSP: Run `python run_relation_data_process.py sample_data --dataset WebQSP --split train` to prepare training data. Then run `sh scripts/run_bi_encoder_WebQSP.sh {YOUR_FOLDER_NAME}` to train bi-encoder model. Trained model will be saved in `data/WebQSP/relation_retrieval/bi-encoder/saved_models/{YOUR_FOLDER_NAME}`. For WebQSP, linking entities' two-hop relations will be queried and cached.
+    - CWQ: Run `python run_relation_data_process.py sample_data --dataset CWQ --split train[dev]` to prepare training data. Then run `sh scripts/run_bi_encoder_CWQ.sh mask_mention` to train bi-encoder model. Trained model will be saved in `data/CWQ/relation_retrieval/bi-encoder/saved_models/mask_mention`.
+    - WebQSP: Run `python run_relation_data_process.py sample_data --dataset WebQSP --split train` to prepare training data. Then run `sh scripts/run_bi_encoder_WebQSP.sh rich_relation_3epochs` to train bi-encoder model. Trained model will be saved in `data/WebQSP/relation_retrieval/bi-encoder/saved_models/rich_relation_3epochs`. For WebQSP, linking entities' two-hop relations will be queried and cached.
 
 2. Build the index of encoded relations.
-    - CWQ: To encode Freebase relations using trained bi-encoder, run `python relation_retrieval/bi-encoder/build_and_search_index.py encode_relation --dataset CWQ`. Then run `python relation_retrieval/bi-encoder/build_and_search_index.py build_index --dataset CWQ` to build the index of encoded relations. Index file will be saved as `data/CWQ/relation_retrieval/bi-encoder/index/ep_{EPOCH}_flat.index`.
-    - WebQSP: To encode Freebase relations using trained bi-encoder, run `python relation_retrieval/bi-encoder/build_and_search_index.py encode_relation --dataset WebQSP`. Then run `python relation_retrieval/bi-encoder/build_and_search_index.py build_index --dataset WebQSP` to build the index of encoded relations. Index file will be saved as `data/WebQSP/relation_retrieval/bi-encoder/index/ep_{EPOCH}_flat.index`.
+    - CWQ: To encode Freebase relations using trained bi-encoder, run `python relation_retrieval/bi-encoder/build_and_search_index.py encode_relation --dataset CWQ`. Then run `python relation_retrieval/bi-encoder/build_and_search_index.py build_index --dataset CWQ` to build the index of encoded relations. Index file will be saved as `data/CWQ/relation_retrieval/bi-encoder/index/mask_mention/ep_1_flat.index`.
+    - WebQSP: To encode Freebase relations using trained bi-encoder, run `python relation_retrieval/bi-encoder/build_and_search_index.py encode_relation --dataset WebQSP`. Then run `python relation_retrieval/bi-encoder/build_and_search_index.py build_index --dataset WebQSP` to build the index of encoded relations. Index file will be saved as `data/WebQSP/relation_retrieval/bi-encoder/index/rich_relation_3epochs/ep_3_flat.index`.
 
 3. Retrieve candidate relations using index.
-    - CWQ: First encode questions into vector by running `python relation_retrieval/bi-encoder/build_and_search_index.py encode_question --dataset CWQ --split test[train, dev]`. Then candidate relations can be retrieved using index by running `python relation_retrieval/bi-encoder/build_and_search_index.py retrieve_relations --dataset CWQ --split test[train, dev]`. The retrieved relations will be saved as the training data of cross-encoder in `data/CWQ/relation_retrieval/cross-encoder/mask_mention_1epoch_question_relation/CWQ_test[train,dev].tsv`.
-    - WebQSP: First encode questions into vector by running `python relation_retrieval/bi-encoder/build_and_search_index.py encode_question --dataset WebQSP --split train[ptrain, pdev, test]`. Then candidate relations can be retrieved using index by running `python relation_retrieval/bi-encoder/build_and_search_index.py retrieve_relations --dataset WebQSP --split test_2hop[train_2hop, train, test]`. The retrieved relations will be saved as the training data of cross-encoder in `data/WebQSP/relation_retrieval/cross-encoder/WebQSP_test[train,dev].tsv`.
+    - CWQ: First encode questions into vector by running `python relation_retrieval/bi-encoder/build_and_search_index.py encode_question --dataset CWQ --split test[train, dev]`. Then candidate relations can be retrieved using index by running `python relation_retrieval/bi-encoder/build_and_search_index.py retrieve_relations --dataset CWQ --split train[dev, test]`. The retrieved relations will be saved as the training data of cross-encoder in `data/CWQ/relation_retrieval/cross-encoder/mask_mention_1epoch_question_relation/CWQ_test[train,dev].tsv`.
+    - WebQSP: First encode questions into vector by running `python relation_retrieval/bi-encoder/build_and_search_index.py encode_question --dataset WebQSP --split train[ptrain, pdev, test]`. Then candidate relations can be retrieved using index by running `python relation_retrieval/bi-encoder/build_and_search_index.py retrieve_relations --dataset WebQSP --split test_2hop[train_2hop, train, test, ptrain, pdev]`. The retrieved relations will be saved as the training data of cross-encoder in `data/WebQSP/relation_retrieval/cross-encoder/rich_relation_3epochs_question_relation/WebQSP_train[ptrain, pdev, test, train_2hop, test_2hop].tsv`.
     - TODO: `CWQ.2hopRelations.candEntities.json` 这个文件是如何获得的
 
 4. Train the cross-encoder to rank retrieved relations.
-    - CWQ: To train, run `sh scripts/run_cross_encoder_CWQ_question_relation.sh train {FOLDER_NAME}`. Trained models will be saved as `data/CWQ/relation_retrieval/cross-encoder/saved_models/{FOLDER_NAME}/{MODEL_NAME}`. To get inference results, run `sh scripts/run_cross_encoder_CWQ_question_relation.sh predict {FOLDER_NAME} test[train/dev] {MODEL_NAME}`.  Inference result(logits) will be stored in `data/CWQ/relation_retrieval/cross-encoder/saved_models/{FOLDER_NAME}/{MODEL_NAME}_test[train/dev]]`.
-    - WebQSP: To train, run `sh scripts/run_cross_encoder_WebQSP_question_relation.sh train {FOLDER_NAME}`. Trained models will be saved as `data/WebQSP/relation_retrieval/cross-encoder/saved_models/{FOLDER_NAME}/{MODEL_NAME}`. To get inference results, run `sh scripts/run_cross_encoder_WebQSP_question_relation.sh predict {FOLDER_NAME} test/[train, train_2hop, test_2hop] {MODEL_NAME}`.Inference result(logits) will be stored in `data/WebQSP/relation_retrieval/cross-encoder/saved_models/{FOLDER_NAME}/{MODEL_NAME}_test/[train, train_2hop, test_2hop]`.
+    - CWQ: To train, run `sh scripts/run_cross_encoder_CWQ_question_relation.sh train mask_mention_1epoch_question_relation`. Trained models will be saved as `data/CWQ/relation_retrieval/cross-encoder/saved_models/mask_mention_1epoch_question_relation/CWQ_ep_1.pt`. To get inference results, run `sh scripts/run_cross_encoder_CWQ_question_relation.sh predict mask_mention_1epoch_question_relation test[train/dev] CWQ_ep_1.pt`.  Inference result(logits) will be stored in `data/CWQ/relation_retrieval/cross-encoder/saved_models/mask_mention_1epoch_question_relation/CWQ_ep_1.pt_test[train/dev]]`.
+    - WebQSP: To train, run `sh scripts/run_cross_encoder_WebQSP_question_relation.sh train rich_relation_3epochs_question_relation`. Trained models will be saved as `data/WebQSP/relation_retrieval/cross-encoder/saved_models/rich_relation_3epochs_question_relation/WebQSP_ep_3.pt`. To get inference results, run `sh scripts/run_cross_encoder_WebQSP_question_relation.sh predict rich_relation_3epochs_question_relation test/[train, train_2hop, test_2hop] WebQSP_ep_3.pt`.Inference result(logits) will be stored in `data/WebQSP/relation_retrieval/cross-encoder/saved_models/rich_relation_3epochs_question_relation/WebQSP_ep_3.pt_test/[train, train_2hop, test_2hop]`.
 
 
 5. Merge the logits with relations to get sorted relations for each question.
-    - CWQ: run `python data_process.py merge_relation --dataset CWQ --split test[train,dev]`. The sorted relations will be saved as `data/CWQ/relation_retrieval/candidate_relations/mask_mention_1epoch_question_relation_ep1/CWQ_test[train,dev]_cand_rels_sorted.json`
+    - CWQ: run `python data_process.py merge_relation --dataset CWQ --split test[train,dev]`. The sorted relations will be saved as `data/CWQ/relation_retrieval/candidate_relations/CWQ_test[train,dev]_cand_rels_sorted.json`
     - WebQSP: run `python data_process.py merge_relation --dataset WebQSP --split test[train, train_2hop, test_2hop]`. The sorted relations will be saved as `data/WebQSP/relation_retrieval/candidate_relations/WebQSP_test[train]_cand_rels_sorted.json`
 
 6. (optional) To only substitude candidate relations in previous merged file, please refer to `substitude_relations_in_merged_file()` in `data_process.py`.
@@ -264,6 +264,23 @@ For any question, please contact [TODO:](TODO)
         - test 2837 处不同
 ### Retrieve Candidate Relations
 #### WebQSP
-- 已全部测试过了，bug 也修复了，最后的结果都在`data/WebQSP/relation_retrieval_final`目录下，使用的 merged 文件在`data/WebQSP/generation/merged_relation_final`下
+- 已全部测试过了，bug 也修复了，最后的结果都在`data/WebQSP/relation_retrieval_final`目录下(已更名为`data/WebQSP/relation_retrieval`)，使用的 merged 文件在`data/WebQSP/generation/merged_relation_final`下(已更名为`data/WebQSP/generation/merged`)
+- 每次跑 Logits 的 inference 时，生成的 logits 会有细微不同，可能导致 top 10 关系发生变化，test 里头可能有20多条会变化；但应该是正常的，因为排序靠后的这些 logits 很接近
 #### CWQ
-- 已经全部测试过了（新跑了一遍生成），最后的结果在`data/CWQ/relation_retrieval_0723` 目录下，使用的 merged 文件在 `data/CWQ/generation/merged_0724_ep1`
+- 已经全部测试过了（新跑了一遍生成），最后的结果在`data/CWQ/relation_retrieval_0723` 目录下(已更名为`data/CWQ/relation_retrieval`)，使用的 merged 文件在 `data/CWQ/generation/merged_0724_ep1`(已更名为`data/CWQ/generation/merged`)
+- 每次跑 Logits 的 inference 时，生成的 logits 会有细微不同，可能导致 top 10 关系发生变化，test 里头可能有40 多条会变化；但应该是正常的，因为排序靠后的这些 logits 很接近
+
+### Preparing Logical Form generation data
+- 总体来说，代码生成的结果和原来差不多
+- cand_entity_list 可能不同，原因是一方面新生成的实体有一些不一样，另一方面有一些实体是随机得到的，每次结果不一样
+- gold_relation_map 可能不同，使用了新的正则表达式（WebQSP 使用所有的 golden relations）
+- label_maps 的生成: 
+    - WebQSP 改用了所有 parses 的 label_maps, **现在位于label_maps/** 目录下；经检查，代码没有问题
+    - CWQ 使用代码生成的 label_maps 位于 label_maps_test 下，和原来的 label_maps 有: train 113, dev 10, test 9 处不同，问题不大，主要原因是关系抽取正则表达式的修改。**现在位于label_maps/ 目录下。**
+#### CWQ
+- CWQ: train 1329, dev 144, test 162, diff key: ['gold_relation_map', 'cand_entity_list']
+#### WebQSP
+- train 667, test: 370, key: ['cand_entity_list', 'sparql', 'gold_type_map', 'gold_relation_map', 'gold_entity_map']
+- gold_*_map: 从 1parse 到所有 parse
+- sparql 不同，但是 sexpr 都是相同的：应该是以前的数据，sparql 没有完全按照 sexpr 的选择规则
+    - 不过考虑到生成模型中没有使用到 sparql (训练的时候是用 sexpr 作为生成目标)，测试的时候最终也是计算QA效果，这个 bug 没什么影响
