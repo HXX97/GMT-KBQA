@@ -39,8 +39,8 @@ def _parse_args():
     parser = argparse.ArgumentParser()
     
     parser.add_argument('action',type=str,help='Action to operate')
-    parser.add_argument('--dataset', required=True, default='CWQ', help='dataset to perform entity linking, should be CWQ or WebQSP')
-    parser.add_argument('--split', required=True, default='test', help='split to operate on') # the split file: ['dev','test','train']
+    parser.add_argument('--dataset', default='CWQ', help='dataset to perform entity linking, should be CWQ or WebQSP')
+    parser.add_argument('--split', default='test', help='split to operate on') # the split file: ['dev','test','train']
     
     
     return parser.parse_args()
@@ -115,21 +115,17 @@ def make_sorted_relation_dataset_from_logits(dataset, split):
     else:
         assert split in ['test','train','dev']
 
-    # output_dir = f'data/{dataset}/relation_retrieval/candidate_relations'
-    # logits_file = f'data/{dataset}/relation_retrieval/cross-encoder/saved_models/final/{split}/logits.pt'
-    output_dir = f'data/{dataset}/relation_retrieval_final/candidate_relations/rich_relation_3epochs_question_relation'
+    output_dir = f'data/{dataset}/relation_retrieval/candidate_relations'
     
     
     if dataset=='CWQ':
-        # tsv_file = f'data/CWQ/relation_retrieval/cross-encoder/CWQ.{split}.biEncoder.train_all.maskMention.crossEncoder.2hopValidation.maskMention.richRelation.top100.tsv'
-        tsv_file = f'data/CWQ/relation_retrieval/cross-encoder/0715_retrain/CWQ.{split}.tsv'
-        logits_file = f'data/CWQ/relation_retrieval/cross-encoder/saved_models/0715_retrain/CWQ_ep_3.pt_{split}/logits.pt'
-        idmap = load_json(f'data/CWQ/relation_retrieval/cross-encoder/0715_retrain/CWQ_{split}_id_index_map.json')
+        tsv_file = f'data/CWQ/relation_retrieval/cross-encoder/mask_mention_1epoch_question_relation/CWQ.{split}.tsv'
+        logits_file = f'data/CWQ/relation_retrieval/cross-encoder/saved_models/mask_mention_1epoch_question_relation/CWQ_ep_1.pt_{split}/logits.pt'
+        idmap = load_json(f'data/CWQ/relation_retrieval/cross-encoder/mask_mention_1epoch_question_relation/CWQ_{split}_id_index_map.json')
     elif dataset=='WebQSP':
-        # tsv_file = f'data/WebQSP/relation_retrieval/cross-encoder/WebQSP.{split}.biEncoder.train_all.richRelation.crossEncoder.train_all.richRelation.2hopValidation.richEntity.top100.1parse.tsv'
-        tsv_file = f'data/WebQSP/relation_retrieval_final/cross-encoder/rich_relation_3epochs_question_relation/WebQSP.{split}.tsv'
-        logits_file = f'data/WebQSP/relation_retrieval_final/cross-encoder/saved_models/rich_relation_3epochs_question_relation/WebQSP_ep_3.pt_{split}/logits.pt'
-        idmap = load_json(f'data/WebQSP/relation_retrieval_final/cross-encoder/rich_relation_3epochs_question_relation/WebQSP_{split}_id_index_map.json')
+        tsv_file = f'data/WebQSP/relation_retrieval/cross-encoder/rich_relation_3epochs_question_relation/WebQSP.{split}.tsv'
+        logits_file = f'data/WebQSP/relation_retrieval/cross-encoder/saved_models/rich_relation_3epochs_question_relation/WebQSP_ep_3.pt_{split}/logits.pt'
+        idmap = load_json(f'data/WebQSP/relation_retrieval/cross-encoder/rich_relation_3epochs_question_relation/WebQSP_{split}_id_index_map.json')
     
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -153,25 +149,18 @@ def make_sorted_relation_dataset_from_logits(dataset, split):
     assert(len(logits_list)==len(tsv_df))
 
     
-    # if dataset.lower()=='webqsp':
-    #     split_dataset = load_json(f'data/WebQSP/origin/WebQSP.{split}.json')
-    # else:
-    #     split_dataset = load_json(f'data/CWQ/sexpr/ComplexWebQuestions_{split}.json')
-    if split in ['train_2hop', 'train']:
-        split_dataset = load_json(f'data/{dataset}/sexpr/{dataset}.train.expr.json')
-    elif split in ['test', 'test_2hop']:
-        split_dataset = load_json(f'data/{dataset}/sexpr/{dataset}.test.expr.json')
+    if dataset.lower()=='webqsp':
+        if split in ['train_2hop', 'train']:
+            split_dataset = load_json(f'data/{dataset}/sexpr/{dataset}.train.expr.json')
+        elif split in ['test', 'test_2hop']:
+            split_dataset = load_json(f'data/{dataset}/sexpr/{dataset}.test.expr.json')
+    else:
+        split_dataset = load_json(f'data/{dataset}/sexpr/{dataset}.{split}.expr.json')
     # print('split_dataset: {}'.format(split_dataset))
     # question2id = {x['question']:x['ID'] for x in split_dataset}
 
 
     rowid2qid = {} # map rowid to qid
-
-    # if dataset=='CWQ':
-    #     # idmap = load_json(f'data/CWQ/relation_retrieval/cross-encoder/CWQ.{split}.biEncoder.train_all.maskMention.crossEncoder.2hopValidation.maskMention.richRelation.top100_CWQid_index_map.json')
-        
-    # elif dataset=='WebQSP':
-    #     # idmap = load_json(f'data/WebQSP/relation_retrieval/cross-encoder/WebQSP.{split}.biEncoder.train_all.richRelation.crossEncoder.train_all.richRelation.2hopValidation.richEntity.top100.1parse_WebQSPid_index_map.json')
         
 
     for qid in idmap:
@@ -907,6 +896,24 @@ def train_dev_split_as_per_files(
     dump_json(new_train_data, os.path.join(new_folder, 'WebQSP_train.json'))
     dump_json(new_dev_data, os.path.join(new_folder, 'WebQSP_dev.json'))
 
+
+def substitude_relations_in_merged_file_cwq(
+    prev_merged_path, 
+    output_path, 
+    sorted_logits_path,
+    topk=10,
+):
+    prev_merged = load_json(prev_merged_path)
+    sorted_logits = load_json(sorted_logits_path)
+    new_merged = []
+    for example in tqdm(prev_merged, total=len(prev_merged)):
+        qid = example["ID"]
+        if qid not in sorted_logits:
+            print(qid)
+        example["cand_relation_list"] = sorted_logits[qid][:topk]
+        new_merged.append(example)
+    dump_json(new_merged, output_path)
+
 if __name__=='__main__':
     
     
@@ -922,25 +929,40 @@ if __name__=='__main__':
     else:
         print('usage: data_process.py action [--dataset DATASET] --split SPLIT ')
 
-    for split in ['train', 'test']:
-        extract_entity_relation_type_label_from_dataset_webqsp('WebQSP', split)
+
+    # for split in ['train', 'test']:
+    #     extract_entity_relation_type_label_from_dataset_webqsp('WebQSP', split)
 
     # If you would like to substitude candidate relations only, you can refer to functions below
-    # for split in ['train', 'test']:
-    #     substitude_relations_in_merged_file(
-    #         f'data/WebQSP/generation/merged_old/WebQSP_{split}.json',
-    #         f'data/WebQSP/generation/merged_relation_final/WebQSP_{split}.json',
-    #         f'data/WebQSP/relation_retrieval_final/candidate_relations/rich_relation_3epochs_question_relation/WebQSP_{split}_2hop_cand_rel_logits.json',
-    #         f'data/WebQSP/relation_retrieval_final/candidate_relations/rich_relation_3epochs_question_relation/WebQSP_{split}_cand_rel_logits.json',
-    #         topk=10
-    #     )
-    #     validation_merged_file(
-    #         f'data/WebQSP/generation/merged_old/WebQSP_{split}.json',
-    #         f'data/WebQSP/generation/merged_relation_final/WebQSP_{split}.json',
-    #     )
-    # train_dev_split_as_per_files(
-    #     'data/WebQSP/generation/merged_relation_final/WebQSP_train.json',
-    #     'data/WebQSP/origin/WebQSP.ptrain.json',
-    #     'data/WebQSP/origin/WebQSP.pdev.json',
-    #     'data/WebQSP/generation/merged_relation_final/'
-    # )
+    # if args.dataset.lower() == 'webqsp':
+    #     print('webqsp')
+    #     for split in ['train', 'test']:
+    #         substitude_relations_in_merged_file(
+    #             f'data/WebQSP/generation/merged_old/WebQSP_{split}.json',
+    #             f'data/WebQSP/generation/merged_test/WebQSP_{split}.json',
+    #             f'data/WebQSP/relation_retrieval/candidate_relations/WebQSP_{split}_2hop_cand_rel_logits.json',
+    #             f'data/WebQSP/relation_retrieval/candidate_relations/WebQSP_{split}_cand_rel_logits.json',
+    #             topk=10
+    #         )
+    #         validation_merged_file(
+    #             f'data/WebQSP/generation/merged_old/WebQSP_{split}.json',
+    #             f'data/WebQSP/generation/merged_test/WebQSP_{split}.json',
+    #         )
+    #     # train_dev_split_as_per_files(
+    #     #     'data/WebQSP/generation/merged_relation_final/WebQSP_train.json',
+    #     #     'data/WebQSP/origin/WebQSP.ptrain.json',
+    #     #     'data/WebQSP/origin/WebQSP.pdev.json',
+    #     #     'data/WebQSP/generation/merged_relation_final/'
+    #     # )
+    # else:
+    #     print('CWQ')
+    #     for split in ['test']:
+    #         substitude_relations_in_merged_file_cwq(
+    #             f'data/CWQ/generation/merged_old/CWQ_{split}.json',
+    #             f'data/CWQ/generation/merged_test/CWQ_{split}.json',
+    #             f'data/CWQ/relation_retrieval/candidate_relations/CWQ_{split}_cand_rel_logits.json'
+    #         )
+    #         validation_merged_file(
+    #             f'data/CWQ/generation/merged_old/CWQ_{split}.json',
+    #             f'data/CWQ/generation/merged_test/CWQ_{split}.json',
+    #         )

@@ -2,8 +2,8 @@ ACTION=${1:-none}
 exp_id=${2:-none}
 
 dataset='WebQSP'
-exp_prefix="data/WebQSP/relation_retrieval/cross-encoder/saved_models/${exp_id}/"
-log_dir="data/WebQSP/relation_retrieval/cross-encoder/saved_models/${exp_id}/"
+exp_prefix="data/WebQSP/relation_retrieval_0717/cross-encoder/saved_models/${exp_id}/"
+log_dir="data/WebQSP/relation_retrieval_0717/cross-encoder/saved_models/${exp_id}/"
 
 
 if [ "$ACTION" = "train" ]; then
@@ -20,13 +20,15 @@ if [ "$ACTION" = "train" ]; then
     fi
     python relation_retrieval/cross-encoder/cross_encoder_main.py \
                             --do_train \
-                            --max_len 80 \
+                            --max_len 64 \
                             --batch_size 128 \
                             --epochs 6 \
+                            --lr 3e-5 \
                             --log_dir ${log_dir} \
                             --dataset_type WebQSP \
                             --model_save_path ${exp_prefix} \
                             --output_dir ${exp_prefix} \
+                            --mask_entity_mention \
                             --cache_dir hfcache/bert-base-uncased \
                            
 elif [ "$ACTION" = "eval" ]; then
@@ -41,13 +43,15 @@ elif [ "$ACTION" = "eval" ]; then
     python relation_retrieval/cross-encoder/cross_encoder_main.py \
                             --do_eval \
                             --predict_split ${split} \
-                            --max_len 80 \
+                            --max_len 64 \
                             --batch_size 128 \
-                            --epochs 1 \
+                            --epochs 6 \
+                            --lr 3e-5 \
                             --log_dir ${log_dir} \
                             --dataset_type WebQSP \
                             --model_save_path "${exp_prefix}${model_name}" \
                             --output_dir "${exp_prefix}${model_name}_${split}" \
+                            --mask_entity_mention \
                             --cache_dir hfcache/bert-base-uncased \
 
 elif [ "$ACTION" = "predict" ]; then
@@ -62,13 +66,15 @@ elif [ "$ACTION" = "predict" ]; then
     python relation_retrieval/cross-encoder/cross_encoder_main.py \
                             --do_predict \
                             --predict_split ${split} \
-                            --max_len 80 \
+                            --max_len 64 \
                             --batch_size 128 \
-                            --epochs 1 \
+                            --epochs 6 \
+                            --lr 3e-5 \
                             --log_dir ${log_dir} \
                             --dataset_type WebQSP \
                             --model_save_path "${exp_prefix}${model_name}" \
                             --output_dir "${exp_prefix}${model_name}_${split}" \
+                            --mask_entity_mention \
                             --cache_dir hfcache/bert-base-uncased \
 
 else

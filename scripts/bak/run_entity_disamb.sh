@@ -5,7 +5,7 @@ dataset=${1:-"CWQ"}
 ACTION=${2:-none}
 
 exp_prefix="entity_retrieval/entity_disamb_${dataset}"
-DATA_DIR="data/${dataset}/entity_retrieval/candidate_entities"
+DATA_DIR="data/${dataset}/entity_retrieval_0724/candidate_entities"
 
 if [ "$ACTION" = "train" ]; then
     

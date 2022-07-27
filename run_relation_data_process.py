@@ -61,7 +61,7 @@ def extract_golden_relations_webqsp(src_path, tgt_path):
             
             for rel in gold_relations:
                 linear_rel = _textualize_relation(rel)
-                gold_rel_label_map[rel] = linear_rel # dictionary 本身有去重功能
+                gold_rel_label_map[rel] = linear_rel # no duplicate keys in a dictionary
 
         example['gold_relation_map'] = gold_rel_label_map
         merged_data.append(example)
@@ -176,46 +176,46 @@ def sample_data_rich_relation(
             writer.writerow([str(idx)] + line)
             idx += 1
 
-def sample_data_normal(
-    golden_data_path,
-    all_relations_path,
-    output_path, 
-    sample_size=100
-):
-    all_relations = load_json(all_relations_path)
-    examples = load_json(golden_data_path)
+# def sample_data_normal(
+#     golden_data_path,
+#     all_relations_path,
+#     output_path, 
+#     sample_size=100
+# ):
+#     all_relations = load_json(all_relations_path)
+#     examples = load_json(golden_data_path)
 
-    # 应该用 qid 作为标识符
-    golden_relations_map = {
-        example["QuestionId"]: list(example["gold_relation_map"].keys())
-        for example in examples
-    }
+#     # use qid as identifier
+#     golden_relations_map = {
+#         example["QuestionId"]: list(example["gold_relation_map"].keys())
+#         for example in examples
+#     }
 
-    qid_example_map = {item["QuestionId"]: item for item in examples}
+#     qid_example_map = {item["QuestionId"]: item for item in examples}
 
-    samples = []
-    for qid in tqdm(golden_relations_map, total=len(golden_relations_map)):
-        question = qid_example_map[qid]["ProcessedQuestion"].lower()
-        gold_relations = golden_relations_map[qid]
-        diff_relations = list(set(all_relations) - set(gold_relations))
-        negative_relations = random.sample(diff_relations, (sample_size-1) * len(gold_relations))
-        for idx in range(len(gold_relations)):
-            sample = []
-            sample.append([question, gold_relations[idx], '1'])
-            for n_lab in negative_relations[idx * (sample_size-1): (idx+1) * (sample_size-1)]:
-                sample.append([question, n_lab, '0'])
-            assert len(sample) == sample_size
-            random.shuffle(sample)
-            samples.extend(sample)
+#     samples = []
+#     for qid in tqdm(golden_relations_map, total=len(golden_relations_map)):
+#         question = qid_example_map[qid]["ProcessedQuestion"].lower()
+#         gold_relations = golden_relations_map[qid]
+#         diff_relations = list(set(all_relations) - set(gold_relations))
+#         negative_relations = random.sample(diff_relations, (sample_size-1) * len(gold_relations))
+#         for idx in range(len(gold_relations)):
+#             sample = []
+#             sample.append([question, gold_relations[idx], '1'])
+#             for n_lab in negative_relations[idx * (sample_size-1): (idx+1) * (sample_size-1)]:
+#                 sample.append([question, n_lab, '0'])
+#             assert len(sample) == sample_size
+#             random.shuffle(sample)
+#             samples.extend(sample)
 
-    with open(output_path, 'w') as f:
-        header = ['id', 'question', 'relation', 'label']
-        writer = csv.writer(f, delimiter='\t')
-        writer.writerow(header)
-        idx = 0
-        for line in samples:
-            writer.writerow([str(idx)] + line)
-            idx += 1
+#     with open(output_path, 'w') as f:
+#         header = ['id', 'question', 'relation', 'label']
+#         writer = csv.writer(f, delimiter='\t')
+#         writer.writerow(header)
+#         idx = 0
+#         for line in samples:
+#             writer.writerow([str(idx)] + line)
+#             idx += 1
 
 def make_partial_train_dev(train_split_path):
     random.seed(17)
@@ -258,52 +258,48 @@ def get_bi_encoder_tsv_max_len(tsv_file):
 
 def sample_data(dataset, split):
     if dataset.lower() == 'cwq':
-        extract_golden_relations_cwq(
-            'data/CWQ/sexpr/CWQ.{}.expr.json'.format(split),
-            'data/CWQ/relation_retrieval_0723/bi-encoder/CWQ.{}.goldenRelation.json'.format(split)
-        )
+        if not os.path.exists('data/CWQ/relation_retrieval/bi-encoder/CWQ.{}.goldenRelation.json'.format(split)):
+            for sp in ['train', 'dev', 'test']:
+                extract_golden_relations_cwq(
+                    'data/CWQ/sexpr/CWQ.{}.expr.json'.format(sp),
+                    'data/CWQ/relation_retrieval/bi-encoder/CWQ.{}.goldenRelation.json'.format(sp)
+                )
         if split != 'test':
             sample_data_mask_entity_mention(
-                'data/CWQ/relation_retrieval_0723/bi-encoder/CWQ.{}.goldenRelation.json'.format(split),
+                'data/CWQ/relation_retrieval/bi-encoder/CWQ.{}.goldenRelation.json'.format(split),
                 'data/CWQ/entity_retrieval/merged_linking_results/merged_CWQ_{}_linking_results.json'.format(split),
                 'data/common_data/freebase_relations_filtered.json',
-                'data/CWQ/relation_retrieval_0723/bi-encoder/CWQ.{}.sampled.tsv'.format(split)
+                'data/CWQ/relation_retrieval/bi-encoder/CWQ.{}.sampled.tsv'.format(split)
             )
     elif dataset.lower() == 'webqsp':
         if not os.path.exists('data/WebQSP/origin/WebQSP.pdev.json'):
             print('Dividing ptrain and pdev')
             make_partial_train_dev('data/WebQSP/origin/WebQSP.train.json')
-        if not os.path.exists('data/WebQSP/relation_retrieval_final/bi-encoder/WebQSP.{}.goldenRelation.json'.format(split)):
+        if not os.path.exists('data/WebQSP/relation_retrieval/bi-encoder/WebQSP.{}.goldenRelation.json'.format(split)):
             for sp in ['train', 'ptrain', 'pdev', 'test']:
                 print('extract golden relations')
                 extract_golden_relations_webqsp(
                     'data/WebQSP/origin/WebQSP.{}.json'.format(sp),
-                    'data/WebQSP/relation_retrieval_final/bi-encoder/WebQSP.{}.goldenRelation.json'.format(sp)
+                    'data/WebQSP/relation_retrieval/bi-encoder/WebQSP.{}.goldenRelation.json'.format(sp)
                 )
                 validate_data_sequence(
                     f'data/WebQSP/origin/WebQSP.{sp}.json',
-                    f'data/WebQSP/relation_retrieval_final/bi-encoder/WebQSP.{sp}.goldenRelation.json',
+                    f'data/WebQSP/relation_retrieval/bi-encoder/WebQSP.{sp}.goldenRelation.json',
                 )
                 
         if split != 'test':
             sample_data_rich_relation(
-                'data/WebQSP/relation_retrieval_final/bi-encoder/WebQSP.{}.goldenRelation.json'.format(split),
+                'data/WebQSP/relation_retrieval/bi-encoder/WebQSP.{}.goldenRelation.json'.format(split),
                 'data/common_data/freebase_relations_filtered.json',
                 'data/common_data/fb_relation_rich_map.json',
-                'data/WebQSP/relation_retrieval_final/bi-encoder/WebQSP.{}.sampled.tsv'.format(split)
+                'data/WebQSP/relation_retrieval/bi-encoder/WebQSP.{}.sampled.tsv'.format(split)
             )
-        # if split != 'test':
-        #     sample_data_normal(
-        #         'data/WebQSP/relation_retrieval_0722/bi-encoder/WebQSP.{}.goldenRelation.json'.format(split),
-        #         'data/common_data/freebase_relations_filtered.json',
-        #         'data/WebQSP/relation_retrieval_0722/bi-encoder/WebQSP.{}.sampled.tsv'.format(split)
-        #     )
 
-        # prepare_2hop_relations(dataset)
+        prepare_2hop_relations(dataset)
 
         # Utility function, help to set max_len for training bi-encoder
         # Here the max length suggested is 60
-        # get_bi_encoder_tsv_max_len('data/WebQSP/relation_retrieval_final/bi-encoder/WebQSP.train.sampled.tsv')
+        # get_bi_encoder_tsv_max_len('data/WebQSP/relation_retrieval/bi-encoder/WebQSP.train.sampled.tsv')
 
 
 def get_unique_entity_ids(
@@ -381,7 +377,7 @@ def construct_question_2hop_relations(
             for entity_id in example["freebase_ids"]:
                 if entity_id in entity_relation_map:
                     two_hop_relations.extend(entity_relation_map[entity_id])
-            example["two_hop_relations"] = list(set(two_hop_relations)) # 去重
+            example["two_hop_relations"] = list(set(two_hop_relations)) # remove duplicate
             enhanced_linking_results.append(example)
         print('split: {}, length: {}'.format(path, len(enhanced_linking_results)))
         dump_json(enhanced_linking_results, path[:-5] + '_two_hop_relations.json')
@@ -393,28 +389,27 @@ def prepare_2hop_relations(
     dataset
 ):
     if dataset.lower() == 'webqsp':
-        if not os.path.exists('data/WebQSP/relation_retrieval_final/cross-encoder/rng_kbqa_linking_results/unique_entity_ids.json'):
-            print('generating unique entity')
+        if not os.path.exists('data/WebQSP/relation_retrieval/cross-encoder/rng_kbqa_linking_results/unique_entity_ids.json'):
+            print('Collecting unique entity')
             get_unique_entity_ids(
-                'data/WebQSP/relation_retrieval_final/cross-encoder/rng_kbqa_linking_results/webqsp_train_rng_el.json',
+                'data/WebQSP/relation_retrieval/cross-encoder/rng_kbqa_linking_results/webqsp_train_rng_el.json',
                 None,
-                'data/WebQSP/relation_retrieval_final/cross-encoder/rng_kbqa_linking_results/webqsp_test_rng_el.json',
-                'data/WebQSP/relation_retrieval_final/cross-encoder/rng_kbqa_linking_results/unique_entity_ids.json'
+                'data/WebQSP/relation_retrieval/cross-encoder/rng_kbqa_linking_results/webqsp_test_rng_el.json',
+                'data/WebQSP/relation_retrieval/cross-encoder/rng_kbqa_linking_results/unique_entity_ids.json'
             )
-        if not os.path.exists('data/WebQSP/relation_retrieval_final/cross-encoder/rng_kbqa_linking_results/entities_2hop_relations.json'):
+        if not os.path.exists('data/WebQSP/relation_retrieval/cross-encoder/rng_kbqa_linking_results/entities_2hop_relations.json'):
             print('quering 2hop relations')
             query_2hop_relations(
-                'data/WebQSP/relation_retrieval_final/cross-encoder/rng_kbqa_linking_results/unique_entity_ids.json',
-                'data/WebQSP/relation_retrieval_final/cross-encoder/rng_kbqa_linking_results/entities_2hop_relations.json'
+                'data/WebQSP/relation_retrieval/cross-encoder/rng_kbqa_linking_results/unique_entity_ids.json',
+                'data/WebQSP/relation_retrieval/cross-encoder/rng_kbqa_linking_results/entities_2hop_relations.json'
             )
-        if not os.path.exists('data/WebQSP/relation_retrieval_final/cross-encoder/rng_kbqa_linking_results/webqsp_test_rng_el_two_hop_relations.json'):
-            print('adding two hop relations')
-            # 把问题到二跳关系的映射，添加到实体链接文件中
+        if not os.path.exists('data/WebQSP/relation_retrieval/cross-encoder/rng_kbqa_linking_results/webqsp_test_rng_el_two_hop_relations.json'):
+            print('adding two hop relations to original linking results')
             construct_question_2hop_relations(
-                'data/WebQSP/relation_retrieval_final/cross-encoder/rng_kbqa_linking_results/webqsp_train_rng_el.json',
+                'data/WebQSP/relation_retrieval/cross-encoder/rng_kbqa_linking_results/webqsp_train_rng_el.json',
                 None,
-                'data/WebQSP/relation_retrieval_final/cross-encoder/rng_kbqa_linking_results/webqsp_test_rng_el.json',
-                'data/WebQSP/relation_retrieval_final/cross-encoder/rng_kbqa_linking_results/entities_2hop_relations.json'
+                'data/WebQSP/relation_retrieval/cross-encoder/rng_kbqa_linking_results/webqsp_test_rng_el.json',
+                'data/WebQSP/relation_retrieval/cross-encoder/rng_kbqa_linking_results/entities_2hop_relations.json'
             )
 
 

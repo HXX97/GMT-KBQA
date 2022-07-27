@@ -2,8 +2,8 @@ ACTION=${1:-none}
 exp_id=${2:-none}
 
 dataset='WebQSP'
-exp_prefix="data/WebQSP/relation_retrieval/cross-encoder/saved_models/${exp_id}/"
-log_dir="data/WebQSP/relation_retrieval/cross-encoder/saved_models/${exp_id}/"
+exp_prefix="data/WebQSP/relation_retrieval_0717/cross-encoder/saved_models/${exp_id}/"
+log_dir="data/WebQSP/relation_retrieval_0717/cross-encoder/saved_models/${exp_id}/"
 
 
 if [ "$ACTION" = "train" ]; then
@@ -22,7 +22,7 @@ if [ "$ACTION" = "train" ]; then
                             --do_train \
                             --max_len 34 \
                             --batch_size 128 \
-                            --epochs 3 \
+                            --epochs 6 \
                             --log_dir ${log_dir} \
                             --dataset_type WebQSP \
                             --model_save_path ${exp_prefix} \
@@ -43,7 +43,7 @@ elif [ "$ACTION" = "eval" ]; then
                             --predict_split ${split} \
                             --max_len 34 \
                             --batch_size 128 \
-                            --epochs 3 \
+                            --epochs 6 \
                             --log_dir ${log_dir} \
                             --dataset_type WebQSP \
                             --model_save_path "${exp_prefix}${model_name}" \
@@ -53,10 +53,10 @@ elif [ "$ACTION" = "eval" ]; then
 elif [ "$ACTION" = "predict" ]; then
     split=${3:-test}
     model_name=${4:-none}
-    if [ -d "${exp_prefix}${model_name}_${split}/" ]; then
-        echo "${exp_prefix}${model_name}_${split}/ already exists"
+    if [ -d "${exp_prefix}${model_name}_${split}_2hop_repeat/" ]; then
+        echo "${exp_prefix}${model_name}_${split}_2hop_repeat/ already exists"
     else
-        mkdir "${exp_prefix}${model_name}_${split}/"
+        mkdir "${exp_prefix}${model_name}_${split}_2hop_repeat/"
     fi
     echo "Predicting ${split}"
     python relation_retrieval/cross-encoder/cross_encoder_main.py \
@@ -64,11 +64,11 @@ elif [ "$ACTION" = "predict" ]; then
                             --predict_split ${split} \
                             --max_len 34 \
                             --batch_size 128 \
-                            --epochs 3 \
+                            --epochs 6 \
                             --log_dir ${log_dir} \
                             --dataset_type WebQSP \
                             --model_save_path "${exp_prefix}${model_name}" \
-                            --output_dir "${exp_prefix}${model_name}_${split}" \
+                            --output_dir "${exp_prefix}${model_name}_${split}_2hop_repeat" \
                             --cache_dir hfcache/bert-base-uncased \
 
 else

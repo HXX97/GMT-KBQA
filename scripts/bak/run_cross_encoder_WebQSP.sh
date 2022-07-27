@@ -20,9 +20,9 @@ if [ "$ACTION" = "train" ]; then
     fi
     python relation_retrieval/cross-encoder/cross_encoder_main.py \
                             --do_train \
-                            --max_len 34 \
+                            --max_len 80 \
                             --batch_size 128 \
-                            --epochs 3 \
+                            --epochs 6 \
                             --log_dir ${log_dir} \
                             --dataset_type WebQSP \
                             --model_save_path ${exp_prefix} \
@@ -41,9 +41,9 @@ elif [ "$ACTION" = "eval" ]; then
     python relation_retrieval/cross-encoder/cross_encoder_main.py \
                             --do_eval \
                             --predict_split ${split} \
-                            --max_len 34 \
+                            --max_len 80 \
                             --batch_size 128 \
-                            --epochs 3 \
+                            --epochs 6 \
                             --log_dir ${log_dir} \
                             --dataset_type WebQSP \
                             --model_save_path "${exp_prefix}${model_name}" \
@@ -62,9 +62,9 @@ elif [ "$ACTION" = "predict" ]; then
     python relation_retrieval/cross-encoder/cross_encoder_main.py \
                             --do_predict \
                             --predict_split ${split} \
-                            --max_len 34 \
+                            --max_len 80 \
                             --batch_size 128 \
-                            --epochs 3 \
+                            --epochs 6 \
                             --log_dir ${log_dir} \
                             --dataset_type WebQSP \
                             --model_save_path "${exp_prefix}${model_name}" \

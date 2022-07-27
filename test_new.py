@@ -1,5 +1,6 @@
 from components.utils import dump_json, load_json
 import pandas as pd
+from tqdm import tqdm
 
 
 def compare_json_file(file_1_path, file_2_path):
@@ -15,6 +16,23 @@ def compare_json_file_set(file_1_path, file_2_path):
     file_2 = set(load_json(file_2_path))
     print(file_1 == file_2)
     assert file_1 == file_2
+
+def compare_json_relations_sequence(file_1_path, file_2_path):
+    """
+    每次 Inference, 关系的 logits 是可能有微小不同的，我们考虑关系的顺序即可
+    """
+    prev_data = load_json(file_1_path)
+    new_data = load_json(file_2_path)
+    assert len(prev_data) == len(new_data), print(len(prev_data), len(new_data))
+    for (prev, new) in tqdm(zip(prev_data, new_data), total=len(prev_data)):
+        for key in prev.keys():
+            if key != 'cand_relation_list':
+                assert prev[key] == new[key]
+            else:
+                prev_relations = [rel[0] for rel in prev['cand_relation_list']]
+                new_relations = [rel[0] for rel in new['cand_relation_list']]
+                if set(prev_relations) != set(new_relations):
+                    print(prev["ID"])
 
 def compare_json_disamb_entities(file_1_path, file_2_path):
     print(file_1_path)
@@ -196,27 +214,29 @@ def relation_data_process_unit_test():
     for split in ['train', 'dev', 'test']:
         compare_json_file(
             f'data/CWQ/relation_retrieval_0723/bi-encoder/CWQ.{split}.goldenRelation.json',
-            f'data/CWQ/relation_retrieval/bi-encoder/CWQ.{split}.relation.json'
+            f'data/CWQ/relation_retrieval/bi-encoder/CWQ.{split}.goldenRelation.json'
         )
-    # for split in ['dev']:
-    #     # 得到的结果稍有不同，不纠结了, 直接把源目录的复制过来吧
-    #     compare_tsv_file_randomly_sampled_question(
-    #         f'data/CWQ/relation_retrieval_0723/bi-encoder/CWQ.{split}.sampled.tsv',
-    #         f'data/CWQ/relation_retrieval/bi-encoder/CWQ.{split}.sampled.tsv'
-    #     )
+    for split in ['train', 'dev']:
+        # 得到的结果稍有不同，不纠结了, 直接把源目录的复制过来吧
+        compare_tsv_file_randomly_sampled_question(
+            f'data/CWQ/relation_retrieval_0723/bi-encoder/CWQ.{split}.sampled.tsv',
+            f'data/CWQ/relation_retrieval/bi-encoder/CWQ.{split}.sampled.tsv'
+        )
 
 
     """
     WebQSP
     """
-    # for split in ['train', 'test']:
+    # print('Comparing golden relations')
+    # for split in ['train', 'ptrain', 'pdev', 'test']:
     #     compare_json_file(
-    #         f'data/WebQSP/relation_retrieval_0717/bi-encoder/WebQSP.{split}.goldenRelation.json',
+    #         f'data/WebQSP/relation_retrieval/bi-encoder/WebQSP.{split}.goldenRelation.json',
     #         f'data/WebQSP/relation_retrieval_final/bi-encoder/WebQSP.{split}.goldenRelation.json'
     #     )
+    # print('Comparing tsv files')
     # compare_tsv_file_randomly_sampled(
     #     f'data/WebQSP/relation_retrieval_final/bi-encoder/WebQSP.train.sampled.tsv',
-    #     f'data/WebQSP/relation_retrieval_0717/bi-encoder/WebQSP.train.sampled.tsv',
+    #     f'data/WebQSP/relation_retrieval/bi-encoder/WebQSP.train.sampled.tsv',
     # )
 
     # for split in ['ptrain', 'pdev']:
@@ -239,9 +259,10 @@ def relation_data_process_unit_test():
     #     'data/WebQSP/relation_retrieval_0717/bi-encoder/WebQSP.train.sampled.normal.tsv',
     # )
     # 二跳关系查询的检查
+    # print('Comparing unique entity ids')
     # compare_json_file_set(
-    #     'data/WebQSP/relation_retrieval_0722/cross-encoder/rng_kbqa_linking_results/unique_entity_ids.json',
-    #     'data/WebQSP/relation_retrieval_0717/cross-encoder/rng_kbqa_linking_results/unique_entity_ids.json',
+    #     'data/WebQSP/relation_retrieval/cross-encoder/rng_kbqa_linking_results/unique_entity_ids.json',
+    #     'data/WebQSP/relation_retrieval_final/cross-encoder/rng_kbqa_linking_results/unique_entity_ids.json',
     # )
     # compare_json_keys(
     #     'data/WebQSP/relation_retrieval_0722/cross-encoder/rng_kbqa_linking_results/entities_2hop_relations.json',
@@ -262,20 +283,20 @@ def relation_retrieval_unit_test():
     """
     CWQ, 到cross-encoder 的训练数据这边，确认无误，可复现
     """
-    for split in ['test', 'dev', 'train']:
-        compare_tsv_file(
-            f'data/CWQ/relation_retrieval_0723/cross-encoder/mask_mention_1epoch/CWQ.{split}.tsv',
-            f'data/CWQ/relation_retrieval/cross-encoder/0715_retrain/CWQ.{split}.tsv',
-        )
+    # for split in ['test']:
+    #     compare_tsv_file(
+    #         f'data/CWQ/relation_retrieval_0723/cross-encoder/mask_mention_1epoch_question_relation/CWQ.{split}.tsv',
+    #         f'data/CWQ/relation_retrieval/cross-encoder/mask_mention_1epoch_question_relation/CWQ.{split}.tsv',
+    #     )
 
     """
     WebQSP
     """
-    # for split in ['test','train']:
-        # compare_tsv_file(
-        #     f'data/WebQSP/relation_retrieval_final/cross-encoder/rich_relation_3epochs_question_relation/WebQSP.{split}.tsv',
-        #     f'data/WebQSP/relation_retrieval_0717/cross-encoder/rich_relation_3epochs_question_relation/WebQSP.{split}.tsv',
-        # )
+    for split in ['train', 'ptrain', 'pdev', 'test', 'train_2hop', 'test_2hop']:
+        compare_tsv_file(
+            f'data/WebQSP/relation_retrieval_final/cross-encoder/rich_relation_3epochs_question_relation/WebQSP.{split}.tsv',
+            f'data/WebQSP/relation_retrieval/cross-encoder/rich_relation_3epochs_question_relation/WebQSP.{split}.tsv',
+        )
         # compare_tsv_file(
         #     f'data/WebQSP/relation_retrieval_final/cross-encoder/rich_relation_3epochs_question_relation/WebQSP.{split}_2hop.tsv',
         #     f'data/WebQSP/relation_retrieval_0717/cross-encoder/2hop_relations/WebQSP.{split}.tsv'
@@ -299,23 +320,25 @@ def relation_retrieval_unit_test():
     # )
 
 def merge_logits_unit_test():
-    for split in ['train', 'dev', 'test']:
-        compare_json_file(
-            f'data/WebQSP/generation/merged_relation_final/WebQSP_{split}.json',
-            f'data/WebQSP/generation/0722/merged_question_relation_ep3_2hop/WebQSP_{split}.json',
-        )
-        # compare_json_file(
-        #     f'data/WebQSP/generation/merged_relation_final/WebQSP_{split}.json',
-        #     f'data/WebQSP/generation/merged_question_relation_ep3_2hop/WebQSP_{split}.json',
+    # for split in ['train', 'dev', 'test']:
+    for split in ['train', 'test']:
+        # 每次 predict 的时候，关系 logits 可能有轻微的变动，比较关系的顺序应该就可以？
+        # compare_json_relations_sequence(
+        #     f'data/CWQ/generation/merged_0724_ep1/CWQ_{split}.json',
+        #     f'data/CWQ/generation/merged_test/CWQ_{split}.json',
         # )
-    compare_json_file(
-        f'data/WebQSP/generation/merged_relation_final/WebQSP_train_all.json',
-        f'data/WebQSP/generation/merged_question_relation_ep3_2hop/WebQSP_train.json',
-    )
-    compare_json_file(
-        f'data/WebQSP/generation/merged_relation_final/WebQSP_test.json',
-        f'data/WebQSP/generation/merged_question_relation_ep3_2hop/WebQSP_test.json',
-    )
+        compare_json_relations_sequence(
+            f'data/WebQSP/generation/merged_relation_final/WebQSP_{split}.json',
+            f'data/WebQSP/generation/merged_test/WebQSP_{split}.json',
+        )
+    # compare_json_file(
+    #     f'data/WebQSP/generation/merged_relation_final/WebQSP_train_all.json',
+    #     f'data/WebQSP/generation/merged_question_relation_ep3_2hop/WebQSP_train.json',
+    # )
+    # compare_json_file(
+    #     f'data/WebQSP/generation/merged_relation_final/WebQSP_test.json',
+    #     f'data/WebQSP/generation/merged_question_relation_ep3_2hop/WebQSP_test.json',
+    # )
 
 def compare_2hop_relations():
     compare_json_file_diy(
@@ -396,13 +419,13 @@ def main():
     # 关系检索相关的单元测试
     # relation_data_process_unit_test()
     # relation_retrieval_unit_test()
-    # merge_logits_unit_test()
+    merge_logits_unit_test()
     # compare_2hop_relations()
-    for split in ['train', 'test']:
-        compare_json_file(
-            f'data/CWQ/generation/merged_0724_ep1/CWQ_{split}.json',
-            f'data/CWQ/generation/merged_old/CWQ_{split}.json'
-        )
+    # for split in ['train', 'test']:
+    #     compare_json_file(
+    #         f'data/CWQ/generation/merged_0724_ep1/CWQ_{split}.json',
+    #         f'data/CWQ/generation/merged_old/CWQ_{split}.json'
+    #     )
 
 if __name__=='__main__':
     main()

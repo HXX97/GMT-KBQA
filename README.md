@@ -118,13 +118,13 @@ If you want to retrieve the candidate entities from scratch, follow the steps be
 
 (4) **Retrieve Candidate Relations** （可以参考 test_new.py 里面的单元测试）
 
-This step can also be ***skipped*** , as we've provided t he candidate relations in `data/CWQ/relation_retrieval/`
+This step can also be ***skipped*** , as we've provided the candidate relations in `data/{dataset}/relation_retrieval/`
 
 If you want to retrive the candidate relations from scratch, follow the steps below:
 
 1. Train the bi-encoder to encode questions and relations.
-    - CWQ: Run `python run_relation_data_process.py sample_data --dataset CWQ --split train[dev, test]` to prepare training data. Then run `sh scripts/run_bi_encoder_CWQ.sh {YOUR_FOLDER_NAME}` to train bi-encoder model. Trained model will be saved in `data/CWQ/relation_retrieval/bi-encoder/saved_models/{YOUR_FOLDER_NAME}`.
-    - WebQSP: Run `python run_relation_data_process.py sample_data --dataset WebQSP --split train[ptrain, pdev]` to prepare training data. Then run `sh scripts/run_bi_encoder_WebQSP.sh {YOUR_FOLDER_NAME}` to train bi-encoder model. Trained model will be saved in `data/WebQSP/relation_retrieval/bi-encoder/saved_models/{YOUR_FOLDER_NAME}`. For WebQSP, linking entities' two-hop relations will be queried and cached.
+    - CWQ: Run `python run_relation_data_process.py sample_data --dataset CWQ --split train[dev]` to prepare training data. Then run `sh scripts/run_bi_encoder_CWQ.sh {YOUR_FOLDER_NAME}` to train bi-encoder model. Trained model will be saved in `data/CWQ/relation_retrieval/bi-encoder/saved_models/{YOUR_FOLDER_NAME}`.
+    - WebQSP: Run `python run_relation_data_process.py sample_data --dataset WebQSP --split train` to prepare training data. Then run `sh scripts/run_bi_encoder_WebQSP.sh {YOUR_FOLDER_NAME}` to train bi-encoder model. Trained model will be saved in `data/WebQSP/relation_retrieval/bi-encoder/saved_models/{YOUR_FOLDER_NAME}`. For WebQSP, linking entities' two-hop relations will be queried and cached.
 
 2. Build the index of encoded relations.
     - CWQ: To encode Freebase relations using trained bi-encoder, run `python relation_retrieval/bi-encoder/build_and_search_index.py encode_relation --dataset CWQ`. Then run `python relation_retrieval/bi-encoder/build_and_search_index.py build_index --dataset CWQ` to build the index of encoded relations. Index file will be saved as `data/CWQ/relation_retrieval/bi-encoder/index/ep_{EPOCH}_flat.index`.

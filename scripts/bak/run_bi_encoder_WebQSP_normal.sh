@@ -1,8 +1,8 @@
-exp_id=${1:-none}
+run_bi_encoder_WebQSP_normal.shexp_id=${1:-none}
 
 dataset='WebQSP'
-exp_prefix="data/${dataset}/relation_retrieval/bi-encoder/saved_models/${exp_id}/"
-log_dir="data/${dataset}/relation_retrieval/bi-encoder/saved_models/${exp_id}/"
+exp_prefix="data/${dataset}/relation_retrieval_0717/bi-encoder/saved_models/${exp_id}/"
+log_dir="data/${dataset}/relation_retrieval_0717/bi-encoder/saved_models/${exp_id}/"
 
 if [ -d ${exp_prefix} ]; then
     echo "${exp_prefix} already exists"
@@ -17,7 +17,7 @@ fi
 python relation_retrieval/bi-encoder/run_bi_encoder.py \
                             --dataset_type WebQSP \
                             --model_save_path ${exp_prefix} \
-                            --max_len 60 \
+                            --max_len 34 \
                             --batch_size 4 \
                             --epochs 3 \
                             --log_dir ${log_dir} \

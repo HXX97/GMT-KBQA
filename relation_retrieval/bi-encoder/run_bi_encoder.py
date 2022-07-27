@@ -31,12 +31,11 @@ def _parse_args():
 
 def data_process(dataset_type):
     if dataset_type == "CWQ":
-        train_df = pd.read_csv('data/CWQ/relation_retrieval_0723/bi-encoder/CWQ.train.sampled.tsv', sep='\t', error_bad_lines=False).dropna()
-        dev_df = pd.read_csv('data/CWQ/relation_retrieval_0723/bi-encoder/CWQ.dev.sampled.tsv', sep='\t', error_bad_lines=False).dropna()
+        train_df = pd.read_csv('data/CWQ/relation_retrieval/bi-encoder/CWQ.train.sampled.tsv', sep='\t', error_bad_lines=False).dropna()
+        dev_df = pd.read_csv('data/CWQ/relation_retrieval/bi-encoder/CWQ.dev.sampled.tsv', sep='\t', error_bad_lines=False).dropna()
     else:
-        # 固定轮数，直接取最后一轮结果
-        train_df = pd.read_csv('data/WebQSP/relation_retrieval_final/bi-encoder/WebQSP.train.sampled.tsv', delimiter='\t',dtype={"id":int, "question":str, "relation":str, 'label':int})
-        # train_df = pd.read_csv('data/WebQSP/relation_retrieval_0717/bi-encoder/WebQSP.train.sampled.tsv', sep='\t', error_bad_lines=False).dropna()
+        # Use the model saved in last epoch
+        train_df = pd.read_csv('data/WebQSP/relation_retrieval/bi-encoder/WebQSP.train.sampled.tsv', delimiter='\t',dtype={"id":int, "question":str, "relation":str, 'label':int})
         dev_df = None
     
     return train_df, dev_df
@@ -177,7 +176,7 @@ def train_bert(model, opti, lr, lr_scheduler, train_loader, val_loader, epochs, 
             if log_w:
                 log_w.write("Epoch {} complete! Validation Loss : {}\n".format(ep+1, val_loss))
                 log_w.write("Accuracy on dev data: {}\n".format(accuracy))
-        # 记录 validation loss， 但是仍然把每个 epoch 的模型都保存下来
+        # Recording validation loss, while still saving models of every epoch
         model_copy = copy.deepcopy(model)
         if val_loss < best_loss:
             print("Best validation loss improved from {} to {}".format(best_loss, val_loss))
