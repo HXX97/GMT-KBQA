@@ -16,6 +16,26 @@ def compare_json_file_qid_diff(file_1_path, file_2_path):
             continue
     print(len(diff_qids), list(diff_qids))
 
+def compare_json_file_set_diff(file_1_path, file_2_path):
+    print(file_1_path)
+    file_1 = load_json(file_1_path)
+    file_2 = load_json(file_2_path)
+    assert len(file_1) == len(file_2)
+    for qid in file_1:
+        assert qid in file_2, print(qid)
+        file_1_entity_map = file_1[qid]["entity_label_map"]
+        file_1_rel_map = file_1[qid]["rel_label_map"]
+        file_1_type_map = file_1[qid]["type_label_map"]
+
+        file_2_entity_map = file_2[qid]["entity_label_map"]
+        file_2_rel_map = file_2[qid]["rel_label_map"]
+        file_2_type_map = file_2[qid]["type_label_map"]
+
+        if file_1_entity_map == file_2_entity_map and file_1_rel_map == file_2_rel_map and file_1_type_map == file_2_type_map:
+            continue
+        else:
+            print(qid)
+
 
 
 def compare_json_file(file_1_path, file_2_path):
@@ -23,7 +43,17 @@ def compare_json_file(file_1_path, file_2_path):
     file_1 = load_json(file_1_path)
     file_2 = load_json(file_2_path)
     print(file_1 == file_2)
-    assert file_1 == file_2
+    if file_1 != file_2:
+        for key in file_1:
+            if key not in file_2:
+                print(key)
+            elif file_1[key] != file_2[key]:
+                print(key)
+        for key in file_2:
+            if key not in file_1:
+                print(key)
+            elif file_1[key] != file_2[key]:
+                print(key)
 
 def compare_json_file_set(file_1_path, file_2_path):
     print(file_1_path)
@@ -477,6 +507,44 @@ def entity_retrieval_unit_test(dataset='WebQSP'):
     # compare_combined_entities(dataset)
     compare_disamb_entities(dataset)
 
+def compare_label_maps(dataset='CWQ'):
+    if dataset.lower() == 'cwq':
+        for split in ['train', 'dev', 'test']:
+            compare_json_file(
+                f'data/CWQ/generation/label_maps_test/CWQ_{split}_entity_label_map.json',
+                f'data/CWQ/generation/label_maps/CWQ_{split}_entity_label_map.json'
+            )
+            compare_json_file(
+                f'data/CWQ/generation/label_maps_test/CWQ_{split}_relation_label_map.json',
+                f'data/CWQ/generation/label_maps/CWQ_{split}_relation_label_map.json'
+            )
+            compare_json_file(
+                f'data/CWQ/generation/label_maps_test/CWQ_{split}_type_label_map.json',
+                f'data/CWQ/generation/label_maps/CWQ_{split}_type_label_map.json'
+            )
+            compare_json_file_set_diff(
+                f'data/CWQ/generation/label_maps_test/CWQ_{split}_label_maps.json',
+                f'data/CWQ/generation/label_maps/CWQ_{split}_label_maps.json'
+            )
+    elif dataset.lower() == 'webqsp':
+        for split in ['train', 'test']:
+            compare_json_file(
+                f'data/WebQSP/generation/label_maps_test/WebQSP_{split}_entity_label_map.json',
+                f'data/WebQSP/generation/label_maps/WebQSP_{split}_entity_label_map.json'
+            )
+            compare_json_file(
+                f'data/WebQSP/generation/label_maps_test/WebQSP_{split}_relation_label_map.json',
+                f'data/WebQSP/generation/label_maps/WebQSP_{split}_relation_label_map.json'
+            )
+            compare_json_file(
+                f'data/WebQSP/generation/label_maps_test/WebQSP_{split}_type_label_map.json',
+                f'data/WebQSP/generation/label_maps/WebQSP_{split}_type_label_map.json'
+            )
+            compare_json_file_set_diff(
+                f'data/WebQSP/generation/label_maps_test/WebQSP_{split}_label_maps.json',
+                f'data/WebQSP/generation/label_maps/WebQSP_{split}_label_maps.json'
+            )
+
 
 def logical_form_generation_unit_test(dataset='CWQ'):
     if dataset.lower() == 'cwq':
@@ -545,6 +613,12 @@ def main():
     #     )
 
     # Logical form generation 相关单元测试
-    logical_form_generation_unit_test('CWQ')
+    # logical_form_generation_unit_test('CWQ')
+    compare_label_maps('WebQSP')
+    # for split in ['train', 'dev', 'test']:
+    #     compare_json_file(
+    #         f'data/CWQ/generation/merged/WebQSP_{split}.json',
+    #         f'data/CWQ/generation/bak/merged_question_relation_ep3_2hop/WebQSP_{split}.json'
+    #     )
 if __name__=='__main__':
     main()

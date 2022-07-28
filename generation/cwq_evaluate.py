@@ -21,8 +21,6 @@ def cwq_evaluate_valid_results(args):
     """Compute P, R and F1 for CWQ"""
     pred_data = load_json(args.pred_file)
     # origin dataset
-    # dataset_data = load_json(f'../data/CWQ/generation/merged/CWQ_{args.split}.json')
-    # dataset_data = load_json(f'../data/CWQ/generation/merged_0724_ep1/CWQ_{args.split}.json')
     dataset_data = load_json(f'data/CWQ/origin/ComplexWebQuestions_{args.split}.json')
     
     dataset_dict = {x["ID"]:x for x in dataset_data}
@@ -38,7 +36,6 @@ def cwq_evaluate_valid_results(args):
     pred_dict = {}
     acc_qid_list = [] # Pred Answer ACC
     for pred in pred_data:
-        # pred = json.loads(pred)
         qid = pred['qid']
         pred_answer = set(pred['answer'])
         pred_dict[qid]=pred_answer
@@ -82,7 +79,6 @@ def cwq_evaluate_valid_results(args):
         p_dict[qid] = p
         r_dict[qid] = r
         f_dict[qid] = f
-        # print(f'{qid}: P:{p}\tR:{r}\tF:{f}')
     
     p_average = sum(p_list)/len(p_list)
     r_average = sum(r_list)/len(r_list)

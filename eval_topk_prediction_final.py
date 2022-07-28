@@ -6,7 +6,6 @@ import sys
 sys.path.append('..')
 import argparse
 from generation.cwq_evaluate import cwq_evaluate_valid_results
-# from generation.webqsp_evaluate import webqsp_evaluate_valid_results
 from generation.webqsp_evaluate_offcial import webqsp_evaluate_valid_results
 from components.utils import dump_json, load_json
 from tqdm import tqdm
@@ -40,7 +39,6 @@ def _parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--split', required=True, help='split to operate on, can be `test`, `dev` and `train`')
     parser.add_argument('--pred_file', default=None, help='topk prediction file')
-    parser.add_argument('--revise_only', action='store_true', dest='revise_only', default=False, help='only do revising')
     parser.add_argument('--server_ip', default=None, help='server ip for debugging')
     parser.add_argument('--server_port', default=None, help='server port for debugging')
     parser.add_argument('--qid',default=None,type=str, help='single qid for debug, None by default' )
@@ -78,7 +76,7 @@ def type_checker(token:str):
     pattern_year_month = r"^\d{4}-\d{2}$"
     pattern_year_month_date = r"^\d{4}-\d{2}-\d{2}$"
     if re.match(pattern_year, token):
-        if int(token) < 3000: # low possibility to meet 1000 years later
+        if int(token) < 3000: # >= 3000: low possibility to be a year
             token = token+"^^http://www.w3.org/2001/XMLSchema#dateTime"
     elif re.match(pattern_year_month, token):
         token = token+"^^http://www.w3.org/2001/XMLSchema#dateTime"
@@ -106,8 +104,8 @@ def test_date_post_process():
 
 def date_post_process(date_string):
     """
-    我们的知识库查询结果，会自动补全一个日期
-    例如:
+    When quering KB, (our) KB tends to autoComplete a date
+    e.g.
         - 1996 --> 1996-01-01
         - 1906-04-18 --> 1906-04-18 05:12:00
     """
@@ -126,7 +124,6 @@ def date_post_process(date_string):
 
 def denormalize_s_expr_new(normed_expr, 
                             entity_label_map,
-                            entity_mention_map,
                             type_label_map,
                             rel_label_map,
                             train_entity_map,
@@ -169,13 +166,9 @@ def denormalize_s_expr_new(normed_expr,
 
             if not processed:
                 # find in label entity map
-
                 if cur_seg.lower() in entity_label_map: # entity
                     cur_seg = entity_label_map[cur_seg.lower()]
                     processed = True
-                # elif cur_seg.lower() in entity_mention_map:
-                #     cur_seg = entity_mention_map[cur_seg.lower()]
-                #     processed = True
                 elif cur_seg.lower() in type_label_map: # type
                     cur_seg = type_label_map[cur_seg.lower()]
                     processed = True
@@ -186,21 +179,16 @@ def denormalize_s_expr_new(normed_expr,
                         if cur_seg.lower() in rel_label_map: # relation
                             cur_seg = rel_label_map[cur_seg.lower()]
                         elif cur_seg_entity in entity_label_map: # entity
-                            print(cur_seg_entity, "L154")
                             cur_seg = entity_label_map[cur_seg_entity]
                         elif cur_seg_entity in train_entity_map: # entity in trainset
-                            print(cur_seg_entity, "L157")
                             cur_seg = train_entity_map[cur_seg_entity]
                         else: 
                             find_sim_entity = False
                             for ent_label in entity_label_map:
                                 string_sim = difflib.SequenceMatcher(None, cur_seg_entity, ent_label).quick_ratio()
                                 if string_sim >= 0.6: # highly similar
-                                    # 举个例子，生成的是Victoria, 链接到的label 是 victoria, british columbia； 所以这个阈值设的小一些还是有一定道理的
-                                    # 用规则处理这种？其实确实是生成的问题，最好不要手动去改
                                     cur_seg = entity_label_map[ent_label]
                                     find_sim_entity = True
-                                    print('L203: {}'.format(cur_seg))
                                     break
                             if not find_sim_entity:
                                 # try to link entity by FACC1
@@ -236,31 +224,16 @@ def denormalize_s_expr_new(normed_expr,
                                 for ent_label in entity_label_map:
                                     string_sim = difflib.SequenceMatcher(None, cur_seg.lower(), ent_label).quick_ratio()
                                     if string_sim >= 0.6: # highly similar
-                                        # 举个例子，生成的是Victoria, 链接到的label 是 victoria, british columbia； 所以这个阈值设的小一些还是有一定道理的
-                                        # 用规则处理这种？其实确实是生成的问题，最好不要手动去改
                                         cur_seg = entity_label_map[ent_label]
                                         find_sim_entity = True
                                         break
-                                
-                                # if not find_sim_entity:
-                                #     for ent_mention in entity_mention_map:
-                                #         string_sim = difflib.SequenceMatcher(None, cur_seg.lower(), ent_mention).quick_ratio()
-                                #         if string_sim >= 0.8: # highly similar
-                                #             cur_seg = entity_mention_map[ent_mention]
-                                #             find_sim_entity = True
-                                #             break
                                 
                                 if not find_sim_entity:
                                     # try facc1 linking
                                     facc1_cand_entities = surface_index.get_indexrange_entity_el_pro_one_mention(cur_seg,top_k=1)
                                     if facc1_cand_entities:
                                         cur_seg = list(facc1_cand_entities.keys())[0]
-                                    else:
-                                        pass
-                                        # try earl linking
-                                        # earl_cand_entities = get_top1_entity_linking_from_earl(cur_seg)
-                                        # if earl_cand_entities:
-                                        #     cur_seg = list(earl_cand_entities)[0]
+                                       
                                 
             segments.append(cur_seg)
             cur_seg = ''
@@ -280,7 +253,6 @@ def denormalize_s_expr_new(normed_expr,
                             segments.append(t.upper()) # [and, join, r, argmax, count] upper case
                         prev_left_par = False 
                     else:
-                        # TODO # can be a date string, e.g., 1997
                         if t != ')':
                             if t.lower() in entity_label_map:
                                 t = entity_label_map[t.lower()]
@@ -297,7 +269,6 @@ def denormalize_s_expr_new(normed_expr,
 
 def execute_normed_s_expr_from_label_maps(normed_expr, 
                                         entity_label_map,
-                                        entity_mention_map,
                                         type_label_map,
                                         rel_label_map,
                                         train_entity_map,
@@ -307,7 +278,6 @@ def execute_normed_s_expr_from_label_maps(normed_expr,
     try:
         denorm_sexpr = denormalize_s_expr_new(normed_expr, 
                                         entity_label_map, 
-                                        entity_mention_map,
                                         type_label_map,
                                         rel_label_map,
                                         train_entity_map,
@@ -337,33 +307,19 @@ def execute_normed_s_expr_from_label_maps(normed_expr,
 def aggressive_top_k_eval_new(split, predict_file, dataset, test_batch_size):
     """Run top k predictions, using linear origin map"""
     if dataset == "CWQ":
-        train_gen_dataset = load_json('data/CWQ/generation/merged_0724_ep1/CWQ_train.json')
-        test_gen_dataset = load_json('data/CWQ/generation/merged_0724_ep1/CWQ_test.json')
-        dev_gen_dataset = load_json('data/CWQ/generation/merged_0724_ep1/CWQ_dev.json')
+        train_gen_dataset = load_json('data/CWQ/generation/merged/CWQ_train.json')
+        test_gen_dataset = load_json('data/CWQ/generation/merged/CWQ_test.json')
+        dev_gen_dataset = load_json('data/CWQ/generation/merged/CWQ_dev.json')
     elif dataset == "WebQSP":
-        # train_gen_dataset = load_json('data/WebQSP/generation/0722/merged_question_relation_ep3_2hop/WebQSP_train.json')
-        # test_gen_dataset = load_json('data/WebQSP/generation/0722/merged_question_relation_ep3_2hop/WebQSP_test.json')
-        # dev_gen_dataset = load_json('data/WebQSP/generation/0722/merged_question_relation_ep3_2hop/WebQSP_dev.json')
-        train_gen_dataset = load_json('data/WebQSP/generation/merged_relation_final/WebQSP_train.json')
-        test_gen_dataset = load_json('data/WebQSP/generation/merged_relation_final/WebQSP_test.json')
+        train_gen_dataset = load_json('data/WebQSP/generation/merged/WebQSP_train.json')
+        test_gen_dataset = load_json('data/WebQSP/generation/merged/WebQSP_test.json')
         dev_gen_dataset = None
-    # if dataset == "CWQ":
-    #     train_gen_dataset = load_json('../data/CWQ/generation/merged_old/CWQ_train.json')
-    #     test_gen_dataset = load_json('../data/CWQ/generation/merged_old/CWQ_test.json')
-    #     dev_gen_dataset = load_json('../data/CWQ/generation/merged_old/CWQ_dev.json')
-    # elif dataset == "WebQSP":
-    #     train_gen_dataset = load_json('../data/WebQSP/generation/merged_old/WebQSP_train.json')
-    #     test_gen_dataset = load_json('../data/WebQSP/generation/merged_old/WebQSP_test.json')
-    #     dev_gen_dataset = None
     
     predictions = load_json(predict_file)
 
-    # print(os.path.dirname(predict_file))
+    print(os.path.dirname(predict_file))
     dirname = os.path.dirname(predict_file)
     filename = os.path.basename(predict_file)
-    
-    # augment_data_file = os.path.join(dirname, 'predict_data_all.json')
-    # augment_data = load_json(augment_data_file)
 
     if split=='dev':
         gen_dataset = dev_gen_dataset
@@ -383,17 +339,12 @@ def aggressive_top_k_eval_new(split, predict_file, dataset, test_batch_size):
         train_entity_map = {l.lower():e for e,l in train_entity_map.items()}
     elif dataset == "WebQSP":
         if split == 'train' or split == 'dev':
-            gold_label_maps = load_json("data/WebQSP/generation/label_maps_all_parses/WebQSP_train_label_maps.json")
-            print('data/WebQSP/generation/label_maps_all_parses/WebQSP_train_label_maps.json')
-            # gold_label_maps = load_json("data/WebQSP/generation/label_maps/WebQSP_train_label_maps.json")
-            # print('data/WebQSP/generation/label_maps/WebQSP_train_label_maps.json')
+            gold_label_maps = load_json("data/WebQSP/generation/label_maps/WebQSP_train_label_maps.json")
+            print('data/WebQSP/generation/label_maps/WebQSP_train_label_maps.json')
         else:
-            gold_label_maps = load_json("data/WebQSP/generation/label_maps_all_parses/WebQSP_test_label_maps.json")
-            print('data/WebQSP/generation/label_maps_all_parses/WebQSP_test_label_maps.json')
-            # gold_label_maps = load_json("data/WebQSP/generation/label_maps/WebQSP_test_label_maps.json")
-            # print('data/WebQSP/generation/label_maps/WebQSP_test_label_maps.json')
-        train_entity_map = load_json(f"data/WebQSP/generation/label_maps_all_parses/WebQSP_train_entity_label_map.json")
-        # train_entity_map = load_json(f"data/WebQSP/generation/label_maps/WebQSP_train_entity_label_map.json")
+            gold_label_maps = load_json("data/WebQSP/generation/label_maps/WebQSP_test_label_maps.json")
+            print('data/WebQSP/generation/label_maps/WebQSP_test_label_maps.json')
+        train_entity_map = load_json(f"data/WebQSP/generation/label_maps/WebQSP_train_entity_label_map.json")
         train_entity_map = {l.lower():e for e,l in train_entity_map.items()}
 
     if not use_goldEnt:
@@ -403,8 +354,8 @@ def aggressive_top_k_eval_new(split, predict_file, dataset, test_batch_size):
                 print(f'candidate_entity_map: CWQ_{split}_{test_batch_size}_candidate_entity_map.json')
                 candidate_entity_map = load_json(os.path.join(dirname, f'CWQ_{split}_{test_batch_size}_candidate_entity_map.json'))
             else:
-                candidate_entity_map = load_json(f'data/CWQ/entity_retrieval/merged_linking_results/merged_CWQ_{split}_linking_results.json')
-                print(f'candidate_entity_map: data/CWQ/entity_retrieval/merged_linking_results/merged_CWQ_{split}_linking_results.json')
+                candidate_entity_map = load_json(f'data/CWQ/entity_retrieval/disamb_entities/CWQ_merged_{split}_disamb_entities.json')
+                print(f'candidate_entity_map: data/CWQ/entity_retrieval/disamb_entities/CWQ_merged_{split}_disamb_entities.json')
                 use_linking_results = True
             train_type_map = load_json(f"data/CWQ/generation/label_maps/CWQ_train_type_label_map.json")
             train_type_map = {l.lower():t for t,l in train_type_map.items()}
@@ -413,17 +364,14 @@ def aggressive_top_k_eval_new(split, predict_file, dataset, test_batch_size):
                 print(f'candidate_entity_map: WebQSP_{split}_{test_batch_size}_candidate_entity_map.json')
                 candidate_entity_map = load_json(os.path.join(dirname, f"WebQSP_{split}_{test_batch_size}_candidate_entity_map.json"))
             else:
-                # candidate_entity_map = load_json(f'data/WebQSP/entity_retrieval/disamb_entities/WebQSP_merged_{split}_disamb_entities.json')
-                # print(f'loading data/WebQSP/entity_retrieval/disamb_entities/WebQSP_merged_{split}_disamb_entities.json')
                 if split == 'train' or split == 'dev':
-                    candidate_entity_map = load_json(f'data/WebQSP/entity_retrieval/linking_results/merged_WebQSP_train_linking_results.json')
-                    print(f'candidate_entity_map: data/WebQSP/entity_retrieval/linking_results/merged_WebQSP_train_linking_results.json')
+                    candidate_entity_map = load_json(f'data/WebQSP/entity_retrieval/disamb_entities/WebQSP_merged_train_disamb_entities.json')
+                    print('data/WebQSP/entity_retrieval/disamb_entities/WebQSP_merged_train_disamb_entities.json')
                 else:
-                    candidate_entity_map = load_json(f'data/WebQSP/entity_retrieval/linking_results/merged_WebQSP_test_linking_results.json')
-                    print(f'candidate_entity_map: data/WebQSP/entity_retrieval/linking_results/merged_WebQSP_test_linking_results.json')
+                    candidate_entity_map = load_json(f'data/WebQSP/entity_retrieval/disamb_entities/WebQSP_merged_test_disamb_entities.json')
+                    print('candidate_entity_map: data/WebQSP/entity_retrieval/disamb_entities/WebQSP_merged_test_disamb_entities.json')
                 use_linking_results = True
-            train_type_map = load_json(f"data/WebQSP/generation/label_maps_all_parses/WebQSP_train_type_label_map.json")
-            # train_type_map = load_json(f"data/WebQSP/generation/label_maps/WebQSP_train_type_label_map.json")
+            train_type_map = load_json(f"data/WebQSP/generation/label_maps/WebQSP_train_type_label_map.json")
             train_type_map = {l.lower():t for t,l in train_type_map.items()}
         
     if not use_goldRel:
@@ -431,12 +379,8 @@ def aggressive_top_k_eval_new(split, predict_file, dataset, test_batch_size):
             train_relation_map = load_json(f"data/CWQ/generation/label_maps/CWQ_train_relation_label_map.json")
             train_relation_map = {l.lower():r for r,l in train_relation_map.items()}
         elif dataset == "WebQSP":
-            train_relation_map = load_json(f"data/WebQSP/generation/label_maps_all_parses/WebQSP_train_relation_label_map.json")
-            # train_relation_map = load_json(f"data/WebQSP/generation/label_maps/WebQSP_train_relation_label_map.json")
+            train_relation_map = load_json(f"data/WebQSP/generation/label_maps/WebQSP_train_relation_label_map.json")
             train_relation_map = {l.lower():r for r,l in train_relation_map.items()}
-    
-    # load FACC1 Index
-    # surface_index = None
     
     
     surface_index = surface_index_memory.EntitySurfaceIndexMemory(
@@ -448,7 +392,6 @@ def aggressive_top_k_eval_new(split, predict_file, dataset, test_batch_size):
     lines = []
     official_lines = []
     failed_preds = []
-    # denormalize_failed = []
 
     gen_executable_cnt = 0
     final_executable_cnt = 0
@@ -460,17 +403,14 @@ def aggressive_top_k_eval_new(split, predict_file, dataset, test_batch_size):
 
         
         if not use_goldEnt:
-            # entity label map, Dict[label:mid]
             if qid in candidate_entity_map:
                 if use_linking_results:
-                    entity_label_map = {value['label'].lower():key for key,value in candidate_entity_map[qid].items()}
-                    # entity_label_map = {item['label']:item['id'] for item in candidate_entity_map[qid]}
+                    entity_label_map = {item['label'].lower():item['id'] for item in candidate_entity_map[qid]}
                 else:
                     entity_label_map = {key.lower():value['id'] for key,value in candidate_entity_map[qid].items()}
             else:
                 entity_label_map = {}
             
-            entity_mention_map = None
             type_label_map = train_type_map
         else:
             # goldEnt label map
@@ -486,20 +426,17 @@ def aggressive_top_k_eval_new(split, predict_file, dataset, test_batch_size):
             rel_label_map = gold_label_maps[qid]['rel_label_map']
             rel_label_map = {l.lower():r for r,l in rel_label_map.items()}
 
-        # found_executable = False
-        executable_index = None # index of LF being executed
+        executable_index = None # index of LF being finally executed
 
         # find the first executable lf
         for rank, p in enumerate(pred['predictions']):
             lf, answers = execute_normed_s_expr_from_label_maps(
                                                 p, 
-                                                entity_label_map, 
-                                                None,
+                                                entity_label_map,
                                                 type_label_map, 
                                                 rel_label_map, 
                                                 train_entity_map,
                                                 surface_index)
-            # answers = list(answers)
 
             # 加一个对日期的后处理
             answers = [date_post_process(ans) for ans in list(answers)]
@@ -510,7 +447,6 @@ def aggressive_top_k_eval_new(split, predict_file, dataset, test_batch_size):
                 ex_cnt +=1
             
             if answers:
-                # found_executable = True
                 executable_index = rank
                 lines.append({
                     'qid': qid, 

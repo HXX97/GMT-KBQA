@@ -716,9 +716,12 @@ def validate_answer(prev_path, new_path):
     #         diff.add(prev["ID"])
     for qid in new_data:
         assert qid in prev_data, print(qid)
-        if 'answer' not in prev_data[qid]:
-            print(qid)
-        if set(prev_data[qid]["answer"]) != set(new_data[qid]["answer"]):
+        new_answer = new_data[qid]["answer"]
+        if 'answer' in prev_data[qid]:
+            prev_answer = prev_data[qid]["answer"]
+        else:
+            prev_answer = [x["answer_id"] for x in prev_data[qid]["answers"]]
+        if set(prev_answer) != set(new_answer):
             diff.add(qid)
     print(len(diff), list(diff))
 
@@ -1058,6 +1061,42 @@ def check_execution_res(pred_sexpr, golden_sparql):
     print(f'pred_answer: {len(pred_denotation)} {pred_denotation}')
     print(f'golden_answer: {len(golden_denation)} {golden_denation}')
 
+
+def convert_disamb_entities_format(prev_path, new_path):
+    prev_data = load_json(prev_path)
+    new_data = dict()
+    for qid in tqdm(prev_data, total=len(prev_data)):
+        new_item = []
+        for entity_id in prev_data[qid]:
+            new_item.append({
+                "id": entity_id,
+                **prev_data[qid][entity_id]
+            })
+        new_data[qid] = new_item
+    dump_json(new_data, new_path)
+
+def validate_disamb_entities_conversion(prev_path, new_path):
+    prev_data = load_json(prev_path)
+    new_data = load_json(new_path)
+    assert len(prev_data) == len(new_data), print(len(prev_data), len(new_data))
+    for qid in tqdm(prev_data, total=len(prev_data)):
+        assert qid in new_data
+        prev_item = prev_data[qid]
+        new_item = new_data[qid]
+        new_item = {item["id"]: item for item in new_item}
+
+        for eid in prev_item:
+            assert eid in new_item, print(qid, eid)
+            assert prev_item[eid]["label"] == new_item[eid]["label"]
+            assert prev_item[eid]["mention"] == new_item[eid]["mention"]
+            assert prev_item[eid]["perfect_match"] == new_item[eid]["perfect_match"]
+
+def test_label_map(label_map_path):
+    label_map = load_json(label_map_path)
+    for qid in label_map:
+        print(qid)
+        entity_label_map = {l.lower():t for t,l in label_map[qid]['entity_label_map'].items()}
+
 if __name__=='__main__':
     # compare_answers(
     #     'data/CWQ/origin/ComplexWebQuestions_test.json',
@@ -1108,17 +1147,18 @@ if __name__=='__main__':
         #     f'data/CWQ/generation/merged_old/CWQ_{split}.json',
         # )
         # validation_merged_file(
-        #     f'data/CWQ/generation/merged_0724_ep1/CWQ_{split}.json',
+        #     f'data/CWQ/generation/merged/CWQ_{split}.json',
         #     f'data/CWQ/generation/merged_old/CWQ_{split}.json',
         # )
         # validate_answer(
         #     f'data/CWQ/origin/ComplexWebQuestions_{split}.json',
-        #     f'data/CWQ/generation/merged_0724_ep1/CWQ_{split}.json',
+        #     f'data/CWQ/generation/merged/CWQ_{split}.json',
         # )
     
     # WebQSP
     # for split in ['train', 'ptrain', 'pdev', 'test']:
     # for split in ['train', 'test']:
+        # validate_answer()
         # substitude_relations_in_merged_file_with_addition(
         #     f'data/WebQSP/generation/merged_old/WebQSP_{split}.json',
         #     f'data/WebQSP/generation/merged_question_relation_ep3_2hop/WebQSP_{split}.json',
@@ -1142,7 +1182,7 @@ if __name__=='__main__':
         # )
         # validation_merged_file(
         #     f'data/WebQSP/generation/merged_old/WebQSP_{split}.json',
-        #     f'data/WebQSP/generation/merged_question_relation_ep3_2hop/WebQSP_{split}.json',
+        #     f'data/WebQSP/generation/merged/WebQSP_{split}.json',
         # )
         # calculate_disambiguated_el_res(
         #     f'data/WebQSP/entity_retrieval/linking_results/merged_WebQSP_{split}_linking_results.json',
@@ -1219,7 +1259,62 @@ if __name__=='__main__':
     #     "PREFIX ns: <http://rdf.freebase.com/ns/>\nSELECT DISTINCT ?x\nWHERE {\nFILTER (?x != ns:m.01f6rm)\nFILTER (!isLiteral(?x) OR lang(?x) = '' OR langMatches(lang(?x), 'en'))\nns:m.01f6rm ns:time.event.start_date ?x .\n}\n",
     # )
 
-    compare_answers(
-        'exps/WebQSP_t5_generation_20epochs_bs2/beam_50_top_k_predictions.json_gen_sexpr_results.json',
-        'exps/WebQSP_t5_generation_20epochs_bs2/prev/beam_50_top_k_predictions.json_gen_sexpr_results.json'
-    )
+    # compare_answers(
+    #     'exps/WebQSP_t5_generation_20epochs_bs2/beam_50_top_k_predictions.json_gen_sexpr_results.json',
+    #     'exps/WebQSP_t5_generation_20epochs_bs2/prev/beam_50_top_k_predictions.json_gen_sexpr_results.json'
+    # )
+
+    # for split in ['train', 'dev', 'test']:
+    #     convert_disamb_entities_format(
+    #         f'data/CWQ/entity_retrieval/disamb_entities/merged_CWQ_{split}_linking_results.json',
+    #         f'data/CWQ/entity_retrieval/disamb_entities/CWQ_merged_{split}_disamb_entities.json'
+    #     )
+    #     validate_disamb_entities_conversion(
+    #         f'data/CWQ/entity_retrieval/disamb_entities/merged_CWQ_{split}_linking_results.json',
+    #         f'data/CWQ/entity_retrieval/disamb_entities/CWQ_merged_{split}_disamb_entities.json'
+    #     )
+    # for split in ['train', 'test']:
+    #     convert_disamb_entities_format(
+    #         f'data/WebQSP/entity_retrieval/disamb_entities/merged_WebQSP_{split}_linking_results.json',
+    #         f'data/WebQSP/entity_retrieval/disamb_entities/WebQSP_merged_{split}_disamb_entities.json',
+    #     )
+    #     validate_disamb_entities_conversion(
+    #         f'data/WebQSP/entity_retrieval/disamb_entities/merged_WebQSP_{split}_linking_results.json',
+    #         f'data/WebQSP/entity_retrieval/disamb_entities/WebQSP_merged_{split}_disamb_entities.json',
+    #     )
+
+    # for split in ['train', 'test']:
+    #     test_label_map(f'data/WebQSP/generation/label_maps/WebQSP_{split}_label_maps.json')
+
+    def test_date_post_process():
+        test_cases = [
+            'm.07tnkvw', 
+            '1906-04-18 05:12:00',
+            '1996-01-01',
+            '1883-01-01',
+            '1775-05-10',
+            '1906-04-18 05:12:00',
+            '1786-01-01',
+            '1921-09-01',
+        ]
+        for case in test_cases:
+            print('{}: {}'.format(case, date_post_process(case)))
+    def date_post_process(date_string):
+        """
+        我们的知识库查询结果，会自动补全一个日期
+        例如:
+            - 1996 --> 1996-01-01
+            - 1906-04-18 --> 1906-04-18 05:12:00
+        """
+        import re
+        pattern_year_month_date = r"^\d{4}-\d{2}-\d{2}$"
+        pattern_year_month_date_moment = r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$"
+
+        if re.match(pattern_year_month_date_moment, date_string):
+            if date_string.endswith('05:12:00'):
+                date_string = date_string.replace('05:12:00', '').strip()
+        elif re.match(pattern_year_month_date, date_string):
+            if date_string.endswith('-01-01'):
+                date_string = date_string.replace('-01-01', '').strip()
+        return date_string
+    test_date_post_process()
