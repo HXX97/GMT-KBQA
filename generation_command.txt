@@ -1,0 +1,59 @@
+cheatsheet for main experiments
+CWQ:
+1. T5-base
+    train: CUDA_VISIBLE_DEVICES=2 sh scripts/t5_base_CWQ.sh train t5_base False
+
+    1.1 different inference beam size, taking beam size=10 as example
+        predict: CUDA_VISIBLE_DEVICES=1 sh scripts/run_t5_generation_15epochs_CWQ.sh predict t5_generation_15epochs False test 10 2
+        evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/CWQ_t5_generation_15epochs/beam_10_top_k_predictions.json
+
+2. generation_concat retrieved relations/entities 15 epochs:
+    train & predict: CUDA_VISIBLE_DEVICES=2 sh scripts/run_t5_generation_concat_15epochs_CWQ.sh train t5_generation_concat_15epochs_no_structure False
+    evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/CWQ_t5_generation_concat_15epochs_no_structure/beam_50_top_k_predictions.json
+
+3. + Oracle
+    train & predict: CUDA_VISIBLE_DEVICES=2 sh scripts/concat_gold_CWQ.sh train concat_gold False
+
+4. generation + relation classification add prefix, warmup=5
+    train & predict: CUDA_VISIBLE_DEVICES=1 sh scripts/run_t5_relation_concat_add_prefix_warmup_epochs_5_15epochs_CWQ.sh train relation_concat_add_prefix_warmup_epochs_5_15epochs False
+    evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/CWQ_relation_concat_add_prefix_warmup_epochs_5_15epochs/beam_50_top_k_predictions.json
+
+5. generation + relation classification + entity disambiguation add prefix, warmup=5
+    train & predict:  CUDA_VISIBLE_DEVICES=1 sh scripts/run_t5_relation_entity_concat_add_prefix_warmup_epochs_5_15epochs_CWQ.sh train relation_entity_concat_add_prefix_warmup_epochs_5_15epochs False
+    evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/CWQ_relation_entity_concat_add_prefix_warmup_epochs_5_15epochs/beam_50_top_k_predictions.json
+ 
+    用旧版的 merged data:
+    train & predict: CUDA_VISIBLE_DEVICES=1 sh scripts/run_t5_relation_entity_concat_add_prefix_warmup_epochs_5_15epochs_CWQ.sh train relation_entity_concat_add_prefix_warmup_epochs_5_15epochs_old_merged False
+ 
+6. without relation
+    train & predict: CUDA_VISIBLE_DEVICES=0 sh scripts/without_relation_CWQ.sh train without_relation False
+    evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/CWQ_t5_entity_concat_add_prefix_warmup_5_15epochs/beam_50_top_k_predictions.json
+
+WebQSP:
+
+1. t5-base
+train & predict: CUDA_VISIBLE_DEVICES=1 sh scripts/t5_base_WebQSP.sh train t5_base False
+evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/WebQSP_t5_generation_20epochs_bs2/beam_50_top_k_predictions.json --dataset WebQSP
+    1.1 different inference beam size, taking beam size=10 as example
+        predict: CUDA_VISIBLE_DEVICES=1 sh scripts/run_t5_generation_20epochs_bs2_WebQSP.sh predict t5_generation_20epochs_bs2 False test 10 2
+        evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/WebQSP_t5_generation_20epochs_bs2/beam_10_top_k_predictions.json --dataset WebQSP
+
+2. + retrieval
+train & predict: CUDA_VISIBLE_DEVICES=0 sh scripts/concat_retrieval_WebQSP.sh train concat_retrieval False
+evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/WebQSP_t5_generation_concat_20epochs_no_structure/beam_50_top_k_predictions.json --dataset WebQSP
+
+3. + oracle
+train & predict: CUDA_VISIBLE_DEVICES=4 sh scripts/concat_gold_WebQSP.sh train concat_gold False
+evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/WebQSP_generation_concat_goldEnt_goldRel_20epochs/beam_50_top_k_predictions.json --dataset WebQSP
+
+4. generation + relation classification, warmup_epochs=5 add_prefix, 20 epochs, train_batch_size = 2
+train & predict: CUDA_VISIBLE_DEVICES=3 sh scripts/run_t5_relation_concat_add_prefix_warmup_epochs_5_20epochs_WebQSP_bs2.sh train relation_concat_add_prefix_warmup_epochs_5_20epochs_WebQSP_bs2 False
+evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/WebQSP_relation_concat_add_prefix_warmup_epochs_5_20epochs_WebQSP_bs2/beam_50_top_k_predictions.json --dataset WebQSP
+
+5. generation + relation classification + entity disambiguation, warmup_epochs=5 add_prefix 20 epochs, train_batch_size=2
+train & predict: CUDA_VISIBLE_DEVICES=2 sh scripts/run_t5_relation_entity_concat_add_prefix_warmup_epochs_5_20epochs_bs2_WebQSP.sh train relation_entity_concat_add_prefix_warmup_epochs_5_20epochs_bs2 False
+evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/WebQSP_relation_entity_concat_add_prefix_warmup_epochs_5_20epochs_bs2/beam_50_top_k_predictions.json --dataset WebQSP
+
+6. without relation
+train & predict: CUDA_VISIBLE_DEVICES=3 sh scripts/without_relation_WebQSP.sh train without_relation False
+evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/WebQSP_entity_concat_add_prefix_warmup5_20epochs/beam_50_top_k_predictions.json --dataset WebQSP

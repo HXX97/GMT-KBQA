@@ -25,25 +25,9 @@ Important: Edit this when change source data
 """ 
 def load_data(split, args):
     if args.dataset_type == "CWQ":
-        data_file_name = 'data/CWQ/generation/merged_0724_ep1/CWQ_{}.json'.format(split)
-        # data_file_name = 'data/CWQ/generation/merged_0715_retrain/CWQ_{}.json'.format(split)
-        # data_file_name = 'data/CWQ/generation/merged/CWQ_{}.json'.format(split)
-        # data_file_name = 'data/CWQ/generation/merged_0714/CWQ_{}.json'.format(split)
-        # data_file_name = 'data/CWQ/generation/merged_old/CWQ_{}.json'.format(split)
-        # data_file_name = 'data/CWQ/generation/xwu_merged_new/CWQ_{}.json'.format(split)
+        data_file_name = 'data/CWQ/generation/merged/CWQ_{}.json'.format(split)
     elif args.dataset_type == "WebQSP":
-        # data_file_name = 'data/WebQSP/generation/0722/merged_question_relation_ep3_2hop/WebQSP_{}.json'.format(split)
-        data_file_name = 'data/WebQSP/generation/merged_relation_final/WebQSP_{}.json'.format(split)
-        # data_file_name = 'data/WebQSP/generation/merged_yhshu/WebQSP_{}.json'.format(split)
-        # data_file_name = 'data/WebQSP/generation/merged_0715_retrain_biencoder_ep5_reserve_150/WebQSP_{}.json'.format(split)
-        # data_file_name = 'data/WebQSP/generation/merged_0715_retrain_biencoder_ep5/WebQSP_{}.json'.format(split)
-        # data_file_name = 'data/WebQSP/generation/merged_0715_retrain/WebQSP_{}.json'.format(split)
-        # if split == 'train':
-        #     data_file_name = 'data/WebQSP/generation/merged_old/WebQSP_{}.json'.format(split)
-        # elif split == 'test':
-        #     data_file_name = 'data/WebQSP/generation/merged_0714/WebQSP_test.json'
-        # data_file_name = 'data/WebQSP/generation/merged_old/WebQSP_{}.json'.format(split)
-        # data_file_name = 'data/WebQSP/generation/xwu_merged_new/WebQSP_{}.json'.format(split)
+        data_file_name = 'data/WebQSP/generation/merged/WebQSP_{}.json'.format(split)
     print('Loading data from:',data_file_name)
     data_dict = load_json(data_file_name)
     return data_dict
@@ -142,17 +126,9 @@ def _collate_fn(data,tokenizer):
     all_entity_clf_pair_input_ids = []
     all_entity_clf_pair_labels = []
     rich_candidate_entities_list = []
-    # all_structure_tgt_input_ids = []
-    # candidate_structures = []
-    # all_structure_clf_pair_labels = []
-    all_rich_relation_clf_pair_input_ids = []
-    candidate_rich_relations = []
-    # all_structure_clf_pair_input_ids = []
     all_src_concatenated_input_ids = []
     all_src_golden_concatenated_input_ids = []
-    # print(len(data))
     for data_tuple in data:
-        # print(data_tuple)
         all_src_input_ids.append(data_tuple[0])
         all_tgt_input_ids.append(data_tuple[1])
         all_relation_clf_pair_input_ids.extend(data_tuple[2])
@@ -162,26 +138,16 @@ def _collate_fn(data,tokenizer):
         all_entity_clf_pair_input_ids.extend(data_tuple[6])
         all_entity_clf_pair_labels.extend(data_tuple[7])
         rich_candidate_entities_list.extend(data_tuple[8])
-        #all_structure_tgt_input_ids.append(data_tuple[9])
-        #candidate_structures.extend(data_tuple[10])
-        #all_structure_clf_pair_labels.extend(data_tuple[11])
-        all_rich_relation_clf_pair_input_ids.extend(data_tuple[9])
-        candidate_rich_relations.extend(data_tuple[10])
-        #all_structure_clf_pair_input_ids.extend(data_tuple[14])
-        all_src_concatenated_input_ids.append(data_tuple[11])
-        all_src_golden_concatenated_input_ids.append(data_tuple[12])
+        all_src_concatenated_input_ids.append(data_tuple[9])
+        all_src_golden_concatenated_input_ids.append(data_tuple[10])
 
     
     src_encoded = tokenizer.pad({'input_ids': all_src_input_ids},return_tensors='pt')
     tgt_encoded = tokenizer.pad({'input_ids': all_tgt_input_ids},return_tensors='pt')
     relation_clf_pair_encoded = tokenizer.pad({'input_ids': all_relation_clf_pair_input_ids},return_tensors='pt')
     relation_clf_pair_labels = torch.tensor(all_relation_clf_pair_labels)
-    rich_relation_clf_pair_encoded = tokenizer.pad({'input_ids': all_rich_relation_clf_pair_input_ids},return_tensors='pt')
     entity_clf_pair_encoded = tokenizer.pad({'input_ids': all_entity_clf_pair_input_ids},return_tensors='pt')
     entity_clf_pair_labels = torch.tensor(all_entity_clf_pair_labels)
-    # structure_tgt_encoded = tokenizer.pad({'input_ids': all_structure_tgt_input_ids},return_tensors='pt')
-    # structure_clf_pair_labels = torch.tensor(all_structure_clf_pair_labels)
-    # structure_clf_pair_encoded = tokenizer.pad({'input_ids': all_structure_clf_pair_input_ids},return_tensors='pt')
     src_concatenated_encoded = tokenizer.pad({'input_ids': all_src_concatenated_input_ids},return_tensors='pt')
     src_golden_concatenated_encoded = tokenizer.pad({'input_ids': all_src_golden_concatenated_input_ids},return_tensors='pt')
 
@@ -195,12 +161,6 @@ def _collate_fn(data,tokenizer):
         entity_clf_pair_encoded,
         entity_clf_pair_labels,
         rich_candidate_entities_list,
-        # structure_tgt_encoded,
-        # candidate_structures,
-        # structure_clf_pair_labels,
-        rich_relation_clf_pair_encoded,
-        candidate_rich_relations,
-        # structure_clf_pair_encoded,
         src_concatenated_encoded,
         src_golden_concatenated_encoded
     )
@@ -222,18 +182,15 @@ def prepare_dataloader(args,split,tokenizer,batch_size):
         examples = [MTLGenerationExample(x) for x in data]
     print(f'Real {split} dataset len: {len(examples)}')
 
-    # examples = examples[:100]
     dataset = MTLGenDataset(examples, 
                             tokenizer=tokenizer,
                             do_lower=args.do_lower,
                             normalize_relations=args.normalize_relations,
                             max_src_len=args.max_src_len,
                             max_tgt_len=args.max_tgt_len,
-                            max_structure_tgt_len=args.max_structure_tgt_len,
                             add_prefix=args.add_prefix
                             )
 
-    # print(train_dataset.__getitem__(0))
     dataloader = DataLoader(dataset, 
                             batch_size=batch_size, 
                             collate_fn=partial(_collate_fn,tokenizer=tokenizer),
@@ -318,15 +275,8 @@ def train_model(args,model,tokenizer,device,train_dataloader,dev_dataloader=None
             entity_clf_pair_encoded = data[6]
             entity_clf_pair_labels = data[7]
             rich_textual_candidate_entities_list = data[8]
-            # structure_tgt_encoded = data[9]
-            # candidate_structures = data[10]
-            # structure_clf_pair_labels = data[11]
-            rich_relation_clf_pair_encoded = data[9]
-            candidate_rich_relations = data[10]
-            # structure_clf_pair_encoded = data[14]
-            src_concatenated_encoded = data[11]
-            src_golden_concatenated_encoded = data[12]
-            # print(data)
+            src_concatenated_encoded = data[9]
+            src_golden_concatenated_encoded = data[10]
 
             if isinstance(model, T5_generation):
                 loss = model(
@@ -357,9 +307,6 @@ def train_model(args,model,tokenizer,device,train_dataloader,dev_dataloader=None
                     textual_candidate_relations=candidate_relations,
                     textual_input_src_gen=input_src,
                     normalize_relations=args.normalize_relations,
-                    rich_relation_clf_input_ids=rich_relation_clf_pair_encoded['input_ids'].to(device),
-                    rich_relation_clf_attention_mask=rich_relation_clf_pair_encoded['attention_mask'].to(device),
-                    textual_candidate_rich_relations=candidate_rich_relations,
                     do_concat=epoch >= args.warmup_epochs
                 )
             elif isinstance(model, T5_MultiTask_Relation_Entity_Concat):
@@ -457,15 +404,8 @@ def evaluate_loss(args, model,device,dataloader):
             entity_clf_pair_encoded = data[6]
             entity_clf_pair_labels = data[7]
             rich_textual_candidate_entities_list = data[8]
-            # structure_tgt_encoded = data[9]
-            # candidate_structures = data[10]
-            # structure_clf_pair_labels = data[11]
-            rich_relation_clf_pair_encoded = data[9]
-            candidate_rich_relations = data[10]
-            # structure_clf_pair_encoded = data[14]
-            src_concatenated_encoded = data[11]
-            src_golden_concatenated_encoded = data[12]
-            # print(data)
+            src_concatenated_encoded = data[9]
+            src_golden_concatenated_encoded = data[10]
 
             if isinstance(model, T5_generation):
                 loss = model(
@@ -496,9 +436,6 @@ def evaluate_loss(args, model,device,dataloader):
                     textual_candidate_relations=candidate_relations,
                     textual_input_src_gen=input_src,
                     normalize_relations=args.normalize_relations,
-                    rich_relation_clf_input_ids=rich_relation_clf_pair_encoded['input_ids'].to(device),
-                    rich_relation_clf_attention_mask=rich_relation_clf_pair_encoded['attention_mask'].to(device),
-                    textual_candidate_rich_relations=candidate_rich_relations
                 )
             elif isinstance(model, T5_MultiTask_Relation_Entity_Concat):
                 loss = model(
@@ -543,10 +480,6 @@ def run_prediction(args,model,device,dataloader,tokenizer,output_dir,output_pred
     all_relation_clf_labels = []
     all_entity_clf_predictions = []
     all_entity_clf_labels = []
-    # all_structure_gen_predictions = []
-    # all_structure_gen_labels = []
-    # all_structure_clf_predictions = []
-    # all_structure_clf_labels = []
     for it,data in enumerate(tqdm(dataloader,desc='Predicting')):
             src_encoded = data[0]
             tgt_encoded = data[1]
@@ -557,19 +490,11 @@ def run_prediction(args,model,device,dataloader,tokenizer,output_dir,output_pred
             entity_clf_pair_encoded = data[6]
             entity_clf_pair_labels = data[7]
             rich_textual_candidate_entities_list = data[8]
-            # structure_tgt_encoded = data[9]
-            # candidate_structures = data[10]
-            # structure_clf_pair_labels = data[11]
-            rich_relation_clf_pair_encoded = data[9]
-            candidate_rich_relations = data[10]
-            # structure_clf_pair_encoded = data[14]
-            src_concatenated_encoded = data[11]
-            src_golden_concatenated_encoded = data[12]
+            src_concatenated_encoded = data[9]
+            src_golden_concatenated_encoded = data[10]
 
             entity_clf_outputs = None
             relation_clf_outputs = None
-            # structure_gen_outputs = None
-            # structure_clf_outputs = None
 
             if isinstance(model, T5_generation):
                 gen_outputs = model.inference(
@@ -600,9 +525,6 @@ def run_prediction(args,model,device,dataloader,tokenizer,output_dir,output_pred
                     textual_candidate_relations=candidate_relations,
                     textual_input_src_gen=input_src,
                     normalize_relations=args.normalize_relations,
-                    rich_relation_clf_input_ids=rich_relation_clf_pair_encoded['input_ids'].to(device),
-                    rich_relation_clf_attention_mask=rich_relation_clf_pair_encoded['attention_mask'].to(device),
-                    textual_candidate_rich_relations=candidate_rich_relations
                 )
             elif isinstance(model, T5_MultiTask_Relation_Entity_Concat):
                 gen_outputs, relation_clf_outputs, entity_clf_outputs = model.inference(
@@ -641,18 +563,6 @@ def run_prediction(args,model,device,dataloader,tokenizer,output_dir,output_pred
                 entity_clf_pair_labels = entity_clf_pair_labels.cpu().reshape(-1,args.sample_size)
                 all_entity_clf_predictions.extend([p.numpy() for p in entity_clf_outputs])
                 all_entity_clf_labels.extend([l.numpy() for l in entity_clf_pair_labels])
-            
-            # if structure_gen_outputs is not None:
-            #     structure_gen_outputs = [p.cpu().numpy() for p in structure_gen_outputs]
-            #     structure_gen_labels = structure_tgt_encoded['input_ids'].numpy()
-            #     all_structure_gen_predictions.extend(structure_gen_outputs)
-            #     all_structure_gen_labels.extend(structure_gen_labels)
-            
-            # if structure_clf_outputs is not None:
-            #     structure_clf_outputs = torch.sigmoid(structure_clf_outputs).detach().cpu().reshape(-1,args.structure_sample_size)
-            #     structure_clf_pair_labels = structure_clf_pair_labels.cpu().reshape(-1,args.structure_sample_size)
-            #     all_structure_clf_predictions.extend([p.numpy() for p in structure_clf_outputs])
-            #     all_structure_clf_labels.extend([l.numpy() for l in structure_clf_pair_labels])
 
     ex_cnt = 0
     contains_ex_cnt = 0
@@ -661,30 +571,7 @@ def run_prediction(args,model,device,dataloader,tokenizer,output_dir,output_pred
     for i,pred in enumerate(all_gen_predictions):
         predictions = tokenizer.batch_decode(pred, skip_special_tokens=True)
         gen_label = tokenizer.decode(all_gen_labels[i], skip_special_tokens=True)
-        # if len(all_structure_gen_predictions) > 0 and len(all_entity_clf_predictions) > 0 and len(all_relation_clf_predictions) > 0:
-        #     structure_predictions = tokenizer.batch_decode(all_structure_gen_predictions[i],skip_special_tokens=True)
-        #     structure_label = tokenizer.decode(all_structure_gen_labels[i], skip_special_tokens=True)
-        #     output_list.append({
-        #         'predictions':predictions,
-        #         'gen_label':gen_label,
-        #         'structure_predictions': structure_predictions,
-        #         'structure_label': structure_label,
-        #         'pred_relation_clf_labels':[float(p) for p in list(all_relation_clf_predictions[i])],
-        #         'gold_relation_clf_labels':[float(l) for l in list(all_relation_clf_labels[i])],
-        #         'pred_entity_clf_labels':[float(p) for p in list(all_entity_clf_predictions[i])],
-        #         'gold_entity_clf_labels':[float(p) for p in list(all_entity_clf_labels[i])],
-        #     })
-        # elif len(all_structure_clf_predictions) > 0 and len(all_entity_clf_predictions) > 0 and len(all_relation_clf_predictions) > 0:
-        #     output_list.append({
-        #         'predictions':predictions,
-        #         'gen_label':gen_label,
-        #         'pred_relation_clf_labels':[float(p) for p in list(all_relation_clf_predictions[i])],
-        #         'gold_relation_clf_labels':[float(l) for l in list(all_relation_clf_labels[i])],
-        #         'pred_entity_clf_labels':[float(p) for p in list(all_entity_clf_predictions[i])],
-        #         'gold_entity_clf_labels':[float(p) for p in list(all_entity_clf_labels[i])],
-        #         'pred_structure_clf_labels': [float(p) for p in list(all_structure_clf_predictions[i])],
-        #         'gold_structure_clf_labels': [float(p) for p in list(all_structure_clf_labels[i])],
-        #     })
+
         if len(all_entity_clf_predictions) > 0 and len(all_relation_clf_predictions) > 0:
             output_list.append({
                 'predictions':predictions,
@@ -751,25 +638,9 @@ def run_prediction(args,model,device,dataloader,tokenizer,output_dir,output_pred
         dump_json(output_list, file_path, indent=4)
         dump_json(gen_statistics, gen_statistics_file_path,indent=4)
         if args.dataset_type == 'CWQ':
-            dataset = load_json(f'data/CWQ/generation/merged_0724_ep1/CWQ_{args.predict_split}.json')
-            # dataset = load_json(f'data/CWQ/generation/merged_0715_retrain/CWQ_{args.predict_split}.json')
-            # dataset = load_json(f'data/CWQ/generation/merged_0714/CWQ_{args.predict_split}.json')
-            # dataset = load_json(f'data/CWQ/generation/merged/CWQ_{args.predict_split}.json')
-            # dataset = load_json(f'data/CWQ/generation/merged_old/CWQ_{args.predict_split}.json')
-            # dataset = load_json(f'data/CWQ/generation/xwu_merged_new/CWQ_{args.predict_split}.json')
+            dataset = load_json(f'data/CWQ/generation/merged/CWQ_{args.predict_split}.json')
         elif args.dataset_type == 'WebQSP':
-            dataset = load_json(f'data/WebQSP/generation/merged_relation_final/WebQSP_{args.predict_split}.json')
-            # dataset = load_json(f'data/WebQSP/generation/0722/merged_question_relation_ep3_2hop/WebQSP_{args.predict_split}.json')
-            # dataset = load_json(f'data/WebQSP/generation/merged_yhshu/WebQSP_{args.predict_split}.json')
-            # dataset = load_json(f'data/WebQSP/generation/merged_0715_retrain_biencoder_ep5/WebQSP_{args.predict_split}.json')
-            # dataset = load_json(f'data/WebQSP/generation/merged_0715_retrain/WebQSP_{args.predict_split}.json')
-            # if args.predict_split == 'train':
-            #     dataset = load_json('data/WebQSP/generation/merged_old/WebQSP_{}.json'.format(args.predict_split))
-            # elif args.predict_split == 'test':
-            #     dataset = load_json('data/WebQSP/generation/merged_0714/WebQSP_test.json')
-            # dataset = load_json(f'data/WebQSP/generation/merged_corrected/WebQSP_{args.predict_split}.json')
-            # dataset = load_json(f'data/WebQSP/generation/merged_old/WebQSP_{args.predict_split}.json')
-            #  dataset = load_json(f'data/WebQSP/generation/xwu_merged_new/WebQSP_{args.predict_split}.json')
+            dataset = load_json(f'data/WebQSP/generation/merged/WebQSP_{args.predict_split}.json')
         if len(all_entity_clf_predictions) > 0:
             generate_candidate_entity_map_classification_res(output_list, output_dir, dataset, args)
 
@@ -856,7 +727,6 @@ if __name__=='__main__':
                 do_lower=args.do_lower,
                 cross_entropy_loss=args.cross_entropy_loss,
                 add_prefix=args.add_prefix,
-                use_rich_relation=args.use_rich_relation
             )
         elif args.model == 'T5_MultiTask_Relation_Entity_Concat':
             print('T5_MultiTask_Relation_Entity_Concat')
@@ -936,7 +806,6 @@ if __name__=='__main__':
                     do_lower=args.do_lower,
                     cross_entropy_loss=args.cross_entropy_loss,
                     add_prefix=args.add_prefix,
-                    use_rich_relation=args.use_rich_relation
                 )
             elif args.model == 'T5_MultiTask_Relation_Entity_Concat':
                 print('T5_MultiTask_Relation_Entity_Concat')

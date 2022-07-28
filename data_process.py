@@ -622,10 +622,11 @@ def extract_entity_relation_type_label_from_dataset(dataset, split):
                 is_type = True
 
             entity_label = get_label_with_odbc(entity)
-            ent_label_map[entity] = entity_label
-            global_ent_label_map[entity] = entity_label
+            if entity_label is not None:
+                ent_label_map[entity] = entity_label
+                global_ent_label_map[entity] = entity_label
 
-            if is_type:
+            if is_type and entity_label is not None:
                 type_label_map[entity] = entity_label
                 global_type_label_map[entity] = entity_label
 
@@ -684,10 +685,11 @@ def extract_entity_relation_type_label_from_dataset_webqsp(dataset, split):
                     is_type = True
 
                 entity_label = get_label_with_odbc(entity)
-                ent_label_map[entity] = entity_label
-                global_ent_label_map[entity] = entity_label
+                if entity_label is not None:
+                    ent_label_map[entity] = entity_label
+                    global_ent_label_map[entity] = entity_label
 
-                if is_type:
+                if is_type and entity_label is not None:
                     type_label_map[entity] = entity_label
                     global_type_label_map[entity] = entity_label
 

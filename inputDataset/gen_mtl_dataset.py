@@ -11,12 +11,12 @@ class MTLGenerationExample:
     """
     Multi Task Generation Example
     """
-    def __init__(self, dict_data) -> None:
+    def __init__(self, dict_data):
         """ Initialize from dict data"""
         self.ID = dict_data['ID']
         self.question = dict_data['question']
         self.comp_type = dict_data['comp_type']
-        self.sprql = dict_data['sparql']
+        self.sparql = dict_data['sparql']
         self.sexpr = dict_data['sexpr']
         self.normed_sexpr = dict_data['normed_sexpr']
         self.gold_entity_map = dict_data['gold_entity_map']
@@ -25,8 +25,6 @@ class MTLGenerationExample:
         self.cand_relation_list = dict_data['cand_relation_list']
         self.answer = dict_data['answer']
         self.cand_entity_list = dict_data['cand_entity_list']
-        # self.gold_structure = dict_data['normed_all_masked_sexpr']
-        # self.cand_structure_list = dict_data['cand_structure_list']
         self.disambiguated_cand_entity = dict_data['disambiguated_cand_entity']
 
 
@@ -48,7 +46,6 @@ class MTLGenDataset(Dataset):
         normalize_relations=False,
         max_src_len=256, 
         max_tgt_len=196,
-        max_structure_tgt_len=70,
         add_prefix=False,
     ):
         # super().__init__()
@@ -58,7 +55,6 @@ class MTLGenDataset(Dataset):
         self.normalize_relations = normalize_relations
         self.max_src_len = max_src_len
         self.max_tgt_len = max_tgt_len
-        self.max_structure_tgt_len = max_structure_tgt_len
         self.add_prefix = add_prefix
         self.REL_TOKEN = ' [REL] '
         self.ENT_TOKEN = ' [ENT] '
@@ -76,7 +72,6 @@ class MTLGenDataset(Dataset):
         normed_sexpr = example.normed_sexpr
 
         candidate_relations = [x[0] for x in example.cand_relation_list]
-        candidate_rich_relations = [x[2] for x in example.cand_relation_list]
         gold_relation_set = set(example.gold_relation_map.keys())
         
         relation_labels = [(rel in gold_relation_set) for rel in candidate_relations]
@@ -87,11 +82,6 @@ class MTLGenDataset(Dataset):
 
         entity_labels = [(ent['id'] in gold_entities_ids_set) for ent in example.cand_entity_list]
         entity_clf_pairs_labels = torch.LongTensor(entity_labels)
-
-        # gold_structure = example.gold_structure
-        # candidate_structures = example.cand_structure_list
-        # structure_labels = [(item == gold_structure) for item in candidate_structures]
-        # structure_clf_labels = torch.LongTensor(structure_labels)
 
         input_src = question
 
@@ -109,7 +99,6 @@ class MTLGenDataset(Dataset):
                         max_length=self.max_src_len,
                         truncation=True,
                         return_tensors='pt',
-                        #padding='max_length',
                         ).data['input_ids'].squeeze(0)
         
         # Concatenate candidate entities & relations
@@ -128,8 +117,9 @@ class MTLGenDataset(Dataset):
         for ent in example.disambiguated_cand_entity:
             gen_src_concatenated += self.ENT_TOKEN + ent['label']
         gen_src_concatenated += self.SEPERATOR
-        # if len(candidate_structures) > 0:
-        #     gen_src_concatenated += candidate_structures[0]
+        
+        if self.do_lower:
+            gen_src_concatenated = gen_src_concatenated.lower()
         
         tokenized_src_concatenated = self.tokenizer(
             gen_src_concatenated,
@@ -151,8 +141,9 @@ class MTLGenDataset(Dataset):
         for mid in example.gold_entity_map:
             gen_src_golden_concatenated += self.ENT_TOKEN + example.gold_entity_map[mid] # concat label
         gen_src_golden_concatenated += self.SEPERATOR
-        # if len(candidate_structures) > 0:
-        #     gen_src_concatenated += candidate_structures[0]
+
+        if self.do_lower:
+            gen_src_golden_concatenated = gen_src_golden_concatenated.lower()
         
         tokenized_src_golden_concatenated = self.tokenizer(
             gen_src_golden_concatenated,
@@ -168,16 +159,7 @@ class MTLGenDataset(Dataset):
                 max_length=self.max_tgt_len,
                 truncation=True,
                 return_tensors='pt',
-                #padding='max_length',
             ).data['input_ids'].squeeze(0)
-        
-        # with self.tokenizer.as_target_tokenizer():
-        #     tokenized_structure_gen_tgt = self.tokenizer(
-        #         gold_structure,
-        #         max_length=self.max_structure_tgt_len,
-        #         truncation=True,
-        #         return_tensors='pt',
-        #     ).data['input_ids'].squeeze(0)
         
         tokenized_relation_clf_pairs = []
         
@@ -197,34 +179,11 @@ class MTLGenDataset(Dataset):
                 rel_src,
                 cand_rel,
                 max_length=self.max_src_len,
-                truncation='longest_first',
+                truncation=True,
                 return_tensors='pt',
-                # padding='max_length',
             ).data['input_ids'].squeeze(0)
             
             tokenized_relation_clf_pairs.append(tokenized_relation_pair)
-        
-        tokenized_rich_relation_clf_pairs = []
-
-        for cand_rich_rel in candidate_rich_relations:
-            rel_src = input_src
-            if self.add_prefix:
-                rel_src = 'Relation Classification: ' + rel_src
-            
-            if self.do_lower:
-                rel_src = rel_src.lower()
-                cand_rich_rel = cand_rich_rel.lower()
-            
-            tokenized_rich_relation_pair = self.tokenizer(
-                rel_src,
-                cand_rich_rel,
-                max_length=self.max_src_len,
-                truncation='longest_first',
-                return_tensors='pt',
-                # padding='max_length',
-            ).data['input_ids'].squeeze(0)
-
-            tokenized_rich_relation_clf_pairs.append(tokenized_rich_relation_pair)
 
         tokenized_entity_clf_pairs = []
         question_tokens = question.split(' ')
@@ -245,63 +204,38 @@ class MTLGenDataset(Dataset):
             ent_info = label
             for rel in one_hop_relations[:3]:
                 if self.normalize_relations:
-                    ent_info += (" | " + _textualize_relation(rel))
+                    ent_info += (self.SEPERATOR + _textualize_relation(rel))
                 else:
-                    ent_info += (" | " + rel)
-            if self.do_lower:
-                ent_info = ent_info.lower()
+                    ent_info += (self.SEPERATOR + rel)
             
             ent_src = input_src
             if self.add_prefix:
                 ent_src = 'Entity Classification: ' + input_src
             
+            if self.do_lower:
+                ent_info = ent_info.lower()
+                ent_src = ent_src.lower()
+            
             tokenized_entity_pair = self.tokenizer(
                 ent_src,
                 ent_info, 
                 max_length=self.max_src_len,
-                truncation='longest_first',
+                truncation=True,
                 return_tensors='pt'
             ).data['input_ids'].squeeze(0)
 
             tokenized_entity_clf_pairs.append(tokenized_entity_pair)
-        
-        #tokenized_structure_clf_pairs = []
-
-        # for cand_stru in candidate_structures:
-        #     stru_src = input_src
-        #     if self.add_prefix:
-        #         stru_src = 'Structure Classification: ' + stru_src
-        #     if self.do_lower:
-        #         stru_src = stru_src.lower()
-        #         cand_stru = cand_stru.lower()
-            
-        #     tokenized_structure_pair = self.tokenizer(
-        #         stru_src,
-        #         cand_stru,
-        #         max_length=self.max_src_len,
-        #         truncation='longest_first',
-        #         return_tensors='pt'
-        #     ).data['input_ids'].squeeze(0)
-
-        #     tokenized_structure_clf_pairs.append(tokenized_structure_pair)
 
         return (
             tokenized_src, 
             tokenized_tgt, 
             tokenized_relation_clf_pairs, 
             relation_clf_pairs_labels,
-            # ID,
             [input_src],
             candidate_relations,
             tokenized_entity_clf_pairs,
             entity_clf_pairs_labels,
             example.cand_entity_list,
-            #tokenized_structure_gen_tgt,
-            #candidate_structures,
-            #structure_clf_labels,
-            tokenized_rich_relation_clf_pairs,
-            candidate_rich_relations,
-            #tokenized_structure_clf_pairs,
             tokenized_src_concatenated,
             tokenized_src_golden_concatenated
         )
