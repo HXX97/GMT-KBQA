@@ -25,8 +25,9 @@ CWQ:
     predict: CUDA_VISIBLE_DEVICES=1 sh scripts/GMT_KBQA_CWQ.sh predict GMT_KBQA False test 50 4
     evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/CWQ_relation_entity_concat_add_prefix_warmup_epochs_5_15epochs/beam_50_top_k_predictions.json
  
-    用旧版的 merged data:
-    train & predict: CUDA_VISIBLE_DEVICES=1 sh scripts/run_t5_relation_entity_concat_add_prefix_warmup_epochs_5_15epochs_CWQ.sh train relation_entity_concat_add_prefix_warmup_epochs_5_15epochs_old_merged False
+    predict with different beam size, beam_size = 10 for example:
+    CUDA_VISIBLE_DEVICES=0 sh scripts/GMT_KBQA_CWQ.sh predict GMT_KBQA False test 10 4
+    
  
 6. without relation
     train & predict: CUDA_VISIBLE_DEVICES=0 sh scripts/without_relation_CWQ.sh train without_relation False
@@ -58,6 +59,9 @@ evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/
 train & predict: CUDA_VISIBLE_DEVICES=1 sh scripts/run_t5_relation_entity_concat_add_prefix_warmup_epochs_5_20epochs_bs2_WebQSP.sh train relation_entity_concat_add_prefix_warmup_epochs_5_20epochs_bs2 False
 predict: CUDA_VISIBLE_DEVICES=1 sh scripts/GMT_KBQA_WebQSP.sh predict GMT_KBQA False test 50 2
 evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/WebQSP_relation_entity_concat_add_prefix_warmup_epochs_5_20epochs_bs2/beam_50_top_k_predictions.json --dataset WebQSP
+
+predict with different beam size, (beam size = 10 for example):
+CUDA_VISIBLE_DEVICES=2 sh scripts/GMT_KBQA_WebQSP.sh predict GMT_KBQA False test 10 2
 
 6. without relation
 train & predict: CUDA_VISIBLE_DEVICES=3 sh scripts/without_relation_WebQSP.sh train without_relation False

@@ -110,9 +110,9 @@ def generate_candidate_entity_map_classification_res(predictions, dirname, datas
                 }
     
     if args.dataset_type == "CWQ":
-        dump_json(predicted_entities, os.path.join(dirname, f'CWQ_{args.predict_split}_{args.test_batch_size}_candidate_entity_map.json'))
+        dump_json(predicted_entities, os.path.join(dirname, f'CWQ_{args.predict_split}_{args.test_batch_size}_beam_{args.eval_beams}_candidate_entity_map.json'))
     elif args.dataset_type == "WebQSP":
-        dump_json(predicted_entities, os.path.join(dirname, f'WebQSP_{args.predict_split}_{args.test_batch_size}_candidate_entity_map.json'))
+        dump_json(predicted_entities, os.path.join(dirname, f'WebQSP_{args.predict_split}_{args.test_batch_size}_beam_{args.eval_beams}_candidate_entity_map.json'))
 
 
 def _collate_fn(data,tokenizer):

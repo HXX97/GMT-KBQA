@@ -70,7 +70,6 @@ The code for candidate relations retrieval is mainly in `relation_detection_and_
 
 
 ## Reproducing the Results on CWQ and WebQSP
-TODO: 发现一个问题，旧的 merged 文件里头吧 sexpr == 'null' 的问题都过滤掉了, 后续看看要不要把过滤的问题补上
 
 (1) **Prepare dataset and pretrained checkpoints**
 
@@ -88,7 +87,7 @@ The augmented dataset files are saved as `data/CWQ/sexpr/CWQ.test[train,dev].jso
 
 Run `python parse_sparql_webqsp.py` and the augmented dataset files are saved as `data/WebQSP/sexpr/WebQSP.test[train,dev].json`. 
 
-(3) **Retrieve Candidate Entities** (测试完毕，没有问题)
+(3) **Retrieve Candidate Entities** 
 
 This step can be ***skipped***, as we've provided the entity retrieval retuls in 
 - CWQ: `data/CWQ/entity_retrieval/candidate_entities/CWQ_test[train,dev]_merged_cand_entities_elq_facc1.json`.
@@ -108,7 +107,7 @@ If you want to retrieve the candidate entities from scratch, follow the steps be
     - WebQSP: Firstly run
     `python detect_and_link_entity.py --dataset WebQSP --split test[train] --linker facc1` to retrieve candidate entities. Then run `sh scripts/run_entity_disamb.sh WebQSP predict test[train]` to rank the candidates by a BertRanker. The ranked results will be saved as `data/WebQSP/entity_retrieval/candidate_entities/WebQSP_test[train]_cand_entities_facc1.json`
 
-    To reproduce our disambiguation results, please download  `feature_cache/` and place it under root folder from our checkpoint.
+    To reproduce our disambiguation results, please download `feature_cache/` and place it under root folder from our checkpoint.
 
 3. Finally, merge the linking results of ELQ and FACC1.  
     - CWQ: `python data_process.py merge_entity --dataset CWQ --split test[train,dev]`, and the final entity retrieval results are saved as `data/CWQ/entity_retrieval/candidate_entities/CWQ_test[train,dev]_merged_cand_entities_elq_facc1.json`. Note for CWQ, entity label will be standardized in final entity retrieval results.
@@ -116,7 +115,7 @@ If you want to retrieve the candidate entities from scratch, follow the steps be
 
 
 
-(4) **Retrieve Candidate Relations** （可以参考 test_new.py 里面的单元测试）
+(4) **Retrieve Candidate Relations** 
 
 This step can also be ***skipped*** , as we've provided the candidate relations in `data/{DATASET}/relation_retrieval/`
 
@@ -133,7 +132,6 @@ If you want to retrive the candidate relations from scratch, follow the steps be
 3. Retrieve candidate relations using index.
     - CWQ: First encode questions into vector by running `python relation_retrieval/bi-encoder/build_and_search_index.py encode_question --dataset CWQ --split test[train, dev]`. Then candidate relations can be retrieved using index by running `python relation_retrieval/bi-encoder/build_and_search_index.py retrieve_relations --dataset CWQ --split train[dev, test]`. The retrieved relations will be saved as the training data of cross-encoder in `data/CWQ/relation_retrieval/cross-encoder/mask_mention_1epoch_question_relation/CWQ_test[train,dev].tsv`.
     - WebQSP: First encode questions into vector by running `python relation_retrieval/bi-encoder/build_and_search_index.py encode_question --dataset WebQSP --split train[ptrain, pdev, test]`. Then candidate relations can be retrieved using index by running `python relation_retrieval/bi-encoder/build_and_search_index.py retrieve_relations --dataset WebQSP --split test_2hop[train_2hop, train, test, ptrain, pdev]`. The retrieved relations will be saved as the training data of cross-encoder in `data/WebQSP/relation_retrieval/cross-encoder/rich_relation_3epochs_question_relation/WebQSP_train[ptrain, pdev, test, train_2hop, test_2hop].tsv`.
-    - TODO: `CWQ.2hopRelations.candEntities.json` 这个文件是如何获得的
 
 4. Train the cross-encoder to rank retrieved relations.
     - CWQ: To train, run `sh scripts/run_cross_encoder_CWQ_question_relation.sh train mask_mention_1epoch_question_relation`. Trained models will be saved as `data/CWQ/relation_retrieval/cross-encoder/saved_models/mask_mention_1epoch_question_relation/CWQ_ep_1.pt`. To get inference results, run `sh scripts/run_cross_encoder_CWQ_question_relation.sh predict mask_mention_1epoch_question_relation test[train/dev] CWQ_ep_1.pt`.  Inference result(logits) will be stored in `data/CWQ/relation_retrieval/cross-encoder/saved_models/mask_mention_1epoch_question_relation/CWQ_ep_1.pt_test[train/dev]]`.
@@ -148,26 +146,32 @@ If you want to retrive the candidate relations from scratch, follow the steps be
 
 (5) **Generate Logical Forms through multi-task learning**
 
-0. 吴轩 0623: merge_all 直接原来的结果，就说明因为有一些候补实体是随机筛选得到的，为了保证与论文中的设置完全一致，直接将论文训练的数据集放上来
 1.  Prepare all the input data for logical form generation and the two auxiliary tasks (entity disambiguation and relation classification). 
     - CWQ: Run `python data_process.py merge_all --dataset CWQ --split test[train,dev]` The merged data file will be saved as `data/CWQ/generation/merged/CWQ_test[train,dev].json`.
 
     - WebQSP: Run `python data_process.py merge_all --dataset WebQSP --split test[train]`. The merged data file will be saved as `data/WebQSP/generation/merged/WebQSP_test[train].json`.
 
 2. Training logical form generation model.
-    - CWQ: our full model can be trained by running `sh scripts/run_t5_relation_entity_concat_add_prefix_warmup_epochs_5_15epochs_CWQ.sh train {FOLDER_NAME}`, The trained model will be saved in `exps/CWQ_{FOLDER_NAME}`.
-    - WebQSP: our full model can be trained by running `sh scripts/run_t5_entity_concat_add_prefix_warmup5_20epochs_WebQSP.sh train {FOLDER_NAME}`. The trained model will be saved in `exps/WebQSP_{FOLDER_NAME}`.
-    - Command for training other model variants mentioned in our paper can be found in `cheatsheet_generation.txt`.
+    - CWQ: our full model can be trained by running `sh scripts/GMT_KBQA_CWQ.sh train {FOLDER_NAME}`, The trained model will be saved in `exps/CWQ_{FOLDER_NAME}`.
+    - WebQSP: our full model can be trained by running `sh scripts/GMT_KBQA_WebQSP.sh train {FOLDER_NAME}`. The trained model will be saved in `exps/WebQSP_{FOLDER_NAME}`.
+    - Command for training other model variants mentioned in our paper can be found in `generation_command.txt`.
 
 3. Command for training model(as shown in 2.) will also do inference on `test` split. To inference on other split or inference alone:
-    - CWQ: You can run `sh scripts/run_t5_relation_entity_concat_add_prefix_warmup_epochs_5_15epochs_CWQ.sh predict {FOLDER_NAME} False test 50 4` to do inference on `test` split alone with `beam_size=50` and `test_batch_size=4`. 
-    - WebQSP: You can run `sh scripts/run_t5_entity_concat_add_prefix_warmup5_20epochs_WebQSP.sh predict {FOLDER_NAME} False test 50 2` to do inference on `test` split alone with `beam_size=50` and `test_batch_size = 2` . 
-    - Command for inferencing on other model variants can be found in `cheatsheet_generation.txt`.
+    - CWQ: You can run `sh scripts/GMT_KBQA_CWQ.sh predict {FOLDER_NAME} False test 50 4` to do inference on `test` split with `beam_size=50` and `test_batch_size=4`. 
+    - WebQSP: You can run `sh scripts/GMT_KBQA_WebQSP.sh predict {FOLDER_NAME} False test 50 2` to do inference on `test` split alone with `beam_size=50` and `test_batch_size = 2` . 
+    - Command for inferencing on other model variants can be found in `generation_command.txt`.
 
 4. To evaluate trained models:
-    - CWQ: Run `python3 eval_topk_prediction_final.py --split test --pred_file exps/{FOLDER_NAME}/beam_50_top_k_predictions.json`
-    - WebQSP: Run `python3 eval_topk_prediction_final.py --split test --pred_file exps/{FOLDER_NAME}/beam_50_top_k_predictions.json --dataset WebQSP`
+    - CWQ: Run `python3 eval_topk_prediction_final.py --split test --pred_file exps/CWQ_GMT_KBQA/beam_50_test_4_top_k_predictions.json --test_batch_size 4 --dataset CWQ`
+    - WebQSP: Run `python3 eval_topk_prediction_final.py --split test --pred_file exps/WebQSP_GMT_KBQA/beam_50_test_2_top_k_predictions.json --test_batch_size 2 --dataset WebQSP`
 
+(6) **Ablation experiments**
+1. Evaluate entity linking and relation linking result:
+    - CWQ: Run `python ablation_exps.py linking_evaluation --dataset CWQ`
+    - WebQSP: Run `python ablation_exps.py linking_evaluation --dataset WebQSP`
+2. Evaluation QA performance on quesitions with unseen entity/relation
+    - CWQ: Run `python ablation_exps.py unseen_evaluation --dataset CWQ --model_type full` to get evaluation result on our full model `GMT-KBQA`. Run `python ablation_exps.py unseen_evaluation --dataset CWQ --model_type base` to get evaluation result on `T5-base` model.
+    - WebQSP: Run `python ablation_exps.py unseen_evaluation --dataset WebQSP --model_type full` to get evaluation result on our full model `GMT-KBQA`. Run `python ablation_exps.py unseen_evaluation --dataset WebQSP --model_type base` to get evaluation result on `T5-base` model.
 
 
 ## Candidate relation retrieval

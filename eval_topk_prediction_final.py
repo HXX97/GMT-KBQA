@@ -44,6 +44,7 @@ def _parse_args():
     parser.add_argument('--qid',default=None,type=str, help='single qid for debug, None by default' )
     parser.add_argument('--test_batch_size', default=2)
     parser.add_argument('--dataset', default='CWQ', type=str, help='dataset type, can be `CWQ、`WebQSP`')
+    parser.add_argument('--beam_size', default=50, type=int)
 
     args = parser.parse_args()
 
@@ -304,7 +305,7 @@ def execute_normed_s_expr_from_label_maps(normed_expr,
 
 
 
-def aggressive_top_k_eval_new(split, predict_file, dataset, test_batch_size):
+def aggressive_top_k_eval_new(split, predict_file, dataset):
     """Run top k predictions, using linear origin map"""
     if dataset == "CWQ":
         train_gen_dataset = load_json('data/CWQ/generation/merged/CWQ_train.json')
@@ -350,9 +351,9 @@ def aggressive_top_k_eval_new(split, predict_file, dataset, test_batch_size):
     if not use_goldEnt:
         use_linking_results = False
         if dataset == "CWQ":
-            if os.path.exists(os.path.join(dirname, f'CWQ_{split}_{test_batch_size}_candidate_entity_map.json')):
-                print(f'candidate_entity_map: CWQ_{split}_{test_batch_size}_candidate_entity_map.json')
-                candidate_entity_map = load_json(os.path.join(dirname, f'CWQ_{split}_{test_batch_size}_candidate_entity_map.json'))
+            if os.path.exists(os.path.join(dirname, f'CWQ_{args.split}_{args.test_batch_size}_beam_{args.beam_size}_candidate_entity_map.json')):
+                print(f'candidate_entity_map: CWQ_{args.split}_{args.test_batch_size}_beam_{args.beam_size}_candidate_entity_map.json')
+                candidate_entity_map = load_json(os.path.join(dirname, f'CWQ_{args.split}_{args.test_batch_size}_beam_{args.beam_size}_candidate_entity_map.json'))
             else:
                 candidate_entity_map = load_json(f'data/CWQ/entity_retrieval/disamb_entities/CWQ_merged_{split}_disamb_entities.json')
                 print(f'candidate_entity_map: data/CWQ/entity_retrieval/disamb_entities/CWQ_merged_{split}_disamb_entities.json')
@@ -360,9 +361,9 @@ def aggressive_top_k_eval_new(split, predict_file, dataset, test_batch_size):
             train_type_map = load_json(f"data/CWQ/generation/label_maps/CWQ_train_type_label_map.json")
             train_type_map = {l.lower():t for t,l in train_type_map.items()}
         elif dataset == "WebQSP":
-            if os.path.exists(os.path.join(dirname, f"WebQSP_{split}_{test_batch_size}_candidate_entity_map.json")):
-                print(f'candidate_entity_map: WebQSP_{split}_{test_batch_size}_candidate_entity_map.json')
-                candidate_entity_map = load_json(os.path.join(dirname, f"WebQSP_{split}_{test_batch_size}_candidate_entity_map.json"))
+            if os.path.exists(os.path.join(dirname, f"WebQSP_{args.split}_{args.test_batch_size}_beam_{args.beam_size}_candidate_entity_map.json")):
+                print(f'candidate_entity_map: WebQSP_{args.split}_{args.test_batch_size}_beam_{args.beam_size}_candidate_entity_map.json')
+                candidate_entity_map = load_json(os.path.join(dirname, f"WebQSP_{args.split}_{args.test_batch_size}_beam_{args.beam_size}_candidate_entity_map.json"))
             else:
                 if split == 'train' or split == 'dev':
                     candidate_entity_map = load_json(f'data/WebQSP/entity_retrieval/disamb_entities/WebQSP_merged_train_disamb_entities.json')
@@ -533,7 +534,7 @@ if __name__=='__main__':
     if args.qid:
         pass
     else:
-        aggressive_top_k_eval_new(args.split, args.pred_file, args.dataset, args.test_batch_size)
+        aggressive_top_k_eval_new(args.split, args.pred_file, args.dataset)
 
     # test_type_checker()
 
