@@ -145,7 +145,8 @@ def entity_relation_linking_evaluation(dataset='CWQ', beam_size=50):
         gen_succeed_predictions = load_json(os.path.join(dirname, f'beam_{beam_size}_test_4_top_k_predictions.json_gen_sexpr_results.json'))
         predictions = gen_failed_predictions + gen_succeed_predictions
 
-        dataset  = load_json('data/CWQ/generation/merged/CWQ_test.json')
+        dataset_content = load_json('data/CWQ/generation/merged/CWQ_test.json')
+        label_maps  = load_json('data/CWQ/generation/label_maps/CWQ_test_label_maps.json')
         after_entity_linking_res = load_json(os.path.join(dirname, f'CWQ_test_4_beam_{beam_size}_candidate_entity_map.json'))
         before_entity_linking_res = load_json('data/CWQ/entity_retrieval/disamb_entities/CWQ_merged_test_disamb_entities.json')
 
@@ -155,14 +156,16 @@ def entity_relation_linking_evaluation(dataset='CWQ', beam_size=50):
         gen_succeed_predictions = load_json(os.path.join(dirname, f'beam_{beam_size}_test_2_top_k_predictions.json_gen_sexpr_results.json'))
         predictions = gen_failed_predictions + gen_succeed_predictions
 
-        dataset  = load_json('data/WebQSP/generation/merged/WebQSP_test.json')
+        dataset_content = load_json('data/WebQSP/generation/merged/WebQSP_test.json')
+        label_maps = load_json('data/WebQSP/generation/label_maps/WebQSP_test_label_maps.json')
         after_entity_linking_res = load_json(os.path.join(dirname, f'WebQSP_test_2_beam_{beam_size}_candidate_entity_map.json'))
         before_entity_linking_res = load_json('data/WebQSP/entity_retrieval/disamb_entities/WebQSP_merged_test_disamb_entities.json')
 
     else:
         return
     
-    assert len(predictions) == len(dataset), print(len(predictions), len(dataset))
+    assert len(predictions) == len(label_maps), print(len(predictions), len(dataset))
+    assert len(predictions) == len(dataset_content), print(len(predictions), len(dataset_content))
     golden_entities = []
     golden_relations = []
     after_entity_predictions = []
@@ -171,15 +174,15 @@ def entity_relation_linking_evaluation(dataset='CWQ', beam_size=50):
     before_relation_predictions = []
 
     predictions_map = {pred["qid"]: pred for pred in predictions}
-    dataset_map = {data["ID"]: data for data in dataset}
+    dataset_content = {example["ID"]: example for example in dataset_content}
 
-    for qid in tqdm(dataset_map, total=len(dataset_map)):
+    for qid in tqdm(label_maps, total=len(label_maps)):
         assert qid in predictions_map, print(qid)
-        golden_entities.append(list(dataset_map[qid]["gold_entity_map"].keys()))
-        golden_relations.append(list(dataset_map[qid]["gold_relation_map"].keys()))
+        golden_entities.append(list(label_maps[qid]["entity_label_map"].keys()))
+        golden_relations.append(list(label_maps[qid]["rel_label_map"].keys()))
         after_relation_pred_indexes = [idx for (idx, score) in enumerate(predictions_map[qid]["pred"]["pred_relation_clf_labels"]) if float(score) > 0.5]
-        before_relation_predictions.append([item[0] for item in dataset_map[qid]["cand_relation_list"] if float(item[1]) > 0.0])
-        after_relation_predictions.append([dataset_map[qid]["cand_relation_list"][idx][0] for idx in after_relation_pred_indexes])
+        before_relation_predictions.append([item[0] for item in dataset_content[qid]["cand_relation_list"] if float(item[1]) > 0.0])
+        after_relation_predictions.append([dataset_content[qid]["cand_relation_list"][idx][0] for idx in after_relation_pred_indexes])
         if qid not in before_entity_linking_res:
             before_entity_predictions.append([])
         else:
@@ -338,6 +341,9 @@ def general_PRF1(predictions, goldens):
 Data preparation
 """
 def get_train_unique_relations_entities(dataset="CWQ"):
+    """
+    Using files under label_maps/ folder
+    """
     if dataset.lower() == 'cwq':
         if os.path.exists('data/CWQ/generation/ablation/train_unique_relation_entity.json'):
             print('file exists')
@@ -350,19 +356,20 @@ def get_train_unique_relations_entities(dataset="CWQ"):
         return
 
     if dataset.lower() == 'cwq':
-        train_dataset = load_json('data/CWQ/generation/merged/CWQ_train.json')
+        train_label_maps = load_json('data/CWQ/generation/label_maps/CWQ_train_label_maps.json')
     elif dataset.lower() == 'webqsp':
-        train_dataset = load_json('data/WebQSP/generation/merged/WebQSP_train.json')
+        train_label_maps = load_json('data/WebQSP/generation/label_maps/WebQSP_train_label_maps.json')
 
     unique_relations = set()
     unique_entities = set()
 
-    for data in tqdm(train_dataset, total=len(train_dataset)):
-        rels = list(data["gold_relation_map"].keys())
+    for qid in tqdm(train_label_maps, total=len(train_label_maps)):
+        data = train_label_maps[qid]
+        rels = data["rel_label_map"].keys()
         for rel in rels:
             unique_relations.add(rel)
         
-        entities = list(data["gold_entity_map"].keys())
+        entities = data["entity_label_map"].keys()
         for ent in entities:
             unique_entities.add(ent)
     
@@ -391,24 +398,24 @@ def get_test_unseen_questions(dataset='CWQ'):
     else:
         return
     if dataset.lower() == 'cwq':
-        test_dataset = load_json('data/CWQ/generation/merged/CWQ_test.json')
+        test_label_maps = load_json('data/CWQ/generation/label_maps/CWQ_test_label_maps.json')
         train_relation_entity_list = load_json('data/CWQ/generation/ablation/train_unique_relation_entity.json')
     elif dataset.lower() == 'webqsp':
-        test_dataset = load_json('data/WebQSP/generation/merged/WebQSP_test.json')
+        test_label_maps = load_json('data/WebQSP/generation/label_maps/WebQSP_test_label_maps.json')
         train_relation_entity_list = load_json('data/WebQSP/generation/ablation/train_unique_relation_entity.json')
 
     entities_list = train_relation_entity_list["entities"]
     relations_list = train_relation_entity_list["relations"]
-    unseen_qids = set()
+    unseen_qids = set() # 发现之前的代码没有去重
 
-    for data in tqdm(test_dataset, total=len(test_dataset)):
-        qid = data["ID"]
-        relations = list(data["gold_relation_map"].keys())
+    for qid in tqdm(test_label_maps, total=len(test_label_maps)):
+        data = test_label_maps[qid]
+        relations = data["rel_label_map"].keys()
         for rel in relations:
             if rel not in relations_list:
                 unseen_qids.add(qid)
                 
-        entities = list(data["gold_entity_map"].keys())
+        entities = data["entity_label_map"].keys()
         for ent in entities:
             if ent not in entities_list:
                 unseen_qids.add(qid)

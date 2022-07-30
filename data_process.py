@@ -337,8 +337,6 @@ def merge_all_data_for_logical_form_generation(dataset, split):
             sexpr = example['SExpr']
             sparql = example['sparql']
             if split=='test':
-                # 直接用数据集中提供的答案
-                # answer = list(execute_query_with_odbc_filter_answer(sparql))
                 answer = example["answer"]
             else:
                 answer = [x['answer_id'] for x in example['answers']]
@@ -362,65 +360,34 @@ def merge_all_data_for_logical_form_generation(dataset, split):
         
         normed_sexpr = vanilla_sexpr_linearization_method(sexpr)
 
-        if dataset == 'CWQ':
-            gold_entities = extract_mentioned_entities_from_sparql(sparql)
-            gold_relations = extract_mentioned_relations_from_sparql(sparql)
+        gold_entities = extract_mentioned_entities_from_sparql(sparql)
+        gold_relations = extract_mentioned_relations_from_sparql(sparql)
 
-            gold_ent_label_map = {}
-            gold_rel_label_map = {}
-            gold_type_label_map = {}
-            
+        gold_ent_label_map = {}
+        gold_rel_label_map = {}
+        gold_type_label_map = {}
+        
 
-            for entity in gold_entities:
-                is_type = False
-                entity_types = get_types_with_odbc(entity)
-                if "type.type" in entity_types:
-                    is_type = True
+        for entity in gold_entities:
+            is_type = False
+            entity_types = get_types_with_odbc(entity)
+            if "type.type" in entity_types:
+                is_type = True
 
-                entity_label = get_label_with_odbc(entity)
+            entity_label = get_label_with_odbc(entity)
+            if entity_label is not None:
                 gold_ent_label_map[entity] = entity_label
                 global_ent_label_map[entity] = entity_label
 
-                if is_type:
-                    gold_type_label_map[entity] = entity_label
-                    global_type_label_map[entity] = entity_label
+            if is_type and entity_label is not None:
+                gold_type_label_map[entity] = entity_label
+                global_type_label_map[entity] = entity_label
 
-                
-            for rel in gold_relations:
-                linear_rel = _textualize_relation(rel)
-                gold_rel_label_map[rel] = linear_rel
-                global_rel_label_map[rel] = linear_rel
-        
-        else:
-            gold_ent_label_map = {}
-            gold_rel_label_map = {}
-            gold_type_label_map = {}
-
-
-            for parse in example['Parses']:
-                sparql = parse["Sparql"]
-                # extract entity labels
-                gt_entities = extract_mentioned_entities_from_sparql(sparql=sparql)
-                for entity in gt_entities:
-                    is_type = False
-                    entity_types = get_types_with_odbc(entity)
-                    if "type.type" in entity_types:
-                        is_type = True
-
-                    entity_label = get_label_with_odbc(entity)
-                    gold_ent_label_map[entity] = entity_label
-                    global_ent_label_map[entity] = entity_label
-
-                    if is_type:
-                        gold_type_label_map[entity] = entity_label
-                        global_type_label_map[entity] = entity_label
-
-                    # extract relation labels
-                    gt_relations = extract_mentioned_relations_from_sparql(sparql)
-                    for rel in gt_relations:
-                        linear_rel = _textualize_relation(rel)
-                        gold_rel_label_map[rel] = linear_rel
-                        global_rel_label_map[rel] = linear_rel
+            
+        for rel in gold_relations:
+            linear_rel = _textualize_relation(rel)
+            gold_rel_label_map[rel] = linear_rel
+            global_rel_label_map[rel] = linear_rel
         
         if dataset == 'CWQ':
             cand_relation_list = candidate_relations_map.get(qid,[])
