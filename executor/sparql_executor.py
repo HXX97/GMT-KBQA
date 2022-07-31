@@ -726,6 +726,76 @@ def get_2hop_relations_from_2entities(entity0: str, entity1: str):  # m.027lnzs 
     # print(query)
     pass
 
+def query_two_hop_relations_gmt(entities_path, output_file):
+    global odbc_conn
+    if odbc_conn == None:
+        initialize_odbc_connection()
+    res_dict = defaultdict(list)
+    entities = load_json(entities_path)
+    for entity in tqdm(entities, total=len(entities)):
+        query = """
+        SPARQL SELECT DISTINCT ?x0 as ?r0 ?y as ?r1 where {{
+            {{ ?x1 ?x0 {} . ?x2 ?y ?x1 }}
+            UNION
+            {{ ?x1 ?x0 {} . ?x1 ?y ?x2 }}
+            UNION
+            {{ {} ?x0 ?x1 . ?x2 ?y ?x1 }}
+            UNION
+            {{ {} ?x0 ?x1 . ?x1 ?y ?x2 }}
+            FILTER (?x0 != rdf:type && ?x0 != rdfs:label)
+            FILTER (?y != rdf:type && ?y != rdfs:label)
+            FILTER(?x0 != ns:type.object.type && ?x0 != ns:type.object.instance)
+            FILTER(?y != ns:type.object.type && ?y != ns:type.object.instance)
+            FILTER( !regex(?x0,"wikipedia","i"))
+            FILTER( !regex(?y,"wikipedia","i"))
+            FILTER( !regex(?x0,"type.object","i"))
+            FILTER( !regex(?y,"type.object","i"))
+            FILTER( !regex(?x0,"common.topic","i"))
+            FILTER( !regex(?y,"common.topic","i"))
+            FILTER( !regex(?x0,"_id","i"))
+            FILTER( !regex(?y,"_id","i"))
+            FILTER( !regex(?x0,"#type","i"))
+            FILTER( !regex(?y,"#type","i"))
+            FILTER( !regex(?x0,"#label","i"))
+            FILTER( !regex(?y,"#label","i"))
+            FILTER( !regex(?x0,"/ns/freebase","i"))
+            FILTER( !regex(?y,"/ns/freebase","i"))
+            FILTER( !regex(?x0, "ns/common."))
+            FILTER( !regex(?y, "ns/common."))
+            FILTER( !regex(?x0, "ns/type."))
+            FILTER( !regex(?y, "ns/type."))
+            FILTER( !regex(?x0, "ns/kg."))
+            FILTER( !regex(?y, "ns/kg."))
+            FILTER( !regex(?x0, "ns/user."))
+            FILTER( !regex(?y, "ns/user."))
+            FILTER( !regex(?x0, "ns/base."))
+            FILTER( !regex(?y, "ns/base."))
+            FILTER( !regex(?x0, "ns/dataworld."))
+            FILTER( !regex(?y, "ns/dataworld."))
+            FILTER regex(?x0, "http://rdf.freebase.com/ns/")
+            FILTER regex(?y, "http://rdf.freebase.com/ns/")
+        }} 
+        
+        LIMIT 300
+        """.format('ns:'+entity, 'ns:'+entity, 'ns:'+entity, 'ns:'+entity)
+        try:
+            with odbc_conn.cursor() as cursor:
+                cursor.execute(query)
+                rows = cursor.fetchall()
+            res = set()
+            for row in rows:
+                if row[0].startswith("http://rdf.freebase.com/ns/"):
+                    res.add(row[0].replace('http://rdf.freebase.com/ns/', ''))
+                if row[1].startswith("http://rdf.freebase.com/ns/"):
+                    res.add(row[1].replace('http://rdf.freebase.com/ns/', ''))
+            res_dict[entity] = list(res)
+            
+        except Exception:
+            print(f"Query Execution Failed:{query}")
+    
+    # return list(res)
+    dump_json(res_dict, output_file)
+
 
 def get_2hop_relations_with_odbc(entity: str):
     in_relations = set()
@@ -1958,8 +2028,18 @@ if __name__=='__main__':
     # get_entity_labels()
     # query_rich_relation('ns:m.04tfqf')
     # print(get_2hop_relations('m.01n4w'))
-    in_relations, out_relations, paths = get_2hop_relations('m.03krjv')
-    print(len(in_relations))
-    print(len(out_relations))
+    # in_relations, out_relations, paths = get_2hop_relations('m.03krjv')
+    # print(len(in_relations))
+    # print(len(out_relations))
     # in_relations, out_relations, paths = get_2hop_relations_with_odbc_wo_filter('m.04904')
     # print(in_relations, out_relations)
+
+    query_two_hop_relations_gmt(
+        'data/WebQSP/relation_retrieval/cross-encoder/rng_kbqa_linking_results/unique_entity_ids.json',
+        'data/WebQSP/relation_retrieval/cross-encoder/rng_kbqa_linking_results/WebQSP.2hopRelations.rng.elq.candEntities.json'
+    )
+
+    # query_two_hop_relations_gmt(
+    #     'data/CWQ/entity_retrieval/disamb_entities/unique_entities.json',
+    #     'data/CWQ/relation_retrieval/bi-encoder/CWQ.2hopRelations.candEntities.json'
+    # )

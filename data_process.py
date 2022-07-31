@@ -926,6 +926,17 @@ def substitude_relations_in_merged_file_cwq(
         new_merged.append(example)
     dump_json(new_merged, output_path)
 
+def get_candidate_unique_entities_cwq():
+    folder = 'data/CWQ/entity_retrieval/disamb_entities'
+    unique_entities = set()
+    for split in ['train', 'dev', 'test']:
+        cand_entity_file = load_json(os.path.join(folder, f'CWQ_merged_{split}_disamb_entities.json'))
+        for qid in cand_entity_file:
+            for item in cand_entity_file[qid]:
+                if item["id"] != "":
+                    unique_entities.add(item["id"])
+    dump_json(list(unique_entities), os.path.join(folder, 'unique_entities.json'))
+
 if __name__=='__main__':
     
     

@@ -4,7 +4,7 @@ import collections
 import os
 import random
 import csv
-from executor.sparql_executor import get_2hop_relations_with_odbc, get_2hop_relations_with_odbc_wo_filter
+from executor.sparql_executor import get_2hop_relations_with_odbc_wo_filter
 from tqdm import tqdm
 import pandas as pd
 from transformers import AutoTokenizer
@@ -340,7 +340,6 @@ def query_2hop_relations(entity_ids_path, output_path):
     res = dict()
     for eid in tqdm(entity_ids, total=len(entity_ids), desc="querying 2 hop relations"):
         in_relations, out_relations, _ = get_2hop_relations_with_odbc_wo_filter(eid)
-        # in_relations, out_relations, _ = get_2hop_relations_with_odbc(eid)
         relations = list(set(in_relations) | set(out_relations))
         res[eid] = relations
     dump_json(res, output_path)

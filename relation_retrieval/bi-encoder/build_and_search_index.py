@@ -787,7 +787,7 @@ def retrieve_candidate_relations_webqsp(
                     samples.append([question, pred_relation, '0'])
                     count += 1
         
-        # convert rich relation from bi-encoder output to relation
+        # make sure it is normal relation
         for sample in samples:
             sample[1] = sample[1].split('|')[0]
         
@@ -935,8 +935,7 @@ if __name__=='__main__':
                 cache_dir='hfcache/bert-base-uncased',
                 add_special_tokens=True,
                 mask_mention=True,
-                dataset=args.dataset.lower(),
-                split=args.split
+                dataset=args.dataset.lower()
             )
         elif args.dataset.lower() == 'webqsp':
             encode_questions(
@@ -948,8 +947,7 @@ if __name__=='__main__':
                 cache_dir='hfcache/bert-base-uncased',
                 add_special_tokens=False,
                 mask_mention=False,
-                dataset=args.dataset.lower(),
-                split=args.split
+                dataset=args.dataset.lower()
             )
     if action.lower() == 'retrieve_relations':
         if args.dataset.lower() == 'cwq':

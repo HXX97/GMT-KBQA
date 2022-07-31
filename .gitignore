@@ -161,7 +161,7 @@ feature_cache
 # experiment models and logs
 exps/
 
-scripts/bk
+scripts/bak
 
 WebQSP/
 
