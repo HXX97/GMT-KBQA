@@ -1,5 +1,6 @@
 from collections import defaultdict
 import collections
+import os
 from components.utils import dump_json, load_json
 import numpy as np
 from tqdm import tqdm
@@ -11,7 +12,7 @@ import faiss
 import difflib
 logger = logging.getLogger()
 from executor.logic_form_util import lisp_to_sparql
-from executor.sparql_executor import execute_query_with_odbc
+from executor.sparql_executor import execute_query_with_odbc, get_label_with_odbc
 class DenseIndexer(object):
     def __init__(self, buffer_size: int = 50000):
         self.buffer_size = buffer_size
@@ -87,6 +88,8 @@ class DenseFlatIndexer(DenseIndexer):
 
 消岐后的实体链接结果的复现
     - 见`/home2/xxhu/QDT2SExpr/CWQ/data/linking_results`下的数据和 `/home2/xxhu/QDT2SExpr/CWQ/get_final_entity_linking.py`文件
+        - webqsp: merge_el_result_webqsp()
+        - CWQ:
     - 对于 facc1, 只取 logits > 0 的部分
     - 对于 elq, 只取 logits > -1.5 的部分
 
@@ -95,6 +98,103 @@ WebQSP:
     - FACC1 的排序结果不一样(train 1256, test 587), 召回结果基本一样（训练集测试集各差一个）
     - 先跑一下新 merged data 的训练吧，居然报错 shape '[2, 10, -1]' is invalid for input of size 10， 有数据的关系不足10个？
 """
+"""
+用以下两个函数，以及学长相应的中间结果，能够生成完全一致的 merged_data.
+测试到此为止吧，中间结果的生成就不去纠结了
+"""
+
+def merge_el_result_webqsp(split):
+    """copy from `/home2/xxhu/QDT2SExpr/CWQ/get_final_entity_linking.py` """
+    print(f'Merging el results of webqsp for {split}')
+    facc1_el_results = load_json(f'/home2/xxhu/QDT2SExpr/CWQ/data/linking_results/WebQSP_{split}_facc1_el_results.json')
+    elq_el_results = load_json(f'data/WebQSP/entity_retrieval/candidate_entities/WebQSP_train_cand_entities_elq.json')
+
+    origin_dataset = load_json(f'data/WebQSP/origin/WebQSP.{split}.json')
+
+
+    merged_el_results = defaultdict(dict)
+
+    for data in tqdm(origin_dataset['Questions'], total=len(origin_dataset['Questions'])):
+        qid = data['QuestionId']
+        facc1_ent_list = facc1_el_results.get(qid,[])
+        elq_ent_list = elq_el_results.get(qid,[])
+
+        # elq entity
+        for ent in elq_ent_list:
+            merged_el_results[qid][ent['id']] = {
+                'label': get_label_with_odbc(ent['id']),
+                'mention':ent['mention'],
+                'perfect_match':ent['perfect_match']
+            }
+        
+        # facc1 entity
+        for ent in facc1_ent_list:
+            if ent['id'] not in merged_el_results[qid]:
+                merged_el_results[qid][ent['id']] = {
+                'label': get_label_with_odbc(ent['id']),
+                'mention':ent['mention'],
+                'perfect_match':ent['perfect_match']
+            }
+        
+        if qid not in merged_el_results:
+            merged_el_results[qid]=[]
+    print(f'data/WebQSP/entity_retrieval/xwu_test/merged_WebQSP_{split}_linking_results.json')   
+    dump_json(merged_el_results, f'data/WebQSP/entity_retrieval/xwu_test/merged_WebQSP_{split}_linking_results.json')
+
+
+def merge_entity_linking_results(split):
+    """copy from `/home2/xxhu/QDT2SExpr/CWQ/get_final_entity_linking.py` 
+    我这里做了一些改动，使得生成的结果是一致的
+    """
+    # print(f'Processing {split}')
+
+    # get entity linking by facc1 and ranking
+    # pred_file = f"results/disamb/CWQ_{split}/predictions.json"
+    # facc1_el_results = arrange_disamb_results_in_lagacy_format(split, pred_file)
+    # dump_json(facc1_el_results,f"data/linking_results/{split}_facc1_el_results.json", indent=4)
+
+    elq_el_results = load_json(f"/home2/xxhu/QDT2SExpr/CWQ/data/linking_results/CWQ_{split}_entities_elq.json")
+    facc1_el_results = load_json(f"/home2/xxhu/QDT2SExpr/CWQ/data/linking_results/CWQ_{split}_facc1_el_results.json")
+
+    merged_el_results = {}
+
+    for qid in tqdm(facc1_el_results, total=len(facc1_el_results), desc=f"Processing {split}"):
+        facc1_pred = facc1_el_results[qid]['entities']
+        elq_pred = elq_el_results[qid]
+
+        ent_map = {}
+        label_mid_map = {}
+        for ent in facc1_pred:
+            label = get_label_with_odbc(ent)
+            ent_map[ent]={
+                "label": label,
+                "mention": facc1_pred[ent]["mention"],
+                "perfect_match": label.lower()==facc1_pred[ent]["mention"].lower()
+            }
+            label_mid_map[label] = ent
+        
+        for ent in elq_pred:
+            if ent["id"] not in ent_map:
+                mid = ent['id']
+                # xwu
+                # label = get_label_with_odbc(mid)
+                label = ent['label']
+
+                # xwu
+                # if label in label_mid_map: # same label, different mid
+                #     ent_map.pop(label_mid_map[label]) # pop facc1 result, retain elq result
+
+                # xwu
+                # if label:
+                ent_map[ent["id"]]= {
+                    "label": label,
+                    "mention": ent["mention"],
+                    "perfect_match": label.lower()==ent['mention'].lower()
+                }
+                        
+        merged_el_results[qid] = ent_map
+
+    dump_json(merged_el_results, f"data/CWQ/entity_retrieval/xwu_test/merged_CWQ_{split}_linking_results.json", indent=4)
 
 
 def xwu_test_get_merged_disambiguated_entities(dataset, split):
@@ -811,6 +911,40 @@ def calculate_rng_2hop_recall(
     print('Recall: {}'.format(sum(r_list)/len(r_list)))
     print('Average candidate number: {}'.format(sum(candidate_numbers)/len(candidate_numbers)))
 
+def calculate_rng_2hop_recall_new(
+    cand_data_path,
+    golden_data_path,
+):
+    cand_data = load_json(cand_data_path)
+    golden_data = load_json(golden_data_path)
+    golden_data = {item["ID"]: item for item in golden_data}
+    r_list = []
+    candidate_numbers = []
+    for qid in golden_data:
+        # assert qid in golden_data
+        # pred_rels = rng_data[qid]["two_hop_relations"]
+        golden_rels = set(golden_data[qid]['gold_relation_map'].keys())
+        pred_rels = []
+        for eid in golden_data[qid]["gold_entity_map"].keys():
+            if eid in cand_data:
+                pred_rels.extend(cand_data[eid])
+        pred_rels = set(pred_rels)
+        if len(pred_rels)== 0:
+            if len(golden_rels)==0:
+                r=1
+            else:
+                r=0
+        elif len(golden_rels)==0:
+            r=0
+        else:
+            r = len(pred_rels & golden_rels)/ len(golden_rels)
+        r_list.append(r)
+        candidate_numbers.append(len(pred_rels))
+
+    print('Recall: {}'.format(sum(r_list)/len(r_list)))
+    print('Average candidate number: {}'.format(sum(candidate_numbers)/len(candidate_numbers)))
+    print('top100 recall: {}'.format(r_list[:100]))
+
 def calculate_bi_encoder_recall(
     all_relations_path, 
     golden_data_path, 
@@ -1021,30 +1155,30 @@ def error_analysis_0726(
     qids = set()
 
     # 生成失败里头，normed contains exact_match 的
-    # for example in gen_failed:
-    #     pred_normed = example["pred"]["predictions"]
-    #     gt_normed = example["gt_normed_sexpr"]
-    #     if any([pred.lower() == gt_normed.lower() for pred in pred_normed]):
-    #         qids.add(example["qid"])
-    
-    # gen_sexor_results 里头，normed contains exact_match, "logical_form" 没有 exact_match
-    for qid in gen_succeed:
-        assert qid in gen_prf1, print(qid)
-        # 答对了那就无所谓
-        if gen_prf1[qid]["f1"] == 1.0:
-            continue
-        example = gen_succeed[qid]
-        execute_index = example["execute_index"]
-        pred_normed = example["pred"]["predictions"][execute_index]
+    for example in gen_failed:
+        pred_normed = example["pred"]["predictions"]
         gt_normed = example["gt_normed_sexpr"]
-        if pred_normed.lower() == gt_normed.lower():
-            if example["logical_form"].lower() != example["gt_sexpr"]:
-                if example["gt_sexpr"] != "null":
-                    qids.add(example["qid"])
+        if any([pred.lower() == gt_normed.lower() for pred in pred_normed]):
+            qids.add(example["qid"])
+    
+    # gen_sexpr_results 里头，normed contains exact_match, "logical_form" 没有 exact_match
+    # for qid in gen_succeed:
+    #     assert qid in gen_prf1, print(qid)
+    #     # 答对了那就无所谓
+    #     if gen_prf1[qid]["f1"] == 1.0:
+    #         continue
+    #     example = gen_succeed[qid]
+    #     execute_index = example["execute_index"]
+    #     pred_normed = example["pred"]["predictions"][execute_index]
+    #     gt_normed = example["gt_normed_sexpr"]
+    #     if pred_normed.lower() == gt_normed.lower():
+    #         if example["logical_form"].lower() != example["gt_sexpr"]:
+    #             if example["gt_sexpr"] != "null":
+    #                 qids.add(example["qid"])
     # print(len(qids), list(qids))
     for qid in qids:
         print(qid)
-        print(gen_succeed[qid]["answer"])
+        # print(gen_succeed[qid]["answer"])
 
 def string_sim(cur_seg, ent_label):
     string_sim = difflib.SequenceMatcher(None, cur_seg.lower(), ent_label).quick_ratio()
@@ -1096,6 +1230,75 @@ def test_label_map(label_map_path):
     for qid in label_map:
         print(qid)
         entity_label_map = {l.lower():t for t,l in label_map[qid]['entity_label_map'].items()}
+
+def compare_2hop_relations(prev_path, new_path):
+    prev_2hop = load_json(prev_path)
+    print(len(prev_2hop))
+    new_2hop = load_json(new_path)
+    diff_eid = set()
+    for eid in prev_2hop:
+        prev_rels = prev_2hop[eid]
+        if eid not in new_2hop:
+            diff_eid.add(eid)
+            print(f'not found: {eid}')
+        new_rels = new_2hop[eid]
+        if set(prev_rels) != set(new_rels):
+            diff_eid.add(eid)
+            print(eid)
+    print(len(diff_eid), list(diff_eid))
+
+def compare_2hop_relations_cwq(prev_path):
+    prev_2hop = load_json(prev_path)
+    print(len(prev_2hop.keys()))
+
+def compare_unseen_qids(prev_path, new_path):
+    prev_qids = load_json(prev_path)
+    new_qids = load_json(new_path)
+
+    print(len(prev_qids), len(new_qids))
+
+    print(f'equals: {prev_qids == new_qids}')
+    print(f'new more: {list(new_qids - prev_qids)}')
+    print(f'prev more: {list(prev_qids - new_qids)}')
+
+def compare_json_file_set(file_1_path, file_2_path):
+    print(file_1_path)
+    file_1 = set(load_json(file_1_path).keys())
+    file_2 = set(load_json(file_2_path))
+    print(file_1 == file_2)
+    print(len(file_1 - file_2))
+    print(len(file_2 - file_1))
+    assert file_1 == file_2
+
+
+def get_unique_entities_cwq():
+    folder = 'data/CWQ/entity_retrieval/disamb_entities'
+    unique_entities = set()
+    for split in ['train', 'dev', 'test']:
+        cand_entity_file = load_json(os.path.join(folder, f'CWQ_merged_{split}_disamb_entities.json'))
+        for qid in cand_entity_file:
+            for item in cand_entity_file[qid]:
+                unique_entities.add(item["id"])
+    dump_json(list(unique_entities), os.path.join(folder, 'unique_entities.json'))
+
+def compare_merged_entities(file_1_path, file_2_path):
+    """
+    1. 随机采样的实体不进行对比（特点，没有 label）
+    2. 只考虑实体的 id
+    """
+    print(file_1_path)
+    print(file_2_path)
+    file_1 = load_json(file_1_path)
+    file_2 = load_json(file_2_path)
+    assert len(file_1) == len(file_2), print(len(file_1), len(file_2))
+    not_equal_num = 0
+    for qid in file_1:
+        assert qid in file_2, print('qid not found: {}'.format(qid))
+        file_1_entities = [(ent['id'], ent['label']) for ent in file_1[qid] if 'mention' in ent]
+        file_2_entities = [(ent['id'], ent['label']) for ent in file_2[qid] if 'mention' in ent]
+        if file_1_entities != file_2_entities:
+            not_equal_num += 1
+    print('not_equal: {}'.format(not_equal_num))
 
 if __name__=='__main__':
     # compare_answers(
@@ -1286,35 +1489,94 @@ if __name__=='__main__':
     # for split in ['train', 'test']:
     #     test_label_map(f'data/WebQSP/generation/label_maps/WebQSP_{split}_label_maps.json')
 
-    def test_date_post_process():
-        test_cases = [
-            'm.07tnkvw', 
-            '1906-04-18 05:12:00',
-            '1996-01-01',
-            '1883-01-01',
-            '1775-05-10',
-            '1906-04-18 05:12:00',
-            '1786-01-01',
-            '1921-09-01',
-        ]
-        for case in test_cases:
-            print('{}: {}'.format(case, date_post_process(case)))
-    def date_post_process(date_string):
-        """
-        我们的知识库查询结果，会自动补全一个日期
-        例如:
-            - 1996 --> 1996-01-01
-            - 1906-04-18 --> 1906-04-18 05:12:00
-        """
-        import re
-        pattern_year_month_date = r"^\d{4}-\d{2}-\d{2}$"
-        pattern_year_month_date_moment = r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$"
+    # def test_date_post_process():
+    #     test_cases = [
+    #         'm.07tnkvw', 
+    #         '1906-04-18 05:12:00',
+    #         '1996-01-01',
+    #         '1883-01-01',
+    #         '1775-05-10',
+    #         '1906-04-18 05:12:00',
+    #         '1786-01-01',
+    #         '1921-09-01',
+    #     ]
+    #     for case in test_cases:
+    #         print('{}: {}'.format(case, date_post_process(case)))
+    # def date_post_process(date_string):
+    #     """
+    #     我们的知识库查询结果，会自动补全一个日期
+    #     例如:
+    #         - 1996 --> 1996-01-01
+    #         - 1906-04-18 --> 1906-04-18 05:12:00
+    #     """
+    #     import re
+    #     pattern_year_month_date = r"^\d{4}-\d{2}-\d{2}$"
+    #     pattern_year_month_date_moment = r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$"
 
-        if re.match(pattern_year_month_date_moment, date_string):
-            if date_string.endswith('05:12:00'):
-                date_string = date_string.replace('05:12:00', '').strip()
-        elif re.match(pattern_year_month_date, date_string):
-            if date_string.endswith('-01-01'):
-                date_string = date_string.replace('-01-01', '').strip()
-        return date_string
-    test_date_post_process()
+    #     if re.match(pattern_year_month_date_moment, date_string):
+    #         if date_string.endswith('05:12:00'):
+    #             date_string = date_string.replace('05:12:00', '').strip()
+    #     elif re.match(pattern_year_month_date, date_string):
+    #         if date_string.endswith('-01-01'):
+    #             date_string = date_string.replace('-01-01', '').strip()
+    #     return date_string
+    # test_date_post_process()
+
+    # compare_2hop_relations(
+    #     'data/WebQSP/relation_retrieval/cross-encoder/rng_kbqa_linking_results/WebQSP.2hopRelations.rng.elq.candEntities_compared.json',
+    #     'data/WebQSP/relation_retrieval/cross-encoder/rng_kbqa_linking_results/WebQSP.2hopRelations.rng.elq.candEntities.json',
+    # )
+
+    # compare_2hop_relations(
+    #     'data/CWQ/relation_retrieval/bi-encoder/CWQ.2hopRelations.candEntities_compared.json',
+    #     'data/CWQ/relation_retrieval/bi-encoder/CWQ.2hopRelations.candEntities.json',
+    # )
+
+    # compare_2hop_relations_cwq(
+    #     'data/CWQ/relation_retrieval/bi-encoder/CWQ.2hopRelations.candEntities.json'
+    # )
+    # calculate_rng_2hop_recall_new(
+    #     'data/CWQ/relation_retrieval/bi-encoder/CWQ.2hopRelations.candEntities.json',
+    #     'data/CWQ/generation/merged/CWQ_test.json'
+    #     # 'data/WebQSP/relation_retrieval/cross-encoder/rng_kbqa_linking_results/WebQSP.2hopRelations.rng.elq.candEntities.json',
+    #     # 'data/WebQSP/generation/merged/WebQSP_test.json'
+    # )
+
+    # compare_unseen_qids(
+    #     'data/WebQSP/generation/ablation_prev/test_unseen_entity_or_relation_qids.json',
+    #     'data/WebQSP/generation/ablation/test_unseen_entity_or_relation_qids.json'
+    # )
+
+    # error_analysis_0726(
+    #     # 'exps/WebQSP_t5_base/beam_50_test_2_top_k_predictions.json_gen_failed_results.json',
+    #     # 'exps/WebQSP_t5_base/beam_50_test_2_top_k_predictions.json_gen_sexpr_results.json',
+    #     # 'exps/WebQSP_t5_base/beam_50_test_2_top_k_predictions.json_gen_sexpr_results_official_format.json_new.json'
+    #     'exps/CWQ_t5_base/beam_50_test_4_top_k_predictions.json_gen_failed_results.json',
+    #     'exps/CWQ_t5_base/beam_50_test_4_top_k_predictions.json_gen_sexpr_results.json',
+    #     'exps/CWQ_t5_base/beam_50_test_4_top_k_predictions.json_gen_sexpr_results.json_new.json'
+    # )
+    # compare_json_file_set(
+    #     'data/WebQSP/relation_retrieval/cross-encoder/rng_kbqa_linking_results/WebQSP.2hopRelations.rng.elq.candEntities.json',
+    #     'data/WebQSP/relation_retrieval/cross-encoder/rng_kbqa_linking_results/unique_entity_ids.json'
+    #     # 'data/CWQ/relation_retrieval/bi-encoder/CWQ.2hopRelations.candEntities.json',
+    #     # 'data/CWQ/entity_retrieval/disamb_entities/unique_entities.json'
+    # )
+
+    # get_unique_entities_cwq()
+
+    # for split in ['train', 'test']:
+    #     merge_el_result_webqsp(split)
+    for split in ['train']:
+        merge_el_result_webqsp(split)
+        # merge_entity_linking_results(split)
+        # el_disamb_facc1(split)
+        # el_disamb_elq(split)
+        # compare_merged_entities(
+        #     f'data/CWQ/entity_retrieval/xwu_test/CWQ_{split}_elq_results.json',
+        #     f'/home2/xxhu/QDT2SExpr/CWQ/data/linking_results/CWQ_{split}_entities_elq.json'
+        # )
+        # merge_entity_linking_results(split)
+        # compare_merged_entities(
+        #     f'data/WebQSP/entity_retrieval/candidate_entities/WebQSP_{split}_cand_entities_elq.json',
+        #     f'/home2/xxhu/QDT2SExpr/CWQ/data/linking_results/WebQSP_{split}_elq_results.json'
+        # )
