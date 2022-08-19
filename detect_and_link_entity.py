@@ -11,6 +11,7 @@ from components.utils import dump_json, load_json, clean_str
 import requests
 from nltk.tokenize import word_tokenize
 import os
+from config import ELQ_SERVICE_URL
 
 """
 This file performs candidate entity linking for CWQ and WebQSP,
@@ -193,7 +194,7 @@ def dump_entity_linking_results_for_WebQSP(split,keep=10):
 
 def get_entity_linking_from_elq(question:str):
     res = requests.post(
-        url="http://210.28.134.34:5685/entity_linking"
+        url=ELQ_SERVICE_URL
         , data=json.dumps({'question':question})
         )
     

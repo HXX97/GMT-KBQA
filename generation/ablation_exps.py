@@ -4,7 +4,17 @@ Ablation Experiments
 import json
 import os
 import re
+from tqdm import tqdm
+import argparse
 
+def _parse_args():
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('action',type=str,help='Action to operate')
+    parser.add_argument('--dataset', default='CWQ', help='CWQ or WebQSP')
+    parser.add_argument('--eval_beam_size', default=50, type=int)
+
+    return parser.parse_args()
 
 """
 Evaluation functions
@@ -54,6 +64,81 @@ def get_unseen_question_QA_metrics(q_type="schema"):
     with open (os.path.join(dirname,'eval_results_unseen_{}_compare.txt'.format(q_type)),'w') as f:
         f.write(res)
         f.flush()
+
+def entity_relation_linking_evaluation(dataset='CWQ', beam_size=50):
+    """
+    Evaluation of entity linking and relation linking
+
+    Evaluation of entity linking
+        - Before multi-task: disamb_entities/merged_{dataset}_test_linking_results.json
+        - After multi-task: {dataset}_test_{test_batch_size}_beam_{beam_size}_candidate_entity_map.json
+
+    Evaluation of relation linking:
+        - Before multi-task: merged/{dataset}_test.json, in "cand_relation_list" with prediciton logits > 0.0
+        - After multi-task: 
+            prediction results: beam_{beam_size}_test_{batch_size}_top_k_predictions.json_gen_sexpr_results.json + beam_{beam_size}_test_{batch_size}_top_k_predictions.json_gen_failed_results.json
+            relation with prediction logit > 0.5
+    """
+    if dataset.lower() == 'cwq':
+        dirname = 'exps/CWQ_GMT_KBQA'
+        gen_failed_predictions = load_json(os.path.join(dirname, f'beam_{beam_size}_test_4_top_k_predictions.json_gen_failed_results.json'))
+        gen_succeed_predictions = load_json(os.path.join(dirname, f'beam_{beam_size}_test_4_top_k_predictions.json_gen_sexpr_results.json'))
+        predictions = gen_failed_predictions + gen_succeed_predictions
+
+        dataset  = load_json('data/CWQ/generation/merged/CWQ_test.json')
+        after_entity_linking_res = load_json(os.path.join(dirname, f'CWQ_test_4_beam_{beam_size}_candidate_entity_map.json'))
+        before_entity_linking_res = load_json('data/CWQ/entity_retrieval/disamb_entities/CWQ_merged_test_disamb_entities.json')
+
+    elif dataset.lower() == 'webqsp':
+        dirname = 'exps/WebQSP_GMT_KBQA'
+        gen_failed_predictions = load_json(os.path.join(dirname, f'beam_{beam_size}_test_2_top_k_predictions.json_gen_failed_results.json'))
+        gen_succeed_predictions = load_json(os.path.join(dirname, f'beam_{beam_size}_test_2_top_k_predictions.json_gen_sexpr_results.json'))
+        predictions = gen_failed_predictions + gen_succeed_predictions
+
+        dataset  = load_json('data/WebQSP/generation/merged/WebQSP_test.json')
+        after_entity_linking_res = load_json(os.path.join(dirname, f'WebQSP_test_2_beam_{beam_size}_candidate_entity_map.json'))
+        before_entity_linking_res = load_json('data/WebQSP/entity_retrieval/disamb_entities/WebQSP_merged_test_disamb_entities.json')
+
+    else:
+        return
+    
+    assert len(predictions) == len(dataset), print(len(predictions), len(dataset))
+    golden_entities = []
+    golden_relations = []
+    after_entity_predictions = []
+    after_relation_predictions = []
+    before_entity_predictions = []
+    before_relation_predictions = []
+
+    predictions_map = {pred["qid"]: pred for pred in predictions}
+    dataset_map = {data["ID"]: data for data in dataset}
+
+    for qid in tqdm(dataset_map, total=len(dataset_map)):
+        assert qid in predictions_map, print(qid)
+        golden_entities.append(list(dataset_map[qid]["gold_entity_map"].keys()))
+        golden_relations.append(list(dataset_map[qid]["gold_relation_map"].keys()))
+        after_relation_pred_indexes = [idx for (idx, score) in enumerate(predictions_map[qid]["pred"]["pred_relation_clf_labels"]) if float(score) > 0.5]
+        before_relation_predictions.append([item[0] for item in dataset_map[qid]["cand_relation_list"] if float(item[1]) > 0.0])
+        after_relation_predictions.append([dataset_map[qid]["cand_relation_list"][idx][0] for idx in after_relation_pred_indexes])
+        if qid not in before_entity_linking_res:
+            before_entity_predictions.append([])
+        else:
+            before_entity_predictions.append([item['id'] for item in before_entity_linking_res[qid]])
+        if qid not in after_entity_linking_res:
+            after_entity_predictions.append([])
+        else:
+            after_entity_predictions.append([item['id'] for item in after_entity_linking_res[qid].values()])
+    
+    after_relation_linking_res = general_PRF1(after_relation_predictions, golden_relations)
+    after_entity_linking_res = general_PRF1(after_entity_predictions, golden_entities)
+    before_relation_linking_res = general_PRF1(before_relation_predictions, golden_entities)
+    before_entity_linking_res = general_PRF1(before_entity_predictions, golden_entities)
+
+    with open(os.path.join(dirname, f'beam_{beam_size}_entity_relation_linking_evaluation.txt'), 'w') as f:
+        f.write(f'After multi-task, Relation linking: {after_relation_linking_res}\n')
+        f.write(f'After multi-task, Entity linking: {after_entity_linking_res}\n')
+        f.write(f'Before multi-task, Relation linking: {before_relation_linking_res}\n')
+        f.write(f'Before multi-task, Entity linking: {before_entity_linking_res}\n')
 
 
 def modular_evaluation():
@@ -334,4 +419,11 @@ def main():
     modular_evaluation()
 
 if __name__=='__main__':
-    main()
+    args = _parse_args()
+    action = args.action
+
+    if action.lower() == 'linking_evaluation':
+        entity_relation_linking_evaluation(
+            args.dataset,
+            args.eval_beam_size
+        )

@@ -5,9 +5,9 @@ import json
 import urllib
 from pathlib import Path
 from tqdm import tqdm
+from config import FREEBASE_SPARQL_WRAPPER_URL, FREEBASE_ODBC_PORT
 
-# sparql = SPARQLWrapper("http://114.212.190.19:8890/sparql")
-sparql = SPARQLWrapper("http://210.28.134.34:8890/sparql")
+sparql = SPARQLWrapper(FREEBASE_SPARQL_WRAPPER_URL)
 sparql.setReturnFormat(JSON)
 
 path = str(Path(__file__).parent.absolute())
@@ -24,33 +24,13 @@ for line in contents:
 odbc_conn = None
 def initialize_odbc_connection():
     global odbc_conn
-    # odbc_conn = pyodbc.connect(r'DRIVER=/data/virtuoso/virtuoso-opensource/lib/virtodbc.so'
-    #                       r';HOST=114.212.190.19:1111'
-    #                       r';UID=dba'
-    #                       r';PWD=dba'
-    #                       )
     odbc_conn = pyodbc.connect(
-        f'DRIVER={path}/../lib/virtodbc.so;Host=localhost:1111;UID=dba;PWD=dba'
+        f'DRIVER={path}/../lib/virtodbc.so;Host=localhost:{FREEBASE_ODBC_PORT};UID=dba;PWD=dba'
     )
     odbc_conn.setdecoding(pyodbc.SQL_CHAR, encoding='utf8')
     odbc_conn.setdecoding(pyodbc.SQL_WCHAR, encoding='utf8')
     odbc_conn.setencoding(encoding='utf8')
     print('Freebase Virtuoso ODBC connected')
-
-# connection for dbpedia
-odbc_dbpedia_conn = None
-def initialize_dbpedia_odbc_connection():
-    global odbc_dbpedia_conn
-    odbc_dbpedia_conn = pyodbc.connect(f'DRIVER={path}/../lib/virtodbc.so'
-                          ';HOST=210.28.134.34:1113'
-                          ';UID=dba'
-                          ';PWD=dba'
-                          )
-    odbc_dbpedia_conn.setdecoding(pyodbc.SQL_CHAR, encoding='utf8')
-    odbc_dbpedia_conn.setdecoding(pyodbc.SQL_WCHAR, encoding='utf8')
-    odbc_dbpedia_conn.setencoding(encoding='utf8')
-    print('DBpedia Virtuoso ODBC connected')
-
 
 
 def execute_query(query: str) -> List[str]:
@@ -1468,10 +1448,7 @@ def get_label(entity: str) -> str:
 
 import pyodbc
 def pyodbc_test():
-    conn = pyodbc.connect(r'DRIVER=/data/virtuoso/virtuoso-opensource/lib/virtodbc.so'
-                          r';SERVER=210.28.134.34:1111'
-                          r';UID=dba;PWD=dba'
-                          )
+    conn = pyodbc.connect(f'DRIVER={path}/../lib/virtodbc.so;Host=localhost:{FREEBASE_ODBC_PORT};UID=dba;PWD=dba')
     print(conn)
     conn.setdecoding(pyodbc.SQL_CHAR, encoding='utf8')
     conn.setdecoding(pyodbc.SQL_WCHAR, encoding='utf8')
@@ -1649,41 +1626,6 @@ def get_1hop_relations_with_odbc(entity):
         relations.add(row[0].replace('http://rdf.freebase.com/ns/', ''))
 
     return relations
-
-
-def get_wikipage_id_from_dbpedia_uri(dbpedia_uri: str):
-    # build connection
-    global odbc_dbpedia_conn
-    if odbc_dbpedia_conn == None:
-        initialize_dbpedia_odbc_connection()
-    
-    wiki_page_id = set()
-    query = ("""SPARQL
-        PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-        PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-        SELECT DISTINCT ?x0  WHERE {
-        """
-              f'<{dbpedia_uri}> <http://dbpedia.org/ontology/wikiPageID> ?x0 .'
-        """
-    }
-    """)
-
-    try:
-        with odbc_dbpedia_conn.cursor() as cursor:
-            cursor.execute(query)
-            rows = cursor.fetchall()
-    except Exception:
-        print(f"Query Execution Failed:{query}")
-        exit(0)
-    
-
-    for row in rows:
-        wiki_page_id.add(row[0])
-    
-    if len(wiki_page_id)==0:
-        return ''
-    else:
-        return list(wiki_page_id)[0]
 
 
 def get_freebase_mid_from_wikiID(wikiID: int):
@@ -1986,7 +1928,7 @@ def freebase_query_entity_type_with_odbc(entities_path, output_path):
 
 if __name__=='__main__':
     
-    # pyodbc_test()
+    pyodbc_test()
     
     # print(get_label('m.04tfqf'))
     # print(get_label_with_odbc('m.0rczx'))
@@ -2034,10 +1976,10 @@ if __name__=='__main__':
     # in_relations, out_relations, paths = get_2hop_relations_with_odbc_wo_filter('m.04904')
     # print(in_relations, out_relations)
 
-    query_two_hop_relations_gmt(
-        'data/WebQSP/relation_retrieval/cross-encoder/rng_kbqa_linking_results/unique_entity_ids.json',
-        'data/WebQSP/relation_retrieval/cross-encoder/rng_kbqa_linking_results/WebQSP.2hopRelations.rng.elq.candEntities.json'
-    )
+    # query_two_hop_relations_gmt(
+    #     'data/WebQSP/relation_retrieval/cross-encoder/rng_kbqa_linking_results/unique_entity_ids.json',
+    #     'data/WebQSP/relation_retrieval/cross-encoder/rng_kbqa_linking_results/WebQSP.2hopRelations.rng.elq.candEntities.json'
+    # )
 
     # query_two_hop_relations_gmt(
     #     'data/CWQ/entity_retrieval/disamb_entities/unique_entities.json',

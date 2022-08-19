@@ -77,6 +77,8 @@ Download the CWQ dataset from [here](https://www.dropbox.com/sh/7pkwkrfnwqhsnpo/
 
 Download the WebQSP dataset from [here](https://www.microsoft.com/en-us/research/publication/the-value-of-semantic-parse-labeling-for-knowledge-base-question-answering-2/) and put them under `data/WebQSP/origin`. The dataset files should be named as `WebQSP.test[train].json`.
 
+Setup Freebase: you need to modify variable `FREEBASE_SPARQL_WRAPPER_URL` and `FREEBASE_ODBC_PORT` in `config.py`.
+
 (2) **Parse SPARQL queries to S-expressions** 
 
 As stated in the paper, we generate S-expressions which are not provided by the original dataset.
@@ -95,7 +97,7 @@ This step can be ***skipped***, as we've provided the entity retrieval retuls in
 
 If you want to retrieve the candidate entities from scratch, follow the steps below:
 
-1. Obtain the linking results from ELQ. Firstly you should deploy our tailored [ELQ](). Then run 
+1. Obtain the linking results from ELQ. Firstly you should deploy our tailored [ELQ](https://github.com/WuXuan374/ELQ4GMTQA). Then you should modify variable `ELQ_SERVICE_URL` in `config.py` according to your own ELQ service url. Next run 
     - CWQ: `python detect_and_link_entity.py --dataset CWQ --split test[train,dev] --linker elq` to get candidate entities linked by ELQ. The results will be saved as `data/CWQ/entity_retrieval/candidate_entities/CWQ_test[train,dev]_cand_entities_elq.json`.
     - WebQSP: Run `python detect_and_link_entity.py --dataset WebQSP --split test[train] --linker elq`, and the results will be saved as `data/WebQSP/entity_retrieval/candidate_entities/WebQSP_test[train]_cand_entities_elq.json`
 
@@ -169,7 +171,7 @@ If you want to retrive the candidate relations from scratch, follow the steps be
 1. Evaluate entity linking and relation linking result:
     - CWQ: Run `python ablation_exps.py linking_evaluation --dataset CWQ`
     - WebQSP: Run `python ablation_exps.py linking_evaluation --dataset WebQSP`
-2. Evaluation QA performance on quesitions with unseen entity/relation
+2. Evaluate QA performance on quesitions with unseen entity/relation
     - CWQ: Run `python ablation_exps.py unseen_evaluation --dataset CWQ --model_type full` to get evaluation result on our full model `GMT-KBQA`. Run `python ablation_exps.py unseen_evaluation --dataset CWQ --model_type base` to get evaluation result on `T5-base` model.
     - WebQSP: Run `python ablation_exps.py unseen_evaluation --dataset WebQSP --model_type full` to get evaluation result on our full model `GMT-KBQA`. Run `python ablation_exps.py unseen_evaluation --dataset WebQSP --model_type base` to get evaluation result on `T5-base` model.
 
@@ -245,7 +247,7 @@ For any question, please contact [TODO:](TODO)
     - _elq 文件和之前的完全一致
     - _facc1_unranked 之前没有生成，无法比较
     - _facc1 文件 train 和 test 各有10来处不同，但经过检查，主要都是 logit 的细微变化，导致实体排序的细微变化，没什么影响，不考虑了
-    - _merged_eql_facc1.json: train 10 处, test 5处，同样基本上就是一些实体的顺序问题，无影响
+    - _merged_elq_facc1.json: train 10 处, test 5处，同样基本上就是一些实体的顺序问题，无影响
     - disamb_entities: 对比 data/WebQSP/entity_retrieval_0724/disamb_entities 和 /home3/xwu/workspace/QDT2SExpr/CWQ/all_data_bk/WebQSP/final/entity_linking_results/
         - 这一项的差距很大，train 有 2380 个不同，test 有 462 个不同（其实我们只会用到 test）-- 只考虑 id 和 label 的情况下
 
@@ -288,3 +290,13 @@ For any question, please contact [TODO:](TODO)
 - gold_*_map: 从 1parse 到所有 parse
 - sparql 不同，但是 sexpr 都是相同的：应该是以前的数据，sparql 没有完全按照 sexpr 的选择规则
     - 不过考虑到生成模型中没有使用到 sparql (训练的时候是用 sexpr 作为生成目标)，测试的时候最终也是计算QA效果，这个 bug 没什么影响
+## TODO
+- * 检查二跳关系的函数
+    - 函数能生成相同结果，entity_id 的来源也找到了
+- 删掉没用的代码
+- 所有的绝对路径等放到 config.py 里头
+- common_data 下的一些数据，对应 relation_retrieval 里头的函数，确认一下
+
+## 实体链接存在的问题
+- /home2/xxhu/QDT2SExpr/CWQ/data/linking_results/WebQSP_train_elq_results.json 其实是测试集的链接结果，等于最后的 merged_data 里头只有 facc1 的结果
+    - 只有 WebQSP 训练集有这个问题
