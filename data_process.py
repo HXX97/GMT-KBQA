@@ -937,6 +937,49 @@ def get_candidate_unique_entities_cwq():
                     unique_entities.add(item["id"])
     dump_json(list(unique_entities), os.path.join(folder, 'unique_entities.json'))
 
+def serialize_rich_relation(relation, domain_range_dict, seperator="|"):
+    if relation not in domain_range_dict:
+        return relation
+    else:
+        res = relation
+        if 'label' in domain_range_dict[relation]:
+            if relation.lower() != domain_range_dict[relation]['label'].lower().replace(' ', ''):
+                res += (seperator + domain_range_dict[relation]['label'])
+        if 'domain' in domain_range_dict[relation]:
+            res += (seperator + domain_range_dict[relation]['domain'])
+        if 'range' in domain_range_dict[relation]:
+            res += (seperator + domain_range_dict[relation]['range'])
+        return res
+
+def construct_common_data(
+    relations_path,
+    filtered_relations_path,
+    domain_range_label_map_path,
+    output_relation_rich_map_path,
+    output_rich_relation_map_path,
+    output_filtered_rich_relation_path,
+    output_relation_freq_path
+):
+    all_relations = load_json(relations_path)
+    relation_freq_map = {rel[0].replace('http://rdf.freebase.com/ns/', ''): int(rel[1]) for rel in all_relations}
+    filtered_relations = load_json(filtered_relations_path)
+    domain_range_label_map = load_json(domain_range_label_map_path)
+    relation_rich_map = dict()
+    rich_relation_map = defaultdict(list)
+    filtered_rich_relations = []
+    relation_freq = dict()
+    for rel in filtered_relations:
+        richRelation = serialize_rich_relation(rel, domain_range_label_map).replace('\n', '')
+        relation_rich_map[rel] = richRelation
+        rich_relation_map[richRelation].append(rel)
+        filtered_rich_relations.append(richRelation)
+        relation_freq[rel] = relation_freq_map[rel]
+    dump_json(relation_rich_map, output_relation_rich_map_path)
+    dump_json(rich_relation_map, output_rich_relation_map_path)
+    dump_json(filtered_rich_relations, output_filtered_rich_relation_path)
+    dump_json(relation_freq, output_relation_freq_path)
+
+
 if __name__=='__main__':
     
     
@@ -994,3 +1037,13 @@ if __name__=='__main__':
     #             f'data/CWQ/generation/merged_old/CWQ_{split}.json',
     #             f'data/CWQ/generation/merged_test/CWQ_{split}.json',
     #         )
+
+    # construct_common_data(
+    #     'data/common_data_0822/freebase_relations.json',
+    #     'data/common_data_0822/freebase_relations_filtered.json',
+    #     'data/common_data_0822/fb_relations_domain_range_label.json',
+    #     'data/common_data_0822/fb_relation_rich_map.json',
+    #     'data/common_data_0822/fb_rich_relation_map.json',
+    #     'data/common_data_0822/freebase_richRelations_filtered.json',
+    #     'data/common_data_0822/relation_freq.json',
+    # )

@@ -1821,7 +1821,7 @@ def get_entities_with_odbc(data_path, limit=100):
     if len(rtn) != 0:
         dump_json(data_path, rtn)
 
-def query_relation_domain_range_odbc(input_path, output_path):
+def query_relation_domain_range_label_odbc(input_path, output_path):
     """
     对于输入的每个关系，取其 domain 和 range
     最终结果是一个 relation: {domain: , range:, label:} 的映射表
@@ -1830,16 +1830,14 @@ def query_relation_domain_range_odbc(input_path, output_path):
     global odbc_conn
     if odbc_conn == None:
         initialize_odbc_connection()
-    with open(input_path, 'r') as f:
-        relations = json.load(f)
+    relations = load_json(input_path)
     
     res_dict = dict()
-    for relation in relations:
+    for relation in tqdm(relations):
     # {{ }} 两个花括号是为了转义
         query = """
         SPARQL DESCRIBE {}
-        """.format('<' + relation + '>')
-        print('query: {}'.format(query))
+        """.format('ns:' + relation)
         
         try:
             with odbc_conn.cursor() as cursor:
@@ -1852,16 +1850,13 @@ def query_relation_domain_range_odbc(input_path, output_path):
         res_dict[relation] = dict()
         for row in rows:
             if '#domain' in row[1]:
-                res_dict[relation]["domain"] = row[2]
+                res_dict[relation]["domain"] = row[2].replace('http://rdf.freebase.com/ns/', '')
             elif '#range' in row[1]:
-                res_dict[relation]["range"] = row[2]
+                res_dict[relation]["range"] = row[2].replace('http://rdf.freebase.com/ns/', '')
             elif '#label' in row[1]:
-                res_dict[relation]["label"] = row[2]
-
-        print(res_dict[relation])
+                res_dict[relation]["label"] = row[2].replace('http://rdf.freebase.com/ns/', '')
     
-    with open(output_path, 'w') as f:
-        json.dump(res_dict, fp=f, indent=4)
+    dump_json(res_dict, output_path)
 
 def query_entity_type_with_odbc(entities_path, output_path):
     # build connection
@@ -1926,9 +1921,60 @@ def freebase_query_entity_type_with_odbc(entities_path, output_path):
     
     dump_json(output_path, res_dict)
 
+"""
+copied from `relation_retrieval/sparql_executor.py`
+"""
+
+def get_freebase_relations_with_odbc(data_path, limit=100):
+    """Get all relations of Freebase"""
+    # build connection
+    global odbc_conn
+    if odbc_conn == None:
+        initialize_odbc_connection()
+    # {{ }}: to escape
+    if limit > 0:
+        query = """
+        SPARQL SELECT DISTINCT ?p (COUNT(?p) as ?freq) WHERE {{
+            ?subject ?p ?object
+        }}
+        LIMIT {}
+        """.format(limit)
+    else:
+        query = """
+        SPARQL SELECT DISTINCT ?p (COUNT(?p) as ?freq) WHERE {{
+            ?subject ?p ?object
+        }}
+        """
+    print('query: {}'.format(query))
+    
+    try:
+        with odbc_conn.cursor() as cursor:
+            cursor.execute(query)
+            rows = cursor.fetchall()
+    except Exception:
+        print(f"Query Execution Failed:{query}")
+        exit(0)
+    
+    rtn = []
+    for row in rows:
+        rtn.append([row[0], int(row[1])])
+    
+    if len(rtn) != 0:
+        dump_json(rtn, data_path)
+
+def freebase_relations_post_process(input_path, output_path):
+    input_data = load_json(input_path)
+    print(f'input length: {len(input_data)}')
+    output_data = [item[0] for item in input_data]
+    output_data = [item for item in output_data if item.startswith("http://rdf.freebase.com/ns/")]
+    output_data = [item.replace('http://rdf.freebase.com/ns/', '') for item in output_data]
+    output_data = list(set(output_data))
+    print(f'output length: {len(output_data)}')
+    dump_json(output_data, output_path)
+
 if __name__=='__main__':
     
-    pyodbc_test()
+    # pyodbc_test()
     
     # print(get_label('m.04tfqf'))
     # print(get_label_with_odbc('m.0rczx'))
@@ -1984,4 +2030,16 @@ if __name__=='__main__':
     # query_two_hop_relations_gmt(
     #     'data/CWQ/entity_retrieval/disamb_entities/unique_entities.json',
     #     'data/CWQ/relation_retrieval/bi-encoder/CWQ.2hopRelations.candEntities.json'
+    # )
+
+    """common_data related"""
+    
+    # get_freebase_relations_with_odbc('../data/common_data_0822/freebase_relations.json', limit=0)
+    # freebase_relations_post_process(
+    #     '../data/common_data_0822/freebase_relations.json',
+    #     '../data/common_data_0822/freebase_relations_filtered.json'
+    # )
+    # query_relation_domain_range_label_odbc(
+    #     '../data/common_data_0822/freebase_relations_filtered.json',
+    #     '../data/common_data_0822/fb_relations_domain_range_label.json'
     # )
