@@ -48,7 +48,7 @@ class BiEncoderModule(torch.nn.Module):
             embedding_relation = self.relation_bert_layer(relation_input_id, relations_attn_mask, relations_token_type_id).pooler_output
             embedding_relations.append(embedding_relation)
         
-        embedding_relations = torch.stack(embedding_relations, dim=1) # 已确认
+        embedding_relations = torch.stack(embedding_relations, dim=1)
         
         embedding_question = embedding_question.unsqueeze(1)
         # print('embedding_question: {}'.format(embedding_question.shape)) # (batch_size, 1, 768)
@@ -71,12 +71,6 @@ class BiEncoderModule(torch.nn.Module):
         assert golden_id.shape[0] == scores.shape[0], print('golden_id: {}, scores: {}'.format(golden_id.shape, scores.shape))
         
         loss_fct = nn.CrossEntropyLoss()
-        # target = torch.zeros(scores.shape)
-        # for i in range(0, golden_id.shape[0]):
-        #     target[i][golden_id[i]] = 1 # one-hot encoding target, golden_id --> 1, others --> 0
-        # print('golden id: {}'.format(golden_id))
-        # loss = loss_fct(scores.to(self.device), target.to(self.device)) / scores.shape[0]
-        # loss = loss_fct(scores.to(self.device), target.long().to(self.device)) / scores.shape[0]
         loss = loss_fct(scores.to(self.device), golden_id.to(self.device)) / scores.shape[0]
         
         return loss

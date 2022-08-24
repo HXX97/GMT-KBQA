@@ -93,7 +93,8 @@ def sample_data_mask_entity_mention(
         # mask entity mention in question
         question = item["question"].lower()
         qid = item["ID"]
-        el_result = entity_linking_res[qid] if qid in entity_linking_res else []
+        el_result = entity_linking_res[qid] if qid in entity_linking_res else {}
+        el_result = {example['id']: example for example in el_result}
         for eid in el_result:
             mention = el_result[eid]["mention"]
             question = question.replace(mention, BLANK_TOKEN)
@@ -267,7 +268,7 @@ def sample_data(dataset, split):
         if split != 'test':
             sample_data_mask_entity_mention(
                 'data/CWQ/relation_retrieval/bi-encoder/CWQ.{}.goldenRelation.json'.format(split),
-                'data/CWQ/entity_retrieval/merged_linking_results/merged_CWQ_{}_linking_results.json'.format(split),
+                'data/CWQ/entity_retrieval/disamb_entities/CWQ_merged_{}_disamb_entities.json'.format(split),
                 'data/common_data/freebase_relations_filtered.json',
                 'data/CWQ/relation_retrieval/bi-encoder/CWQ.{}.sampled.tsv'.format(split)
             )

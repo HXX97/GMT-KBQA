@@ -148,6 +148,7 @@ data/WebQSP
 # BERT NER model for entity mention detection
 entity_retrieval/BERT_NER/trained_ner_model/
 entity_retrieval/entity_disamb_CWQ/
+entity_retrieval/entity_disamb_CWQ_prev/
 entity_retrieval/entity_disamb_WebQSP/
 
 
@@ -160,6 +161,7 @@ feature_cache
 
 # experiment models and logs
 exps/
+exps_final/
 
 scripts/bak
 

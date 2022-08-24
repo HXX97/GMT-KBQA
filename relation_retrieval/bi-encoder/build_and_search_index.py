@@ -196,7 +196,8 @@ def encode_questions(
         qid = item["ID"] if dataset == 'cwq' else item["QuestionId"]
         if mask_mention:
             question = question.lower()
-            el_result = entity_linking_res[qid] if qid in entity_linking_res else []
+            el_result = entity_linking_res[qid] if qid in entity_linking_res else {}
+            el_result = {item["id"]: item for item in el_result}
             for eid in el_result:
                 mention = el_result[eid]["mention"]
                 question = question.replace(mention, BLANK_TOKEN)
@@ -297,7 +298,8 @@ def retrieve_candidate_relations_cwq(
         id = input_data[idx]["ID"]
         if mask_mention:
             question = question.lower()
-            el_result = entity_linking_res[id] if id in entity_linking_res else []
+            el_result = entity_linking_res[id] if id in entity_linking_res else {}
+            el_result = {item["id"]: item for item in el_result}
             for eid in el_result:
                 mention = el_result[eid]["mention"]
                 question = question.replace(mention, BLANK_TOKEN)
@@ -309,7 +311,7 @@ def retrieve_candidate_relations_cwq(
         if validation_relations_path:
             validation_relations = reduce(
                 lambda x,y: x+validation_relations_map[y] if y in validation_relations_map else x,
-                entity_linking_res[id].keys(),
+                map(lambda item: item['id'], entity_linking_res[id]),
                 []
             )
 
@@ -319,29 +321,6 @@ def retrieve_candidate_relations_cwq(
         if validation_relations_path:
             missed_relations = []
             for pred_relation in pred_relations[idx]:
-                # 之前的 bug 长这样
-                # if split == 'train':
-                #     if pred_relation in golden_relations:
-                #         pred_relation = relation_rich_map[pred_relation] if (pred_relation in relation_rich_map and target_rich_relation) else pred_relation
-                #         samples.append([question, pred_relation, '1'])
-                #         count += 1
-                #     elif pred_relation in validation_relations:
-                #         pred_relation = relation_rich_map[pred_relation] if (pred_relation in relation_rich_map and target_rich_relation) else pred_relation
-                #         samples.append([question, pred_relation, '0'])
-                #         count += 1
-                #     else:
-                #         missed_relations.append(pred_relation)
-                # else: # `dev` or `test`
-                #     if pred_relation in validation_relations:
-                #         if pred_relation in golden_relations:
-                #             pred_relation = relation_rich_map[pred_relation] if (pred_relation in relation_rich_map and target_rich_relation) else pred_relation
-                #             samples.append([question, pred_relation, '1'])
-                #         else:
-                #             pred_relation = relation_rich_map[pred_relation] if (pred_relation in relation_rich_map and target_rich_relation) else pred_relation
-                #             samples.append([question, pred_relation, '0'])
-                #         count += 1
-                #     else:
-                #         missed_relations.append(pred_relation)
                 if debug:
                     print('pred_relation: {}'.format(pred_relation))
                     print('validation_relations: {}'.format(validation_relations[0]))
@@ -394,7 +373,7 @@ def retrieve_candidate_relations_cwq(
             writer.writerow([str(idx)] + line)
             idx += 1
     
-    write_json(CWQid_index_path, CWQid_index)
+    dump_json(CWQid_index, CWQid_index_path)
 
 
 def calculate_recall_cwq(
@@ -427,7 +406,7 @@ def retrieve_cross_encoder_inference_data(
     output_id_index_path,
 ):
     """
-    每个问题，把实体链接得到实体的所有二跳关系，都放到数据集中
+    For each question, two hop relations of entity linking result will be used as inference data
     """
     dataset = load_json(dataset_path)
     if "Questions" in dataset:
@@ -928,7 +907,7 @@ if __name__=='__main__':
         if args.dataset.lower() == 'cwq':
             encode_questions(
                 'data/CWQ/origin/ComplexWebQuestions_{}.json'.format(args.split),
-                'data/CWQ/entity_retrieval/merged_linking_results/merged_CWQ_{}_linking_results.json'.format(args.split),
+                'data/CWQ/entity_retrieval/disamb_entities/CWQ_merged_{}_disamb_entities.json'.format(args.split),
                 'data/CWQ/relation_retrieval/bi-encoder/saved_models/mask_mention/CWQ_ep_1.pt',
                 'data/CWQ/relation_retrieval/bi-encoder/vectors/mask_mention/CWQ_{}_questions.pt'.format(args.split),
                 max_len=32,  # consistent with bi-encoder training script
@@ -958,7 +937,7 @@ if __name__=='__main__':
                 'data/CWQ/relation_retrieval/bi-encoder/index/mask_mention/ep_1_flat.index',
                 'data/CWQ/relation_retrieval/cross-encoder/mask_mention_1epoch_question_relation/CWQ.{}.tsv'.format(args.split),
                 'data/CWQ/relation_retrieval/cross-encoder/mask_mention_1epoch_question_relation/CWQ_{}_id_index_map.json'.format(args.split),
-                'data/CWQ/entity_retrieval/merged_linking_results/merged_CWQ_{}_linking_results.json'.format(args.split),
+                'data/CWQ/entity_retrieval/disamb_entities/CWQ_merged_{}_disamb_entities.json'.format(args.split),
                 args.split,
                 validation_relations_path='data/CWQ/relation_retrieval/bi-encoder/CWQ.2hopRelations.candEntities.json',
                 relation_rich_map_path='data/common_data/fb_relation_rich_map.json',
@@ -977,11 +956,7 @@ if __name__=='__main__':
             )
         elif args.dataset.lower() == 'webqsp':
             # Get data for cross-encoder training and validation
-            # 第一个参数传 rich_relation, 得到 rich_relation; 传普通 relation, 得到普通 relation
-            # 这就是生成 rich_relation_3epochs_question_relation 下采样数据的方法(会用到的是 train, 用于模型训练，后面应该是 ptrain 和 pdev)
-            # 已确认用这个方法可以生成完全一致的采样数据
             if args.split in ['train', 'ptrain', 'pdev', 'test']:
-                # TODO: 2hop 关系直接利用数据集里头的 "2hop_relations"
                 retrieve_candidate_relations_webqsp(
                     'data/common_data/freebase_relations_filtered.json', # determines what kind of sampled relations will be generated (normal/rich)
                     'data/WebQSP/relation_retrieval/bi-encoder/WebQSP.{}.goldenRelation.json'.format(args.split),

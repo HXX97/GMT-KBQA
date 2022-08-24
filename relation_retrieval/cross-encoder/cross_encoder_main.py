@@ -163,7 +163,7 @@ class CustomDataset(Dataset):
 
 
 class SentencePairClassifier(nn.Module):
-    def __init__(self, bert_model="/home3/xwu/bertModels/bert-base-uncased", tokenizer=None, freeze_bert=False):
+    def __init__(self, bert_model="hfcache/bert-base-uncased", tokenizer=None, freeze_bert=False):
         super(SentencePairClassifier, self).__init__()
         #  Instantiating BERT-based model object
         self.bert_layer = AutoModel.from_pretrained(bert_model)
@@ -446,7 +446,7 @@ def evaluation_main(args):
     elif 'test' in args.predict_split:
         data_set = CustomDataset(test_df, maxlen, tokenizer=tokenizer, bert_model=bert_model)
     test_loader = DataLoader(data_set, batch_size=bs, num_workers=2)
-    model = SentencePairClassifier(bert_model=bert_model, tokenizer=tokenizer)
+    model = SentencePairClassifier(bert_model=bert_model, tokenizer=tokenizer, freeze_bert=True)
     
     print("Loading the weights of the model...")
     model.load_state_dict(torch.load(path_to_model))
@@ -491,7 +491,7 @@ def prediction_main(args):
             data_set = CustomDataset(test_df, maxlen, tokenizer=tokenizer, bert_model=bert_model)
 
     test_loader = DataLoader(data_set, batch_size=bs, num_workers=2)
-    model = SentencePairClassifier(bert_model=bert_model, tokenizer=tokenizer)
+    model = SentencePairClassifier(bert_model=bert_model, tokenizer=tokenizer, freeze_bert=True)
     
     print("Loading the weights of the model...")
     model.load_state_dict(torch.load(path_to_model))

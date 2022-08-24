@@ -31,8 +31,8 @@ def _parse_args():
 
 def data_process(dataset_type):
     if dataset_type == "CWQ":
-        train_df = pd.read_csv('data/CWQ/relation_retrieval/bi-encoder/CWQ.train.sampled.tsv', sep='\t', error_bad_lines=False).dropna()
-        dev_df = pd.read_csv('data/CWQ/relation_retrieval/bi-encoder/CWQ.dev.sampled.tsv', sep='\t', error_bad_lines=False).dropna()
+        train_df = pd.read_csv('data/CWQ/relation_retrieval/bi-encoder/CWQ.train.sampled.tsv', delimiter='\t',dtype={"id":int, "question":str, "relation":str, 'label':int})
+        dev_df = pd.read_csv('data/CWQ/relation_retrieval/bi-encoder/CWQ.dev.sampled.tsv', delimiter='\t',dtype={"id":int, "question":str, "relation":str, 'label':int})
     else:
         # Use the model saved in last epoch
         train_df = pd.read_csv('data/WebQSP/relation_retrieval/bi-encoder/WebQSP.train.sampled.tsv', delimiter='\t',dtype={"id":int, "question":str, "relation":str, 'label':int})

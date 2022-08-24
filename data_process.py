@@ -75,7 +75,7 @@ def combine_entities_from_FACC1_and_elq(dataset, split, sample_size=10):
         
         # sort by score
         elq_result = sorted(elq_result, key=lambda d: d.get('score', -20.0), reverse=True)
-        facc1_result = sorted(facc1_result, key=lambda d: d.get('logit', 0.0), reverse=True)
+        facc1_result = sorted(facc1_result, key=lambda d: d.get('logit', -20.0), reverse=True)
 
         # merge the linking results of ELQ and FACC1 one by one
         idx = 0
@@ -138,7 +138,6 @@ def make_sorted_relation_dataset_from_logits(dataset, split):
     print('Logits len:',len(logits_list))
     print('tsv_file: {}'.format(tsv_file))
     tsv_df = pd.read_csv(tsv_file, delimiter='\t',dtype={"id":int, "question":str, "relation":str, 'label':int})
-                            #quoting=csv.QUOTE_NONE,
                             
 
     print('Tsv len:', len(tsv_df))
@@ -408,30 +407,7 @@ def merge_all_data_for_logical_form_generation(dataset, split):
             new_ent['mention']=ent.get('mention',"")
             new_ent['1hop_relations']=in_out_rels_map[new_ent['id']]['1hop_relations']
             cand_ent_list.append(new_ent)            
-        
 
-
-        
-
-        # disambiguated_cand_entity = {}
-        # linked_entity_id_set = set()
-        # for ent in cand_entities:
-        #     mention = ent.get("mention","")
-        #     if mention == "": continue # entity with no mention is randomly sampled
-
-        #     # for each mention, retain the entity with highest score
-        #     if (mention not in disambiguated_cand_entity
-        #             and ent['id'] not in linked_entity_id_set):
-                
-        #         disambiguated_cand_entity[mention] = {
-        #             "id": ent["id"],
-        #             "label": ent['label'],
-        #             "mention": mention
-        #         }
-        #         linked_entity_id_set.add(ent['id'])
-        
-        
-        # disambiguated_cand_entity = [ent for (_,ent) in disambiguated_cand_entity.items()]
 
         disambiguated_cand_entity = disamb_ent_map.get(qid,[])
 
@@ -660,12 +636,12 @@ def extract_entity_relation_type_label_from_dataset_webqsp(dataset, split):
                     type_label_map[entity] = entity_label
                     global_type_label_map[entity] = entity_label
 
-                # extract relation labels
-                gt_relations = extract_mentioned_relations_from_sparql(sparql)
-                for rel in gt_relations:
-                    linear_rel = _textualize_relation(rel)
-                    rel_label_map[rel] = linear_rel
-                    global_rel_label_map[rel] = linear_rel
+            # extract relation labels
+            gt_relations = extract_mentioned_relations_from_sparql(sparql)
+            for rel in gt_relations:
+                linear_rel = _textualize_relation(rel)
+                rel_label_map[rel] = linear_rel
+                global_rel_label_map[rel] = linear_rel
         
         dataset_merged_label_map[qid] = {
             'entity_label_map':ent_label_map,
@@ -1039,11 +1015,11 @@ if __name__=='__main__':
     #         )
 
     # construct_common_data(
-    #     'data/common_data_0822/freebase_relations.json',
-    #     'data/common_data_0822/freebase_relations_filtered.json',
-    #     'data/common_data_0822/fb_relations_domain_range_label.json',
-    #     'data/common_data_0822/fb_relation_rich_map.json',
-    #     'data/common_data_0822/fb_rich_relation_map.json',
-    #     'data/common_data_0822/freebase_richRelations_filtered.json',
-    #     'data/common_data_0822/relation_freq.json',
+    #     'data/common_data/freebase_relations.json',
+    #     'data/common_data/freebase_relations_filtered.json',
+    #     'data/common_data/fb_relations_domain_range_label.json',
+    #     'data/common_data/fb_relation_rich_map.json',
+    #     'data/common_data/fb_rich_relation_map.json',
+    #     'data/common_data/freebase_richRelations_filtered.json',
+    #     'data/common_data/relation_freq.json',
     # )
