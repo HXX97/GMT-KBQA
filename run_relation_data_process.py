@@ -309,9 +309,6 @@ def get_unique_entity_ids(
     test_split_path,
     output_path
 ):
-    """
-    得到所有实体链接结果中的 entity ids, 便于下一步查询每个实体的二跳关系
-    """
     if train_split_path is not None:
         train_data = load_json(train_split_path)
     else:

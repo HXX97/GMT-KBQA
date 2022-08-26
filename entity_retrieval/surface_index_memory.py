@@ -224,7 +224,7 @@ class EntitySurfaceIndexMemory(object):
         l = self.entities_mm.readline()
         return self._string_to_entity(l)
 
-    # 获取列表的第二个元素
+    # get second element of a list
     def get_indexrange_entity_el_pro_one_mention(self, mention, top_k=10):
         tuple_list = self.get_entities_for_surface(mention)
         if not tuple_list:

@@ -660,10 +660,6 @@ def extract_entity_relation_type_label_from_dataset_webqsp(dataset, split):
 
     print("done")
 
-
-"""
-吴轩 0623 补充
-"""
 def get_all_entity(dirname, dataset):
     all_entity = set()
     for split in ['train', 'dev', 'test']:
@@ -753,7 +749,7 @@ def merge_entity_linking_results_CWQ(split):
             if ent['mention'] not in facc1_pred_dict:
                 facc1_pred_dict[ent['mention']] = ent
         facc1_pred_filtered = list(facc1_pred_dict.values())
-        # 兜底方案
+
         if len(facc1_pred_filtered) == 0 and len(facc1_pred) > 0:
             facc1_pred_filtered.append(facc1_pred[0])
 
@@ -790,7 +786,6 @@ def merge_entity_linking_results_CWQ(split):
                     "perfect_match": ent['label'].lower()==ent['mention'].lower()
                 }
         
-        # 最后来个兜底方案，如果 ent_map 是空的，那就取 facc1 的 top1, 没有则 elq top1
         # if len(ent_map) == 0:
         #     print(qid)
         #     if len(facc1_pred) > 0:

@@ -1023,10 +1023,6 @@ def get_entity_labels(src_path, tgt_path):
 
 
 def query_relation_domain_range_label_odbc(input_path, output_path):
-    """
-    对于输入的每个关系，取其 domain 和 range
-    最终结果是一个 relation: {domain: , range:, label:} 的映射表
-    """
     # build connection
     global odbc_conn
     if odbc_conn == None:

@@ -283,7 +283,7 @@ def get_test_unseen_questions(dataset='CWQ'):
 
     entities_list = train_relation_entity_list["entities"]
     relations_list = train_relation_entity_list["relations"]
-    unseen_qids = set() # 发现之前的代码没有去重
+    unseen_qids = set()
 
     for qid in tqdm(test_label_maps, total=len(test_label_maps)):
         data = test_label_maps[qid]

@@ -439,7 +439,6 @@ def aggressive_top_k_eval_new(split, predict_file, dataset):
                                                 train_entity_map,
                                                 surface_index)
 
-            # 加一个对日期的后处理
             answers = [date_post_process(ans) for ans in list(answers)]
             
             denormed_pred.append(lf)

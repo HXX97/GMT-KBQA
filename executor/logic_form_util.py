@@ -408,7 +408,7 @@ def lisp_to_sparql(lisp_program: str):
         # binary function here, instead, the arity depends on the number of relations in the second argument in the
         # original function
         if isinstance(expression[2], list): # n-hop relations
-            # TODO ARGMAX JOIN两个关系后, denormalize时会导致两个关系错误地拼接为一个关系
+            # TODO: in denormalization, ARGMAX and JOIN may wrongly concat two relations to one
             def retrieve_relations(exp: list):
                 rtn = []
                 for element in exp:

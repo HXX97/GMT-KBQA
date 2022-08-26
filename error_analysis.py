@@ -3,7 +3,7 @@ import os
 import json
 import re
 
-# 正则表达式无法覆盖的一些关系
+# relations that regular expression cannot cover
 extra_relations_prefix = ['topic_server.schemastaging_corresponding_entities_type', 'topic_server.webref_cluster_members_type', 'topic_server.population_number']
 literal_mask = '[LIT]'
 entity_mask = '[ENT]'
@@ -35,7 +35,6 @@ def mask_entities(sexpr):
 
 
 def mask_literals(sexpr):
-    """ 使用一个很简单的方法, 不是 operator, 并且不是 [REL] [ENT] 的就换成 [LIT]"""
     operators_list = ['(', ')', 'AND', 'COUNT', 'R', 'JOIN', 'ARGMAX', 'ARGMIN', 'lt', 'gt', 'le', 'ge', 'TC', literal_mask, entity_mask, relation_mask]
     sexpr = sexpr.replace('(',' ( ').replace(')',' ) ')
     toks = sexpr.split(' ')
@@ -55,8 +54,8 @@ def mask_literals(sexpr):
 
 def mask_special_literals(sexpr):
     """
-    特殊的 literal 形如 \"as Robby Ray Stewart\"@en
-    其特点在于内部有空格，如果直接分词会影响结果
+    Special literals like \"as Robby Ray Stewart\"@en
+    Has whitespace inside literal, which may influence tokenization
     """
     pattern = "\".*?\"(@en)?"
     sexpr = re.sub(pattern, literal_mask, sexpr)

@@ -423,7 +423,7 @@ def retrieve_cross_encoder_inference_data(
             count += 1
 
         end = count - 1
-        # map 中的 question 应该是原问题
+
         id_index[qid] = {
             'start': start,
             'end': end
@@ -442,186 +442,6 @@ def retrieve_cross_encoder_inference_data(
             idx += 1
     
     write_json(output_id_index_path, id_index)
-
-# bug 版本，请勿使用
-# def retrieve_candidate_relations_prev(
-#     all_relations_path, 
-#     dataset_file, 
-#     question_vectors_path, 
-#     index_file, 
-#     entity_linking_path,
-#     output_path,
-#     id_index_path,
-#     prominent_type_path,
-#     split,
-#     validation_relations_path=None,
-#     relation_rich_map_path=None,
-#     vector_size=768, 
-#     index_buffer=50000, 
-#     top_k=200,
-#     validation_top_k=100,
-#     rich_entity=True,
-#     mask_mention=False,
-# ):
-#     """
-#     validation_relations_path: 从实体出发的一跳、二跳关系表，用于验证
-#     validation_top_k: 进行KB验证后保留的候选关系数量
-#     新的想法：训练集和验证集以选中的那个 parse 的关系作为正例，其他 parse 的关系加到负例中；然后再按照之前做法，添加其他关系
-#     测试集：就直接使用 bi-encoder + 二跳验证之后的结果
-#     """
-#     all_relations = load_json(all_relations_path)
-#     entity_linking_res = load_json(entity_linking_path)
-#     entity_linking_res = {item["id"]: item for item in entity_linking_res}
-#     prominent_type_map = load_json(prominent_type_path)
-#     if relation_rich_map_path:
-#         relation_rich_map = load_json(relation_rich_map_path)
-#     else:
-#         relation_rich_map = None
-    
-#     if validation_relations_path:
-#         validation_relations_map = load_json(validation_relations_path)
-    
-#     index = DenseFlatIndexer(vector_size, index_buffer)
-#     index.deserialize_from(index_file) 
-#     question_vectors = torch.load(question_vectors_path).cpu().detach().numpy()
-#     _, pred_relation_indexes = index.search_knn(question_vectors, top_k=top_k)
-#     pred_relations = pred_relation_indexes.tolist()
-#     pred_relations = [
-#         list([all_relations[index] for index in indexes])
-#         for indexes in pred_relation_indexes
-#     ]
-    
-#     input_data = load_json(dataset_file)
-    
-#     samples = []
-#     count = 0
-#     id_index = dict()
-
-#     print('split: {}'.format(split))
-
-#     assert len(input_data) == len(pred_relations)
-#     for idx in tqdm(range(len(input_data)), total=len(input_data)):
-#         id = input_data[idx]["QuestionId"]
-#         start = count
-#         question = input_data[idx]["ProcessedQuestion"]
-#         question = question.lower()
-#         if rich_entity:
-#             if id not in entity_linking_res:
-#                 continue
-#             for entity_idx in range(len(entity_linking_res[id]["freebase_ids"])):
-#                 entity_id = entity_linking_res[id]["freebase_ids"][entity_idx]
-#                 mention = entity_linking_res[id]['pred_tuples_string'][entity_idx][1]
-#                 label = entity_linking_res[id]['pred_tuples_string'][entity_idx][0]
-#                 prominent_type = prominent_type_map[entity_id][0] if entity_id in prominent_type_map else ''
-#                 question = question.replace(mention, '|'.join([mention, label, prominent_type]))
-#             # for entity_id in entity_linking_res[id]:
-#             #     mention = entity_linking_res[id][entity_id]['mention']
-#             #     label = entity_linking_res[id][entity_id]['label']
-#             #     prominent_type = prominent_type_map[entity_id][0] if entity_id in prominent_type_map else ''
-#             #     question = question.replace(mention, '|'.join([mention, label, prominent_type]))
-#         elif mask_mention:
-#             for entity_idx in range(len(entity_linking_res[id]["freebase_ids"])):
-#                 mention = entity_linking_res[id]['pred_tuples_string'][entity_idx][1]
-#                 question = question.replace(mention, BLANK_TOKEN)
-
-#         if relation_rich_map:
-#             golden_relations = list(set([relation_rich_map[relation] if relation in relation_rich_map else relation for relation in input_data[idx]["gold_relation_map"].keys()]))
-#         else:
-#             golden_relations = list(set([relation for relation in input_data[idx]["gold_relation_map"].keys()]))
-        
-#         if validation_relations_path:
-#             validation_relations = reduce(
-#                 lambda x,y: x+validation_relations_map[y] if y in validation_relations_map else x,
-#                 entity_linking_res[id]["freebase_ids"],
-#                 []
-#             )
-
-#         if validation_relations_path and relation_rich_map:
-#             validation_relations = [relation_rich_map[rel] if rel in relation_rich_map else rel for rel in validation_relations]
-        
-#         if validation_relations_path:
-#             missed_relations = []
-#             for pred_relation in pred_relations[idx]:
-#                 # 之前的 bug 长这样
-#                 # if split == 'train':
-#                 #     if pred_relation in golden_relations:
-#                 #         samples.append([question, pred_relation, '1'])
-#                 #         count += 1
-#                 #     elif pred_relation in validation_relations:
-#                 #         samples.append([question, pred_relation, '0'])
-#                 #         count += 1
-#                 #     else:
-#                 #         missed_relations.append(pred_relation)
-#                 # else:
-#                 #     if pred_relation in validation_relations:
-#                 #         if pred_relation in golden_relations:
-#                 #             samples.append([question, pred_relation, '1'])
-#                 #         else:
-#                 #             samples.append([question, pred_relation, '0'])
-#                 #         count += 1
-#                 #     else:
-#                 #         missed_relations.append(pred_relation)  
-#                 if pred_relation in validation_relations:
-#                     if split != 'test':
-#                         if pred_relation in golden_relations:
-#                             samples.append([question, pred_relation, '1'])
-#                         else:
-#                             samples.append([question, pred_relation, '0'])
-#                     else:
-#                         # test 统一标记为 '0'
-#                         samples.append([question, pred_relation, '0'])
-#                     count += 1
-#                 else:
-#                     missed_relations.append(pred_relation)  
-
-#             # 不再补齐 validation_top_k
-#             # 如果筛选后的关系数量不足 validation_top_k， 则补齐
-#             if count - start < validation_top_k:
-#                 # print(count - start)
-#                 for rel in missed_relations[:validation_top_k-(count - start)]:
-#                     if split != 'test':
-#                         if rel in golden_relations:
-#                             samples.append([question, rel, '1'])
-#                         else:
-#                             samples.append([question, rel, '0'])
-#                     else:
-#                         samples.append([question, rel, '0'])
-#                     count += 1
-#         else:
-#             for pred_relation in pred_relations[idx]:
-#                 if split != 'test':
-#                     if pred_relation in golden_relations:
-#                         samples.append([question, pred_relation, '1'])
-#                         count += 1
-#                     else:
-#                         samples.append([question, pred_relation, '0'])
-#                         count += 1
-#                 else:
-#                     samples.append([question, pred_relation, '0'])
-#                     count += 1
-        
-#         # 打一个补丁，不要 richRelation, 就普通 relation
-#         for sample in samples:
-#             sample[1] = sample[1].split('|')[0]
-        
-#         end = count - 1
-#         # map 中的 question 应该是原问题
-#         id_index[id] = {
-#             'start': start,
-#             'end': end
-#         }
-
-
-#     with open(output_path, 'w') as f:
-#         header = ['id', 'question', 'relation', 'label']
-#         writer = csv.writer(f, delimiter='\t')
-#         writer.writerow(header)
-#         idx = 0
-#         for line in samples:
-#             writer.writerow([str(idx)] + line)
-#             idx += 1
-    
-#     write_json(id_index_path, id_index)
     
 
 def retrieve_candidate_relations_webqsp(
@@ -644,8 +464,8 @@ def retrieve_candidate_relations_webqsp(
     mask_mention=False,
 ):
     """
-    validation_relations_path: 从实体出发的一跳、二跳关系表，用于验证
-    validation_top_k: 进行KB验证后保留的候选关系数量
+    validation_relations_path: 1-hop/2-hop relations of linked entities
+    validation_top_k: reserved relations amount after validation
     """
     all_relations = load_json(all_relations_path)
     entity_linking_res = load_json(entity_linking_path)
@@ -976,7 +796,6 @@ if __name__=='__main__':
             
             # Get data for cross-encoder inference
             if args.split in ['train_2hop', 'test_2hop']:
-                # 将 rng 实体链接结果中的所有二跳关系作为候选关系，利用 cross-encoder 来预测
                 subsp = 'train' if args.split == 'train_2hop' else 'test'
                 retrieve_cross_encoder_inference_data(
                     f'data/WebQSP/relation_retrieval/cross-encoder/rng_kbqa_linking_results/webqsp_{subsp}_rng_el_two_hop_relations.json',
