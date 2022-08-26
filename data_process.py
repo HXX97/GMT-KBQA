@@ -27,7 +27,6 @@ import os
 import torch
 import pandas as pd
 from executor.sparql_executor import (
-    execute_query_with_odbc_filter_answer,
     get_label_with_odbc,    
     get_types_with_odbc,
     get_1hop_relations_with_odbc,

@@ -1,39 +1,56 @@
 GMT-KBQA
 ==============================
 
-<!-- Project Organization
+
 ------------
 
     ├── LICENSE
     ├── README.md                         <- The top-level README for developers using this project.
-    ├── cheatsheet_main_exps.txt          <- running cheatsheet of main experiments
-    ├── cheatsheet_data_preparation.txt   <- running cheatsheet for data preparation, e.g., entity detection and disambiguation
-    ├── common
-    |   ├── components                    <- utility functions
-        ├── entity_linker                 <- entity detection, linking and disambiguation
-        ├── executor                      <- utility functions for executing SPARQLs
-        ├── inputDataset                  <- dataset generation
-        ├── models                        <- code for models of GMT-KBQA
-        ├── ontology                      <- Freebase ontology information
-        ├── qdt_generation                <- Deprecated
-        ├── cache
-        ├── feature cache
-    ├── CWQ
-    |   ├── data                          <- source data, ablation data and label maps for CWQ dataset
-        ├── scripts                       <- shell scripts for running different setting of GMT-KBQA on CWQ dataset
-        ├── exps                          <- saved models and experiment results of GMT-KBQA on CWQ dataset
-        ├── saved_models                  <- saved models of relation_detection_and_linking on CWQ
-    ├── old                               <- deprecated
-    ├── relation_detection_and_linking
-    |   ├── biEncoder                     <- code for bi-encoder: data preparation, training, vector generation, index
-        ├── crossEncoder                  <- code for cross-encoder: model, training, evaluation, prediction
-    ├── WebQSP
-    |   ├── data                          <- source data, ablation data and label maps for CWQ dataset
-        ├── scripts                       <- shell scripts for running different setting of GMT-KBQA on WebQSP dataset
-        ├── saved_models                  <- saved models of relation_detection_and_linking on WebQSP
+    ├── .gitignore
+    ├── ablation_exps.py                  
+    ├── config.py                         <- configuration file
+    ├── data_process.py                   <- code for constructing generation task data
+    ├── detect_and_link_entity.py         
+    ├── error_analysis.py                 
+    ├── eval_topk_prediction_final.py     <- code for executing generated logical forms and evaluation
+    ├── generation_command.txt            <- command for training, prediction and evaluation of our model
+    ├── parse_sparql_cwq.py               <- parse sparql to s-expression
+    ├── parse_sparql_webqsp.py            <- parse sparql to s-expression
+    ├── run_entity_disamb.py            
+    ├── run_multitask_generator_final.py  <- code for training and prediction of our model
+    ├── run_relation_data_process.py      <- data preprocess for relation linking
+    |
+    ├── components                        <- utility functions
+    |
+    ├── data                         
+        ├── common_data                   <- Freebase meta data
+            ├── facc1                     <- facc1 data for entity linking   
+        ├── CWQ
+            ├── entity_retrieval                     
+            ├── generation                     
+            ├── origin                    
+            ├── relation_retrieval                     
+            ├── sexpr
+        ├── WebQSP
+            ├── entity_retrieval                     
+            ├── generation                     
+            ├── origin                    
+            ├── relation_retrieval                     
+            ├── sexpr                                       
+    ├── entity_retrieval                  <- code for entity detection, linking and disambiguation
+    ├── executor                          <- utility functions for executing SPARQLs
+    ├── exps                              <- saved model checkpoints and training/prediction/evaluation results
+    ├── generation                        <- code for model and dataset evaluation scripts
+    ├── inputDataset                      <- code fordataset generation
+    ├── lib                               <- virtuoso library
+    ├── ontology                          <- Freebase ontology information
+    ├── relation_retrieval                <- code for relation retrieval
+        ├── bi-encoder
+        ├── cross-encoder
+    ├── scripts                           <- scripts for entity/relation retrieval and LF generation
 --------
 
-<p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience</small></p> -->
+<p><small>Project based on the <a target="_blank" href="https://drivendata.github.io/cookiecutter-data-science/">cookiecutter data science project template</a>. #cookiecutterdatascience</small></p> 
 
 
 
@@ -51,25 +68,21 @@ TODO: cite
 
 ## Abstract
 ---
-TODO: Brief introduction to GMT-KBQA
-
-<!-- ## Model Description
-
-TODO:
-
-
-## Code description
-
-TODO:
-
-## Code
-
-The code for question answering is mainly in  `common`.
-
-The code for candidate relations retrieval is mainly in `relation_detection_and_linking`. -->
+Question answering over knowledge bases (KBQA) for complex questions is a challenging task in natural language processing.
+Recently, generation-based methods that translate natural language questions to executable logical forms have achieved promising performance.
+However, most of the existing methods struggle in handling questions with unseen KB items and novel combinations of relations. 
+Some methods leverage auxiliary information to augment logical form generation, but the noise introduced can also lead to incorrect results.
+To address these issues, we propose GMT-KBQA, a Generation-based KBQA method via Multi-Task learning.
+GMT-KBQA first gets candidate entities and relations through dense retrieval, and then introduces a multi-task model which jointly learns entity disambiguation, relation classification, and logical form generation.
+Experimental results show that GMT-KBQA achieves state-of-the-art results on both ComplexWebQuestions and WebQuestionsSP datasets. 
+Furthermore, the detailed evaluation demonstrates that GMT-KBQA benefits from the auxiliary tasks and has a strong generalization capability.
 
 
 ## Reproducing the Results on CWQ and WebQSP
+
+**Note that all data preparation steps can be skipped, as we've provided those results in [here](https://drive.google.com/drive/folders/1QT4EG5wxtcLc8_XT5dTZ2WCi1jtByAyf?usp=sharing). That is, for a fast start, only step (1), (6), (7) is necessary.** 
+
+**At the same time, we also provided detailed instruction for reproducing these results, marked with `(Optional)` below.**
 
 (1) **Prepare dataset and pretrained checkpoints**
 
@@ -79,17 +92,23 @@ Download the WebQSP dataset from [here](https://www.microsoft.com/en-us/research
 
 Setup Freebase: you need to modify variable `FREEBASE_SPARQL_WRAPPER_URL` and `FREEBASE_ODBC_PORT` in `config.py`.
 
-(2) **Parse SPARQL queries to S-expressions** 
+Other data, model checkpoints as well as evaluation results can be downloaded from [here](https://drive.google.com/drive/folders/1QT4EG5wxtcLc8_XT5dTZ2WCi1jtByAyf?usp=sharing). Please refer to `README.md` and download what you need.
+
+(2) **(Optional) Parse SPARQL queries to S-expressions** 
+
+This step can be ***skipped***, as we've provided the entity retrieval retuls in 
+- CWQ: `data/CWQ/sexpr/CWQ.test[train,dev].jso`.
+- WebQSP: `data/WebQSP/sexpr/WebQSP.test[train,dev].json`
 
 As stated in the paper, we generate S-expressions which are not provided by the original dataset.
 Here we provide the scripts to parse SPARQL queries to S-expressions. 
 
-Run `python parse_sparql_cwq.py`, and it will augment the original dataset files with s-expressions. 
+- CWQ: Run `python parse_sparql_cwq.py`, and it will augment the original dataset files with s-expressions. 
 The augmented dataset files are saved as `data/CWQ/sexpr/CWQ.test[train,dev].json`.
 
-Run `python parse_sparql_webqsp.py` and the augmented dataset files are saved as `data/WebQSP/sexpr/WebQSP.test[train,dev].json`. 
+- WebQSP: Run `python parse_sparql_webqsp.py` and the augmented dataset files are saved as `data/WebQSP/sexpr/WebQSP.test[train,dev].json`. 
 
-(3) **Retrieve Candidate Entities** 
+(3) **(Optional) Retrieve Candidate Entities** 
 
 This step can be ***skipped***, as we've provided the entity retrieval retuls in 
 - CWQ: `data/CWQ/entity_retrieval/candidate_entities/CWQ_test[train,dev]_merged_cand_entities_elq_facc1.json`.
@@ -109,15 +128,13 @@ If you want to retrieve the candidate entities from scratch, follow the steps be
     - WebQSP: Firstly run
     `python detect_and_link_entity.py --dataset WebQSP --split test[train] --linker facc1` to retrieve candidate entities. Then run `sh scripts/run_entity_disamb.sh WebQSP predict test[train]` to rank the candidates by a BertRanker. The ranked results will be saved as `data/WebQSP/entity_retrieval/candidate_entities/WebQSP_test[train]_cand_entities_facc1.json`
 
-    To reproduce our disambiguation results, please download `feature_cache/` and place it under root folder from our checkpoint.
-
 3. Finally, merge the linking results of ELQ and FACC1.  
     - CWQ: `python data_process.py merge_entity --dataset CWQ --split test[train,dev]`, and the final entity retrieval results are saved as `data/CWQ/entity_retrieval/candidate_entities/CWQ_test[train,dev]_merged_cand_entities_elq_facc1.json`. Note for CWQ, entity label will be standardized in final entity retrieval results.
     - WebQSP: `python data_process.py merge_entity --dataset WebQSP --split test[train]`, and the final entity retrieval results are saved as `data/WebQSP/entity_retrieval/candidate_entities/WebQSP_test[train]_merged_cand_entities_elq_facc1.json`.
 
 
 
-(4) **Retrieve Candidate Relations** 
+(4) **(Optional) Retrieve Candidate Relations** 
 
 This step can also be ***skipped*** , as we've provided the candidate relations in `data/{DATASET}/relation_retrieval/`
 
@@ -140,163 +157,42 @@ If you want to retrive the candidate relations from scratch, follow the steps be
     - WebQSP: To train, run `sh scripts/run_cross_encoder_WebQSP_question_relation.sh train rich_relation_3epochs_question_relation`. Trained models will be saved as `data/WebQSP/relation_retrieval/cross-encoder/saved_models/rich_relation_3epochs_question_relation/WebQSP_ep_3.pt`. To get inference results, run `sh scripts/run_cross_encoder_WebQSP_question_relation.sh predict rich_relation_3epochs_question_relation test/[train, train_2hop, test_2hop] WebQSP_ep_3.pt`.Inference result(logits) will be stored in `data/WebQSP/relation_retrieval/cross-encoder/saved_models/rich_relation_3epochs_question_relation/WebQSP_ep_3.pt_test/[train, train_2hop, test_2hop]`.
 
 
-5. Merge the logits with relations to get sorted relations for each question.
+5. Get sorted relations for each question.
     - CWQ: run `python data_process.py merge_relation --dataset CWQ --split test[train,dev]`. The sorted relations will be saved as `data/CWQ/relation_retrieval/candidate_relations/CWQ_test[train,dev]_cand_rels_sorted.json`
     - WebQSP: run `python data_process.py merge_relation --dataset WebQSP --split test[train, train_2hop, test_2hop]`. The sorted relations will be saved as `data/WebQSP/relation_retrieval/candidate_relations/WebQSP_test[train]_cand_rels_sorted.json`
 
-6. (optional) To only substitude candidate relations in previous merged file, please refer to `substitude_relations_in_merged_file()` in `data_process.py`.
+6. (Optional) To only substitude candidate relations in previous merged file, please refer to `substitude_relations_in_merged_file()` in `data_process.py`.
+
+(5) **(Optional) Prepare data for multi-task model**
+This step can be **skipped**, as we've provided the results in 
+`data/{DATASET}/generation`.
+
+Prepare all the input data for our multi-task LF generation model with entities/relations retrieved above:
+    - CWQ: Run `python data_process.py merge_all --dataset CWQ --split test[train,dev]` The merged data file will be saved as `data/CWQ/generation/merged/CWQ_test[train,dev].json`.
+    - WebQSP: Run `python data_process.py merge_all --dataset WebQSP --split test[train]`. The merged data file will be saved as `data/WebQSP/generation/merged/WebQSP_test[train].json`.
 
 (5) **Generate Logical Forms through multi-task learning**
 
-1.  Prepare all the input data for logical form generation and the two auxiliary tasks (entity disambiguation and relation classification). 
-    - CWQ: Run `python data_process.py merge_all --dataset CWQ --split test[train,dev]` The merged data file will be saved as `data/CWQ/generation/merged/CWQ_test[train,dev].json`.
-
-    - WebQSP: Run `python data_process.py merge_all --dataset WebQSP --split test[train]`. The merged data file will be saved as `data/WebQSP/generation/merged/WebQSP_test[train].json`.
-
-2. Training logical form generation model.
+1. Training logical form generation model.
     - CWQ: our full model can be trained by running `sh scripts/GMT_KBQA_CWQ.sh train {FOLDER_NAME}`, The trained model will be saved in `exps/CWQ_{FOLDER_NAME}`.
     - WebQSP: our full model can be trained by running `sh scripts/GMT_KBQA_WebQSP.sh train {FOLDER_NAME}`. The trained model will be saved in `exps/WebQSP_{FOLDER_NAME}`.
     - Command for training other model variants mentioned in our paper can be found in `generation_command.txt`.
 
-3. Command for training model(as shown in 2.) will also do inference on `test` split. To inference on other split or inference alone:
+2. Command for training model(as shown in 2.) will also do inference on `test` split. To inference on other split or inference alone:
     - CWQ: You can run `sh scripts/GMT_KBQA_CWQ.sh predict {FOLDER_NAME} False test 50 4` to do inference on `test` split with `beam_size=50` and `test_batch_size=4`. 
     - WebQSP: You can run `sh scripts/GMT_KBQA_WebQSP.sh predict {FOLDER_NAME} False test 50 2` to do inference on `test` split alone with `beam_size=50` and `test_batch_size = 2` . 
     - Command for inferencing on other model variants can be found in `generation_command.txt`.
 
-4. To evaluate trained models:
+3. To evaluate trained models:
     - CWQ: Run `python3 eval_topk_prediction_final.py --split test --pred_file exps/CWQ_GMT_KBQA/beam_50_test_4_top_k_predictions.json --test_batch_size 4 --dataset CWQ`
     - WebQSP: Run `python3 eval_topk_prediction_final.py --split test --pred_file exps/WebQSP_GMT_KBQA/beam_50_test_2_top_k_predictions.json --test_batch_size 2 --dataset WebQSP`
 
-(6) **Ablation experiments**
+(7) **Ablation experiments and Error analysis**
 1. Evaluate entity linking and relation linking result:
     - CWQ: Run `python ablation_exps.py linking_evaluation --dataset CWQ`
     - WebQSP: Run `python ablation_exps.py linking_evaluation --dataset WebQSP`
-2. Evaluate QA performance on quesitions with unseen entity/relation
+2. Evaluate QA performance on questions with unseen entity/relation
     - CWQ: Run `python ablation_exps.py unseen_evaluation --dataset CWQ --model_type full` to get evaluation result on our full model `GMT-KBQA`. Run `python ablation_exps.py unseen_evaluation --dataset CWQ --model_type base` to get evaluation result on `T5-base` model.
     - WebQSP: Run `python ablation_exps.py unseen_evaluation --dataset WebQSP --model_type full` to get evaluation result on our full model `GMT-KBQA`. Run `python ablation_exps.py unseen_evaluation --dataset WebQSP --model_type base` to get evaluation result on `T5-base` model.
-
-
-## Candidate relation retrieval
-all codes are under relation_detection_and_linking/ folder
-### Bi-encoder
-
-You can download trained bi-encoder models, question, relation vectors and index file from [TODO:](TODO:).
-
-all codes are under Relation_retrieval/bi-encoder folder
-
-#### Data preparation
-You can refer to main() function in process_data.py.
-
-#### Training
-You can refer to cheatsheet_bi_encoder.txt for specific running commands. Path for saving models and logs can be configured by modifying scripts under scripts/ folder.
-
-#### Caching and retrieval
-- embedding relations to vectors for inference effieciency
-- building index for relations using FAISS
-- embedding questions to vectors
-- retreival nearest relations using FAISS & construct source data for cross-encoder
-Above functions can be found in main() function in build_faiss_index.py
-
-### Cross-encoder
-
-Source data can be found in (TODO:)[TODO]
-
-all codes are under Relation_retrieval/cross-encoder folder
-
-#### Training, evaluation and prediction
-- Please refer to cheatsheet_cross_encoder.txt, with specific instructions
-
-#### add retrieved relations to dataset of GMT-KBQA
-- Get retrieved relations based on logits.
-- Evaluation of P,R,F1 on retrieved relations under different settings
-- Add retrieved relations to dataset of GMT-KBQA
-Please refer to data_process.py
-
-## Candidate entity retrieval
-The source data of generation & question answering under Data/{CWQ}/{WebQSP}/generation/merged, has already integrated entity linking results.
-If you want to retrieve entities by your own, please refer to Entity_retrieval/cheatsheet_data_preparation.txt.
-
-### add retrieved entities to dataset of GMT-KBQA
-
-## Logical form generation and question answering
-- all codes are under Generation/ folder.
-- cheatsheet_main_exps.txt contains running commands for all models (including variants) mentioned in our paper.
-- You can refer to run_multitask_generator_final.py for details of training and prediction of GMT-KBQA
-- You can refer to eval_topk_prediction_final.py for logical form grounding as well as evaluation of GMT-KBQA. Note: you should setup Freebase checkpoint as well as ODBC connection before grounding, as shown in executor/sparql_executor.py
-
-### Ablation study
-ablation_exps.py includes code for following ablation experiments:
-- Entity and relation linking evaluation
-- QA results on set questions with unseen KB items.
-
-## Contact
-
-For any question, please contact [TODO:](TODO)
-
-
-## 测试进度说明
-- 以本说明为准，不要重复测试了
-### Parse SPARQL queries to S-expressions
-- 测试过了
-### Retrieve Candidate Entities
-#### WebQSP
-- 最后的结果在 `data/WebQSP/entity_retrieval`目录下; 这里头的结果和论文所使用的的结果基本上完全一致
-- **tldr: 只有 disamb_entities，用代码生成的结果和论文中使用的结果差距比较大；其他文件的差距都很小，可忽略**
-    - 需要做的: 可能要分别用 linking_results/目录下的消岐结果和 disamb_entities/下的消岐结果跑一下没有实体链接的模型；或者在 github 中说明这部分使用的文件与代码不同
-- 其他:
-    - _elq 文件和之前的完全一致
-    - _facc1_unranked 之前没有生成，无法比较
-    - _facc1 文件 train 和 test 各有10来处不同，但经过检查，主要都是 logit 的细微变化，导致实体排序的细微变化，没什么影响，不考虑了
-    - _merged_elq_facc1.json: train 10 处, test 5处，同样基本上就是一些实体的顺序问题，无影响
-    - disamb_entities: 对比 data/WebQSP/entity_retrieval_0724/disamb_entities 和 /home3/xwu/workspace/QDT2SExpr/CWQ/all_data_bk/WebQSP/final/entity_linking_results/
-        - 这一项的差距很大，train 有 2380 个不同，test 有 462 个不同（其实我们只会用到 test）-- 只考虑 id 和 label 的情况下
-
-#### CWQ
-- 最后的结果在 `data/CWQ/entity_retrieval`目录下; 这里头的结果和论文所使用的的结果基本上完全一致
-- **tldr: 只有 disamb_entities，用代码生成的结果和论文中使用的结果差距比较大；其他文件的差距都很小，可忽略**
-    - 需要做的: 可能要分别用 merged_linking_results/目录下的消岐结果和 disamb_entities/下的消岐结果跑一下没有实体链接的模型；或者在 github 中说明这部分使用的文件与代码不同
-- 其他
-    - _elq 文件是直接从论文对应的数据那边复制过来的
-    - _facc1_unranked 也直接从 candidate_entities 那边 复制过来
-    - _facc1 文件的格式不一样，不直接比较
-    - 直接比较 merged_ 文件: （考虑 id 和 label）
-        - train: 78 处不同
-        - dev： 15 处不同
-        - test: 13 处不同
-        - 这基本上就没关系了
-    - disamb_entities
-        - train 有 22135 处不同
-        - dev 2837 处不同
-        - test 2837 处不同
-### Retrieve Candidate Relations
-#### WebQSP
-- 已全部测试过了，bug 也修复了，最后的结果都在`data/WebQSP/relation_retrieval_final`目录下(已更名为`data/WebQSP/relation_retrieval`)，使用的 merged 文件在`data/WebQSP/generation/merged_relation_final`下(已更名为`data/WebQSP/generation/merged`)
-- 每次跑 Logits 的 inference 时，生成的 logits 会有细微不同，可能导致 top 10 关系发生变化，test 里头可能有20多条会变化；但应该是正常的，因为排序靠后的这些 logits 很接近
-#### CWQ
-- 已经全部测试过了（新跑了一遍生成），最后的结果在`data/CWQ/relation_retrieval_0723` 目录下(已更名为`data/CWQ/relation_retrieval`)，使用的 merged 文件在 `data/CWQ/generation/merged_0724_ep1`(已更名为`data/CWQ/generation/merged`)
-- 每次跑 Logits 的 inference 时，生成的 logits 会有细微不同，可能导致 top 10 关系发生变化，test 里头可能有40 多条会变化；但应该是正常的，因为排序靠后的这些 logits 很接近
-
-### Preparing Logical Form generation data
-- 总体来说，代码生成的结果和原来差不多
-- cand_entity_list 可能不同，原因是一方面新生成的实体有一些不一样，另一方面有一些实体是随机得到的，每次结果不一样
-- gold_relation_map 可能不同，使用了新的正则表达式（WebQSP 使用所有的 golden relations）
-- label_maps 的生成: 
-    - WebQSP 改用了所有 parses 的 label_maps, **现在位于label_maps/** 目录下；经检查，代码没有问题
-    - CWQ 使用代码生成的 label_maps 位于 label_maps_test 下，和原来的 label_maps 有: train 113, dev 10, test 9 处不同，问题不大，主要原因是关系抽取正则表达式的修改。**现在位于label_maps/ 目录下。**
-#### CWQ
-- CWQ: train 1329, dev 144, test 162, diff key: ['gold_relation_map', 'cand_entity_list']
-#### WebQSP
-- train 667, test: 370, key: ['cand_entity_list', 'sparql', 'gold_type_map', 'gold_relation_map', 'gold_entity_map']
-- gold_*_map: 从 1parse 到所有 parse
-- sparql 不同，但是 sexpr 都是相同的：应该是以前的数据，sparql 没有完全按照 sexpr 的选择规则
-    - 不过考虑到生成模型中没有使用到 sparql (训练的时候是用 sexpr 作为生成目标)，测试的时候最终也是计算QA效果，这个 bug 没什么影响
-## TODO
-- * 检查二跳关系的函数
-    - 函数能生成相同结果，entity_id 的来源也找到了
-- 删掉没用的代码
-- 所有的绝对路径等放到 config.py 里头
-- common_data 下的一些数据，对应 relation_retrieval 里头的函数，确认一下
-
-## 实体链接存在的问题
-- /home2/xxhu/QDT2SExpr/CWQ/data/linking_results/WebQSP_train_elq_results.json 其实是测试集的链接结果，等于最后的 merged_data 里头只有 facc1 的结果
-    - 只有 WebQSP 训练集有这个问题
+3. Error analysis on GMT-KBQA results.
+    - Run `python error_analysis.py`.

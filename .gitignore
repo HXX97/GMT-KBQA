@@ -137,9 +137,14 @@ dmypy.json
 
 # data
 data/common_data/bak
-data/common_data/facc1
+data/common_data/facc1/entity_list_file_freebase_complete_all_mention
+data/common_data/facc1/freebase_complete_all_mention_mid_vocab
+data/common_data/facc1/freebase_complete_all_mention_surface_index
+data/common_data/facc1/surface_map_file_freebase_complete_all_mention
 data/CWQ
 data/WebQSP
+data/CWQ_uploaded
+data/WebQSP_uploaded
 
 
 
@@ -166,5 +171,12 @@ exps_final/
 scripts/bak
 
 WebQSP/
-
+bak/
+relation_retrieval/bi-encoder/bak
+relation_retrieval/cross-encoder/bak
+relation_retrieval/bak
+generation/bak
+generation/models/bak
+entity_retrieval/bak
+components/bak
 notes/
