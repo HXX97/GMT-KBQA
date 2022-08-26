@@ -4,7 +4,7 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 '''
-@File    :   rank_dataset.py
+@File    :   disamb_dataset.py
 @Time    :   2022/02/14 14:28:14
 @Author  :   Xixin Hu 
 @Version :   1.0

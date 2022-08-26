@@ -1,9 +1,3 @@
-"""
-Build faiss index
-Usage of faiss index
-Generating relation/question vectors
-Construct training/testing data for cross-encoder
-"""
 from collections import defaultdict
 import collections
 import json

@@ -5,7 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 #
 """
-FAISS-based index components. Original from 
+FAISS-based index components. Originated from 
 https://github.com/facebookresearch/DPR/blob/master/dpr/indexer/faiss_indexers.py
 """
 

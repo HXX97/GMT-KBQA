@@ -80,13 +80,13 @@ Furthermore, the detailed evaluation demonstrates that GMT-KBQA benefits from th
 
 ## Reproducing the Results on CWQ and WebQSP
 
-**Note that all data preparation steps can be skipped, as we've provided those results in [here](https://drive.google.com/drive/folders/1QT4EG5wxtcLc8_XT5dTZ2WCi1jtByAyf?usp=sharing). That is, for a fast start, only step (1), (6), (7) is necessary.** 
+**Note that all data preparation steps can be skipped, as we've provided those results [here](https://drive.google.com/drive/folders/1QT4EG5wxtcLc8_XT5dTZ2WCi1jtByAyf?usp=sharing). That is, for a fast start, only step (1), (6), (7) is necessary.** 
 
 **At the same time, we also provided detailed instruction for reproducing these results, marked with `(Optional)` below.**
 
 (1) **Prepare dataset and pretrained checkpoints**
 
-Download the CWQ dataset from [here](https://www.dropbox.com/sh/7pkwkrfnwqhsnpo/AACuu4v3YNkhirzBOeeaHYala) and put them under `data/CWQ/origin`. The dataset files should be named as `ComplexWebQuestions_test[train,dev].json`.
+Download the CWQ dataset [here](https://www.dropbox.com/sh/7pkwkrfnwqhsnpo/AACuu4v3YNkhirzBOeeaHYala) and put them under `data/CWQ/origin`. The dataset files should be named as `ComplexWebQuestions_test[train,dev].json`.
 
 Download the WebQSP dataset from [here](https://www.microsoft.com/en-us/research/publication/the-value-of-semantic-parse-labeling-for-knowledge-base-question-answering-2/) and put them under `data/WebQSP/origin`. The dataset files should be named as `WebQSP.test[train].json`.
 
@@ -164,14 +164,16 @@ If you want to retrive the candidate relations from scratch, follow the steps be
 6. (Optional) To only substitude candidate relations in previous merged file, please refer to `substitude_relations_in_merged_file()` in `data_process.py`.
 
 (5) **(Optional) Prepare data for multi-task model**
+
 This step can be **skipped**, as we've provided the results in 
 `data/{DATASET}/generation`.
 
 Prepare all the input data for our multi-task LF generation model with entities/relations retrieved above:
-    - CWQ: Run `python data_process.py merge_all --dataset CWQ --split test[train,dev]` The merged data file will be saved as `data/CWQ/generation/merged/CWQ_test[train,dev].json`.
-    - WebQSP: Run `python data_process.py merge_all --dataset WebQSP --split test[train]`. The merged data file will be saved as `data/WebQSP/generation/merged/WebQSP_test[train].json`.
 
-(5) **Generate Logical Forms through multi-task learning**
+- CWQ: Run `python data_process.py merge_all --dataset CWQ --split test[train,dev]` The merged data file will be saved as `data/CWQ/generation/merged/CWQ_test[train,dev].json`.
+- WebQSP: Run `python data_process.py merge_all --dataset WebQSP --split test[train]`. The merged data file will be saved as `data/WebQSP/generation/merged/WebQSP_test[train].json`.
+
+(6) **Generate Logical Forms through multi-task learning**
 
 1. Training logical form generation model.
     - CWQ: our full model can be trained by running `sh scripts/GMT_KBQA_CWQ.sh train {FOLDER_NAME}`, The trained model will be saved in `exps/CWQ_{FOLDER_NAME}`.
