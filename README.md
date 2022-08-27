@@ -1,7 +1,19 @@
 GMT-KBQA
 ==============================
 
+## Abstract
+<image src="figures/Overview-new.png">
+---
+Question answering over knowledge bases (KBQA) for complex questions is a challenging task in natural language processing.
+Recently, generation-based methods that translate natural language questions to executable logical forms have achieved promising performance.
+However, most of the existing methods struggle in handling questions with unseen KB items and novel combinations of relations. 
+Some methods leverage auxiliary information to augment logical form generation, but the noise introduced can also lead to incorrect results.
+To address these issues, we propose GMT-KBQA, a Generation-based KBQA method via Multi-Task learning.
+GMT-KBQA first gets candidate entities and relations through dense retrieval, and then introduces a multi-task model which jointly learns entity disambiguation, relation classification, and logical form generation.
+Experimental results show that GMT-KBQA achieves state-of-the-art results on both ComplexWebQuestions and WebQuestionsSP datasets. 
+Furthermore, the detailed evaluation demonstrates that GMT-KBQA benefits from the auxiliary tasks and has a strong generalization capability.
 
+## Repository description
 ------------
 
     ├── LICENSE
@@ -66,17 +78,6 @@ This is an original implementation of paper "Logical Form Generation via Multi-t
 TODO: cite
 ```
 
-## Abstract
----
-Question answering over knowledge bases (KBQA) for complex questions is a challenging task in natural language processing.
-Recently, generation-based methods that translate natural language questions to executable logical forms have achieved promising performance.
-However, most of the existing methods struggle in handling questions with unseen KB items and novel combinations of relations. 
-Some methods leverage auxiliary information to augment logical form generation, but the noise introduced can also lead to incorrect results.
-To address these issues, we propose GMT-KBQA, a Generation-based KBQA method via Multi-Task learning.
-GMT-KBQA first gets candidate entities and relations through dense retrieval, and then introduces a multi-task model which jointly learns entity disambiguation, relation classification, and logical form generation.
-Experimental results show that GMT-KBQA achieves state-of-the-art results on both ComplexWebQuestions and WebQuestionsSP datasets. 
-Furthermore, the detailed evaluation demonstrates that GMT-KBQA benefits from the auxiliary tasks and has a strong generalization capability.
-
 
 ## Reproducing the Results on CWQ and WebQSP
 
@@ -84,15 +85,15 @@ Furthermore, the detailed evaluation demonstrates that GMT-KBQA benefits from th
 
 **At the same time, we also provided detailed instruction for reproducing these results, marked with `(Optional)` below.**
 
-(1) **Prepare dataset and pretrained checkpoints**
+(1) **General setup**
 
 Download the CWQ dataset [here](https://www.dropbox.com/sh/7pkwkrfnwqhsnpo/AACuu4v3YNkhirzBOeeaHYala) and put them under `data/CWQ/origin`. The dataset files should be named as `ComplexWebQuestions_test[train,dev].json`.
 
 Download the WebQSP dataset from [here](https://www.microsoft.com/en-us/research/publication/the-value-of-semantic-parse-labeling-for-knowledge-base-question-answering-2/) and put them under `data/WebQSP/origin`. The dataset files should be named as `WebQSP.test[train].json`.
 
-Setup Freebase: you need to modify variable `FREEBASE_SPARQL_WRAPPER_URL` and `FREEBASE_ODBC_PORT` in `config.py`.
+Setup Freebase: Both datasets use Freebase as the knowledge source. You may refer to [Freebase Setup](https://github.com/dki-lab/Freebase-Setup) to set up a Virtuoso triplestore service. After starting your virtuoso service, please replace variable `FREEBASE_SPARQL_WRAPPER_URL` and `FREEBASE_ODBC_PORT` in `config.py` with your own.
 
-Other data, model checkpoints as well as evaluation results can be downloaded from [here](https://drive.google.com/drive/folders/1QT4EG5wxtcLc8_XT5dTZ2WCi1jtByAyf?usp=sharing). Please refer to `README.md` and download what you need.
+Other data, model checkpoints as well as evaluation results can be downloaded [here](https://drive.google.com/drive/folders/1QT4EG5wxtcLc8_XT5dTZ2WCi1jtByAyf?usp=sharing). Please refer to [README_download.md](https://drive.google.com/file/d/1_QKfo5lr0Ht9Fiu51w5tqwUivnxagaF7/view?usp=sharing) and download what you need.
 
 (2) **(Optional) Parse SPARQL queries to S-expressions** 
 

@@ -54,26 +54,19 @@ def get_all_entity_candidates(linker, utterance):
     mentions = linker.get_mentions(utterance) # get all the mentions detected by ner model
     identified_entities = []
     mids = set()
-    # print(mentions)
     all_entities = []
     for mention in mentions:
         results_per_mention = []
         # use facc1
         entities = linker.surface_index.get_entities_for_surface(mention)
         # use google kg api
-        # entities = get_entity_from_surface(mention)
-        # if len(entities) == 0:
-        #     entities = get_entity_from_surface(mention)
-        # print('A Mention', mention)
-        # print('Init Surface Entitis', len(entities), entities)
         if len(entities) == 0 and len(mention) > 3 and mention.split()[0] == 'the':
             mention = mention[3:].strip()
             entities = linker.surface_index.get_entities_for_surface(mention)
-            # print('Removing the then Surface Entitis', len(entities), entities)
+
         elif len(entities) == 0 and f'the {mention}' in utterance:
             mention = f'the {mention}'
-            entities = linker.surface_index.get_entities_for_surface(mention)
-            # print('Adding the then Surface Entitis', len(entities), entities)
+            entities = linker.surface_index.get_entities_for_surface(mention) 
 
         if len(entities) == 0:
             continue
@@ -100,7 +93,6 @@ def get_all_entity_candidates(linker, utterance):
             mids.add(e.id)
             results_per_mention.append(to_output_data_format(ie))
         results_per_mention.sort(key=lambda x: x['surface_score'], reverse=True)
-        # print(results_per_mention[:5])
         all_entities.append(results_per_mention)
 
     return all_entities
@@ -198,7 +190,6 @@ def get_entity_linking_from_elq(question:str):
         , data=json.dumps({'question':question})
         )
     
-    # print(res.text)
 
     cand_ent_list = []
     if res.text:
@@ -206,14 +197,7 @@ def get_entity_linking_from_elq(question:str):
             el_res = json.loads(res.text)
         except Exception:
             el_res = None
-        # print(el_res)
-        # mention_num = len(el_res['scores'])
-        # for i in range(mention_num):
-        #     pass
-        # question_tokens = question.strip().split(" ")
-        # question_tokens = word_tokenize(question.strip())
         detection_res = el_res.get('detection_res',None) if el_res else None
-        # print(detection_res)
 
         if detection_res:
             detect = detection_res[0]
@@ -239,12 +223,12 @@ def get_entity_linking_from_elq(question:str):
                     el_data['mention']=mention
                     el_data['score']=score
                     el_data['perfect_match']= (label==mention or label.lower()==mention.lower())
-                    #print(el_data)
+
                     
                     cand_ent_list.append(el_data)
         
         cand_ent_list.sort(key=lambda x:x['score'],reverse=True)
-        # print(final_res_list)
+
     return cand_ent_list
 
 

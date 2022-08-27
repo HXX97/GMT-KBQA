@@ -223,11 +223,9 @@ def get_train_unique_relations_entities(dataset="CWQ"):
     """
     if dataset.lower() == 'cwq':
         if os.path.exists('data/CWQ/generation/ablation/train_unique_relation_entity.json'):
-            print('file exists')
             return
     elif dataset.lower() == 'webqsp':
         if os.path.exists('data/WebQSP/generation/ablation/train_unique_relation_entity.json'):
-            print('file exists')
             return
     else:
         return
@@ -266,11 +264,9 @@ def get_train_unique_relations_entities(dataset="CWQ"):
 def get_test_unseen_questions(dataset='CWQ'):
     if dataset.lower() == 'cwq':
         if os.path.exists('data/CWQ/generation/ablation/test_unseen_entity_or_relation_qids.json'):
-            print('file exists')
             return 
     elif dataset.lower() == 'webqsp':
         if os.path.exists('data/WebQSP/generation/ablation/test_unseen_entity_or_relation_qids.json'):
-            print('file exists')
             return
     else:
         return

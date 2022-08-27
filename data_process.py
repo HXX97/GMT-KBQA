@@ -52,8 +52,6 @@ def combine_entities_from_FACC1_and_elq(dataset, split, sample_size=10):
     facc1_disamb_res = load_json(f'{entity_dir}/{dataset}_{split}_cand_entities_facc1.json')
     elq_res = load_json(f'{entity_dir}/{dataset}_{split}_cand_entities_elq.json')
 
-    print('lens: {}'.format(len(elq_res.keys())))
-
     combined_res = dict()
 
     train_entities_elq = {}
@@ -131,8 +129,6 @@ def make_sorted_relation_dataset_from_logits(dataset, split):
 
     logits = torch.load(logits_file,map_location=torch.device('cpu'))
 
-    # print(logits)
-    # print(len(logits))
     logits_list = list(logits.squeeze().numpy())
     print('Logits len:',len(logits_list))
     print('tsv_file: {}'.format(tsv_file))
@@ -140,7 +136,6 @@ def make_sorted_relation_dataset_from_logits(dataset, split):
                             
 
     print('Tsv len:', len(tsv_df))
-    # print(tsv_df.head())
     print('Question Num:',len(tsv_df['question'].unique()))
 
     # the length of predicted logits must match the num of input examples
@@ -154,8 +149,6 @@ def make_sorted_relation_dataset_from_logits(dataset, split):
             split_dataset = load_json(f'data/{dataset}/sexpr/{dataset}.test.expr.json')
     else:
         split_dataset = load_json(f'data/{dataset}/sexpr/{dataset}.{split}.expr.json')
-    # print('split_dataset: {}'.format(split_dataset))
-    # question2id = {x['question']:x['ID'] for x in split_dataset}
 
 
     rowid2qid = {} # map rowid to qid
@@ -547,7 +540,6 @@ def extract_entity_relation_type_label_from_dataset(dataset, split):
     dataset_merged_label_map = {}
 
     for data in tqdm(train_databank, total=len(train_databank), desc=f"Processing {split}"):
-        # print(data)
         qid = data['ID']
         sparql = data['sparql']
 
@@ -610,7 +602,6 @@ def extract_entity_relation_type_label_from_dataset_webqsp(dataset, split):
     dataset_merged_label_map = {}
 
     for data in tqdm(train_databank, total=len(train_databank), desc=f"Processing {split}"):
-        # print(data)
         qid = data['QuestionId']
         ent_label_map = {}
         rel_label_map = {}
@@ -709,103 +700,6 @@ def update_entity_label(dirname, dataset):
             updated_res[qid] = values
         
         dump_json(updated_res, f'{dirname}/{dataset}_{split}_merged_cand_entities_elq_facc1.json'.format(split))
-
-# def update_entity_label_in_merged_data(dataset, split):
-#     prev_merged_data = load_json(f'data/{dataset}/generation/merged/{dataset}_{split}.json')
-#     label_map = load_json(f'data/{dataset}/generation/label_maps/{dataset}_{split}_entity_label_map.json')
-#     extra_label_map = load_json(f'data/{dataset}/generation/xwu_merged_new/{dataset}_extra_label_map.json')
-#     new_merged_data = []
-#     diff_ids = []
-#     for item in prev_merged_data:
-#         entity_list = item["cand_entity_list"]
-#         for ent in entity_list:
-#             if ent["id"] in label_map:
-#                 ent["label"] = label_map[ent["id"]]
-#                 diff_ids.append(item["ID"])
-#             elif ent["id"] in extra_label_map:
-#                 ent['label'] = extra_label_map[ent['id']]
-#                 diff_ids.append(item["ID"])
-#         item["cand_entity_list"] = entity_list
-#         new_merged_data.append(item)
-#     dump_json(new_merged_data, f'data/{dataset}/generation/xwu_merged_new/{dataset}_{split}.json')
-#     print(len(diff_ids), diff_ids)
-
-
-def merge_entity_linking_results_CWQ(split):
-    elq_el_results = load_json(f"data/CWQ/entity_retrieval/candidate_entities/CWQ_{split}_cand_entities_elq.json")
-    facc1_el_results = load_json(f"data/CWQ/entity_retrieval/candidate_entities/CWQ_{split}_cand_entities_facc1.json")
-
-    merged_el_results = {}
-
-    for qid in tqdm(facc1_el_results, total=len(facc1_el_results), desc=f"Processing {split}"):
-        facc1_pred = facc1_el_results[qid]
-        elq_pred = elq_el_results[qid]
-        facc1_pred_dict = dict()
-        elq_pred_dict = dict()
-        # filter candidate entities 1. by disambiguation score range 2. reserve 1 candidate entity per mention
-        for ent in facc1_pred:
-            if ent['logit'] <= 0.0:
-                continue
-            if ent['mention'] not in facc1_pred_dict:
-                facc1_pred_dict[ent['mention']] = ent
-        facc1_pred_filtered = list(facc1_pred_dict.values())
-
-        if len(facc1_pred_filtered) == 0 and len(facc1_pred) > 0:
-            facc1_pred_filtered.append(facc1_pred[0])
-
-        for ent in elq_pred:
-            if ent['score'] <= -1.5:
-                continue
-            if ent['mention'] not in elq_pred_dict:
-                elq_pred_dict[ent['mention']] = ent
-        elq_pred_filtered = list(elq_pred_dict.values())
-        
-        ent_map = {}
-        label_mid_map = {}
-        for ent in facc1_pred_filtered:
-            # label = get_label_with_odbc(ent['id'])
-            ent_map[ent['id']]={
-                "label": ent['label'],
-                "mention": ent["mention"],
-                "perfect_match": ent['label'].lower()==ent["mention"].lower()
-            }
-            label_mid_map[ent['label']] = ent['id']
-        
-        for ent in elq_pred_filtered:
-            if ent["id"] not in ent_map:
-                # mid = ent['id']
-                # label = get_label_with_odbc(ent['id'])
-
-                if ent['label'] in label_mid_map: # same label, different mid
-                    ent_map.pop(label_mid_map[ent['label']]) # pop facc1 result, retain elq result
-
-                # if ent['label']:
-                ent_map[ent["id"]]= {
-                    "label": ent['label'],
-                    "mention": ent["mention"],
-                    "perfect_match": ent['label'].lower()==ent['mention'].lower()
-                }
-        
-        # if len(ent_map) == 0:
-        #     print(qid)
-        #     if len(facc1_pred) > 0:
-        #         ent = facc1_pred[0]
-        #         ent_map[ent["id"]]= {
-        #             "label": ent['label'],
-        #             "mention": ent["mention"],
-        #             "perfect_match": ent['label'].lower()==ent['mention'].lower()
-        #         }
-        #     elif len(elq_pred) > 0:
-        #         ent = elq_pred[0]
-        #         ent_map[ent["id"]]= {
-        #             "label": ent['label'],
-        #             "mention": ent["mention"],
-        #             "perfect_match": ent['label'].lower()==ent['mention'].lower()
-        #         }
-                        
-        merged_el_results[qid] = ent_map
-
-    dump_json(merged_el_results, f"data/CWQ/entity_retrieval/disamb_entities_xwu/merged_CWQ_{split}_linking_results.json", indent=4)
 
 def substitude_relations_in_merged_file(
     prev_merged_path, 

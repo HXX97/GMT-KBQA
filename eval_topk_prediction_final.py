@@ -51,24 +51,6 @@ def _parse_args():
     print(f'split:{args.split}, topk_file:{args.pred_file}')
     return args
 
-def test_type_checker():
-    test_cases = [
-        '1875-07-26', 
-        '2009',
-        '3001',
-        '1933-03-04',
-        '1775-05-10',
-        '5732212',
-        '1894000',
-        '91534889',
-        '3565',
-        '1966-07',
-        '64339',
-        '523000'
-    ]
-    for case in test_cases:
-        print('{}: {}'.format(case, type_checker(case)))
-
 def type_checker(token:str):
     """Check the type of a token, e.g. Integer, Float or date.
        Return original token if no type is detected."""
@@ -87,20 +69,6 @@ def type_checker(token:str):
         return token
 
     return token
-
-def test_date_post_process():
-    test_cases = [
-        'm.07tnkvw', 
-        '1906-04-18 05:12:00',
-        '1996-01-01',
-        '1883-01-01',
-        '1775-05-10',
-        '1906-04-18 05:12:00',
-        '1786-01-01',
-        '1921-09-01',
-    ]
-    for case in test_cases:
-        print('{}: {}'.format(case, date_post_process(case)))
 
 
 def date_post_process(date_string):
@@ -261,10 +229,8 @@ def denormalize_s_expr_new(normed_expr,
                                 t = type_checker(t) # number
                         segments.append(t)
 
-    # print(segments)
     expr = " ".join(segments)
                 
-    # print(expr)
     return expr
 
 
@@ -275,7 +241,6 @@ def execute_normed_s_expr_from_label_maps(normed_expr,
                                         train_entity_map,
                                         surface_index
                                         ):
-    # print(normed_expr)
     try:
         denorm_sexpr = denormalize_s_expr_new(normed_expr, 
                                         entity_label_map, 
@@ -295,7 +260,6 @@ def execute_normed_s_expr_from_label_maps(normed_expr,
                 denotation = []
             else:
                 sparql_query = lisp_to_sparql(query_expr)
-                # print('sparql:', sparql_query)
                 denotation = execute_query_with_odbc(sparql_query)
                 denotation = [res.replace("http://rdf.freebase.com/ns/",'') for res in denotation]
         except:
@@ -534,8 +498,4 @@ if __name__=='__main__':
         pass
     else:
         aggressive_top_k_eval_new(args.split, args.pred_file, args.dataset)
-
-    # test_type_checker()
-
-    # test_date_post_process()
         
