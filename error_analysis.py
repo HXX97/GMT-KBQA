@@ -45,7 +45,7 @@ def mask_literals(sexpr):
             t not in operators_list 
             and not (t.startswith('m.') or t.startswith('g.')) 
             and not t in extra_relations_prefix 
-            and not re.match(r"[a-zA-Z_0-9]*\.[a-zA-Z_0-9]*\.[a-zA-Z_0-9]*",t) or re.match(r"[a-zA-Z_0-9]*\.[a-zA-Z_0-9]*\.[a-zA-Z_0-9]*\.[a-zA-Z_0-9]*",t)
+            and not (re.match(r"[a-zA-Z_0-9]*\.[a-zA-Z_0-9]*\.[a-zA-Z_0-9]*",t) or re.match(r"[a-zA-Z_0-9]*\.[a-zA-Z_0-9]*\.[a-zA-Z_0-9]*\.[a-zA-Z_0-9]*",t))
         ):
             toks[idx] = literal_mask
 
@@ -200,7 +200,9 @@ def error_analysis_on_generation_success_cases(prediction_path, original_data_pa
             'qid': qid,
             'question': original_data[qid],
             'golden_sexpr': pred["gt_sexpr"],
+            'golden_normed': pred["gt_normed_sexpr"],
             'pred_sexpr': pred_denormed,
+            'pred_normed': pred_normed
         })
     
     total_len = len([eval for eval in evaluation_results if not math.isclose(eval["f1"], 1.0)])
@@ -323,7 +325,9 @@ def error_analysis_on_generation_failed_cases(prediction_path, original_data_pat
             'qid': qid,
             'question': original_data[qid],
             'golden_sexpr': pred["gt_sexpr"],
+            'golden_normed': pred["gt_normed_sexpr"],
             'pred_sexpr': top1_denormed,
+            'pred_normed': top1_normed
         })
     total_len = len(null_sexpr) + len(sparql_convertion_error) + len(denormalization_error) + len(structure_error) + len(entity_error) + len(relation_error) + len(others)
     print('total_len: {}'.format(total_len))
