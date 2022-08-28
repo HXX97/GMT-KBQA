@@ -2,64 +2,64 @@ cheatsheet for main experiments
 CWQ:
 1. T5-base
     train: CUDA_VISIBLE_DEVICES=2 sh scripts/t5_base_CWQ.sh train t5_base False
-    evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/CWQ_t5_base/beam_10_top_k_predictions.json
-
-    1.1 different inference beam size, taking beam size=10 as example
-        predict: CUDA_VISIBLE_DEVICES=1 sh scripts/t5_base_CWQ.sh predict t5_base False test 10 2
-        evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/CWQ_t5_base/beam_10_top_k_predictions.json
+    evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/CWQ_t5_base/beam_50_test_4_top_k_predictions.json --test_batch_size 4 --dataset CWQ --beam_size 50 
 
 2. T5-base Concatenating Retrieval
     train & predict: CUDA_VISIBLE_DEVICES=2 sh scripts/concat_retrieval_CWQ.sh train concat_retrieval False
     predict: CUDA_VISIBLE_DEVICES=3 sh scripts/concat_retrieval_CWQ.sh predict concat_retrieval False test 50 4
-    evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/CWQ_concat_retrieval/beam_50_top_k_predictions.json
+    evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/CWQ_concat_retrieval/beam_50_test_4_top_k_predictions.json --test_batch_size 4 --dataset CWQ --beam_size 50 
 
 3. T5-base Concatenating Oracle
     train & predict: CUDA_VISIBLE_DEVICES=2 sh scripts/concat_gold_CWQ.sh train concat_goldEnt_goldRel False
-    evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/CWQ_concat_goldEnt_goldRel/beam_50_top_k_predictions.json
+    evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/CWQ_concat_goldEnt_goldRel/beam_50_test_4_top_k_predictions.json --test_batch_size 4 --dataset CWQ --beam_size 50 
 
 4. GMT-KBQA Without entity
     train & predict: CUDA_VISIBLE_DEVICES=1 sh scripts/without_entity_CWQ.sh train without_entity False
     predict: CUDA_VISIBLE_DEVICES=0 sh scripts/without_entity_CWQ.sh predict without_entity False test 50 4
-    evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/CWQ_without_entity/beam_50_top_k_predictions.json
+    evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/CWQ_without_entity/beam_50_test_4_top_k_predictions.json --test_batch_size 4 --dataset CWQ --beam_size 50 
 
 5. GMT-KBQA without relation
     train & predict: CUDA_VISIBLE_DEVICES=0 sh scripts/without_relation_CWQ.sh train without_relation False
-    evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/CWQ_without_relation/beam_50_top_k_predictions.json
+    evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/CWQ_without_relation/beam_50_test_4_top_k_predictions.json --test_batch_size 4 --dataset CWQ --beam_size 50 
 
 6. GMT-KBQA
     train & predict:  CUDA_VISIBLE_DEVICES=1 sh scripts/GMT_KBQA_CWQ.sh train GMT_KBQA False
     predict: CUDA_VISIBLE_DEVICES=1 sh scripts/GMT_KBQA_CWQ.sh predict GMT_KBQA False test 50 4
-    evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/CWQ_GMT_KBQA/beam_50_top_k_predictions.json
+    evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/CWQ_GMT_KBQA/beam_50_test_4_top_k_predictions.json --test_batch_size 4 --dataset CWQ --beam_size 50 
 
+    6.1 different inference beam size, taking beam size=10 as example
+        predict: CUDA_VISIBLE_DEVICES=1 sh scripts/GMT_KBQA_CWQ.sh predict GMT_KBQA False test 10 4
+        evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/CWQ_GMT_KBQA/beam_10_test_4_top_k_predictions.json --test_batch_size 4 --dataset CWQ --beam_size 10
 
 WebQSP:
 
 1. T5-base
 train & predict: CUDA_VISIBLE_DEVICES=1 sh scripts/t5_base_WebQSP.sh train t5_base False
-evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/WebQSP_t5_base/beam_50_top_k_predictions.json --dataset WebQSP
-    1.1 different inference beam size, taking beam size=10 as example
-        predict: CUDA_VISIBLE_DEVICES=1 sh scripts/t5_base_WebQSP.sh predict t5_base False test 10 2
-        evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/WebQSP_t5_base/beam_10_top_k_predictions.json --dataset WebQSP
+evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/WebQSP_t5_base/beam_50_test_2_top_k_predictions.json --test_batch_size 2 --dataset WebQSP --beam_size 50
+    
 
 2. T5-base Concatenating Retrieval
 train & predict: CUDA_VISIBLE_DEVICES=0 sh scripts/concat_retrieval_WebQSP.sh train concat_retrieval False
-evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/WebQSP_concat_retrieval/beam_50_top_k_predictions.json --dataset WebQSP
+evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/WebQSP_concat_retrieval/beam_50_test_2_top_k_predictions.json --test_batch_size 2 --dataset WebQSP --beam_size 50
 
 3. T5-base Concatenating Oracle
 train & predict: CUDA_VISIBLE_DEVICES=4 sh scripts/concat_gold_WebQSP.sh train concat_goldEnt_goldRel False
-evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/WebQSP_concat_goldEnt_goldRel/beam_50_top_k_predictions.json --dataset WebQSP
+evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/WebQSP_concat_goldEnt_goldRel/beam_50_test_2_top_k_predictions.json --test_batch_size 2 --dataset WebQSP --beam_size 50
 
 4. GMT-KBQA Without entity
 train & predict: CUDA_VISIBLE_DEVICES=3 sh scripts/without_entity_WebQSP.sh train without_entity False
 predict: CUDA_VISIBLE_DEVICES=2 sh scripts/without_entity_WebQSP.sh predict without_entity False test 50 2
-evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/WebQSP_without_entity/beam_50_top_k_predictions.json --dataset WebQSP
+evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/WebQSP_without_entity/beam_50_test_2_top_k_predictions.json --test_batch_size 2 --dataset WebQSP --beam_size 50
 
 5. GMT-KBQA Without relation
 train & predict: CUDA_VISIBLE_DEVICES=3 sh scripts/without_relation_WebQSP.sh train without_relation False
-evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/WebQSP_without_relation/beam_50_top_k_predictions.json --dataset WebQSP
+evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/WebQSP_without_relation/beam_50_test_2_top_k_predictions.json --test_batch_size 2 --dataset WebQSP --beam_size 50
 
 6. GMT-KBQA
 train & predict: CUDA_VISIBLE_DEVICES=1 sh scripts/GMT_KBQA_WebQSP.sh train GMT_KBQA False
 predict: CUDA_VISIBLE_DEVICES=1 sh scripts/GMT_KBQA_WebQSP.sh predict GMT_KBQA False test 50 2
-evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/WebQSP_GMT_KBQA/beam_50_top_k_predictions.json --dataset WebQSP
+evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/WebQSP_GMT_KBQA/beam_50_test_2_top_k_predictions.json --test_batch_size 2 --dataset WebQSP --beam_size 50
 
+    6.1 different inference beam size, taking beam size=10 as example
+        predict: CUDA_VISIBLE_DEVICES=1 sh scripts/GMT_KBQA_WebQSP.sh predict GMT_KBQA False test 10 2
+        evaluation: python3 eval_topk_prediction_final.py --split test --pred_file exps/WebQSP_GMT_KBQA/beam_10_test_2_top_k_predictions.json --test_batch_size 2 --dataset WebQSP --beam_size 10

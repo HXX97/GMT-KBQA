@@ -2,8 +2,6 @@
 # -*- encoding: utf-8 -*-
 
 # here put the import lib
-import sys
-sys.path.append('..')
 import argparse
 from generation.cwq_evaluate import cwq_evaluate_valid_results
 from generation.webqsp_evaluate_offcial import webqsp_evaluate_valid_results
@@ -12,7 +10,6 @@ from tqdm import tqdm
 from executor.sparql_executor import execute_query_with_odbc
 from executor.logic_form_util import lisp_to_sparql
 import re
-import json
 import os
 from entity_retrieval import surface_index_memory
 import difflib
