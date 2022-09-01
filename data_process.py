@@ -12,7 +12,6 @@
 from collections import defaultdict
 import random
 from typing import Dict, List
-from sklearn import datasets
 from components.utils import (
     _textualize_relation,
     load_json, 

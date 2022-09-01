@@ -95,6 +95,16 @@ Setup Freebase: Both datasets use Freebase as the knowledge source. You may refe
 
 Other data, model checkpoints as well as evaluation results can be downloaded [here](https://drive.google.com/drive/folders/1QT4EG5wxtcLc8_XT5dTZ2WCi1jtByAyf?usp=sharing). Please refer to [README_download.md](https://drive.google.com/file/d/1_QKfo5lr0Ht9Fiu51w5tqwUivnxagaF7/view?usp=sharing) and download what you need.
 
+You may create a conda environment according to configuration file `environment.yml`:
+```
+conda env create -f environment.yml 
+```
+
+And then activate this environment:
+```
+conda activate gmt
+```
+
 (2) **(Optional) Parse SPARQL queries to S-expressions** 
 
 This step can be ***skipped***, as we've provided the entity retrieval retuls in 
