@@ -109,7 +109,7 @@ conda activate gmt
 
 This step can be ***skipped***, as we've provided the entity retrieval retuls in 
 - CWQ: `data/CWQ/sexpr/CWQ.test[train,dev].jso`.
-- WebQSP: `data/WebQSP/sexpr/WebQSP.test[train,dev].json`
+- WebQSP: `data/WebQSP/sexpr/WebQSP.test[train].json`
 
 As stated in the paper, we generate S-expressions which are not provided by the original dataset.
 Here we provide the scripts to parse SPARQL queries to S-expressions. 

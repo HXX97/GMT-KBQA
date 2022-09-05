@@ -235,6 +235,18 @@ def dump_entity_linking_results_from_elq_for_CWQ(split, keep=10):
     datafile = f'data/CWQ/sexpr/CWQ.{split}.expr.json'
     data = load_json(datafile,encoding='utf8')
     print(len(data))
+
+    # Check if ELQ service is running
+    res = requests.post(
+        url=ELQ_SERVICE_URL
+        , data=json.dumps({'question':"what religions are practiced in the country that has the national anthem Afghan National Anthem"})
+    )
+    try:
+        res.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        # not 200
+        print(f"Error: " + str(e)) 
+        return
     
     # 1. do entity linking by elq
     el_results = {}
@@ -257,6 +269,18 @@ def dump_entity_linking_results_from_elq_for_WebQSP(split, keep=10):
     datafile = f'data/WebQSP/origin/WebQSP.{split}.json'
     data = load_json(datafile)['Questions']
     print(len(data))
+
+    # Check if ELQ service is running
+    res = requests.post(
+        url=ELQ_SERVICE_URL
+        , data=json.dumps({'question':"what religions are practiced in the country that has the national anthem Afghan National Anthem"})
+    )
+    try:
+        res.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        # not 200
+        print(f"Error: " + str(e)) 
+        return
     
     # 1. do entity linking
     el_results = {}
@@ -310,6 +334,5 @@ if __name__=='__main__':
         else:
             dump_entity_linking_results_for_WebQSP(args.split)
         
-    
-    print(f'Successfully detected entities for {args.dataset}_{args.split} from {args.linker}')
+
     
