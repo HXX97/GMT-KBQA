@@ -93,7 +93,7 @@ Download the WebQSP dataset from [here](https://www.microsoft.com/en-us/research
 
 Setup Freebase: Both datasets use Freebase as the knowledge source. You may refer to [Freebase Setup](https://github.com/dki-lab/Freebase-Setup) to set up a Virtuoso triplestore service. After starting your virtuoso service, please replace variable `FREEBASE_SPARQL_WRAPPER_URL` and `FREEBASE_ODBC_PORT` in `config.py` with your own.
 
-Other data, model checkpoints as well as evaluation results can be downloaded [here](https://drive.google.com/drive/folders/1QT4EG5wxtcLc8_XT5dTZ2WCi1jtByAyf?usp=sharing). Please refer to [README_download.md](https://drive.google.com/file/d/1_QKfo5lr0Ht9Fiu51w5tqwUivnxagaF7/view?usp=sharing) and download what you need.
+**Other data, model checkpoints as well as evaluation results can be downloaded [here](https://drive.google.com/drive/folders/1QT4EG5wxtcLc8_XT5dTZ2WCi1jtByAyf?usp=sharing). Please refer to [README_download.md](https://drive.google.com/file/d/1_QKfo5lr0Ht9Fiu51w5tqwUivnxagaF7/view?usp=sharing) and download what you need. Besides, FACC1 mention information can be downloaded following [data/common_data/facc1/README.md](https://github.com/HXX97/GMT-KBQA/blob/main/data/common_data/facc1/README.md)**
 
 You may create a conda environment according to configuration file `environment.yml`:
 ```
