@@ -246,7 +246,7 @@ def validate_data_sequence(
 
 def get_bi_encoder_tsv_max_len(tsv_file):
     tsv_df = pd.read_csv(tsv_file, delimiter='\t',dtype={"id":int, "question":str, "relation":str, 'label':int})
-    tokenizer = AutoTokenizer.from_pretrained('hfcache/bert-base-uncased')
+    tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
     length_dict = defaultdict(int)
     for idx in tqdm(range(len(tsv_df)), total=len(tsv_df)):
         question = tsv_df.loc[idx, 'question']

@@ -47,7 +47,7 @@ def _parse_args():
     parser.add_argument('action', type=str, help='Action to operate')
     parser.add_argument('--dataset', help='CWQ or WebQSP')
     parser.add_argument('--split', help='split to operate on') # the split file: ['dev','test','train']
-    parser.add_argument('--cache_dir', default='hfcache/bert-base-uncased')
+    parser.add_argument('--cache_dir', default='bert-base-uncased')
 
     return parser.parse_args()
 
@@ -151,7 +151,7 @@ def encode_questions(
     model_path, 
     save_path, 
     max_len,
-    cache_dir='hfcache/bert-base-uncased',
+    cache_dir='bert-base-uncased',
     add_special_tokens=False, 
     mask_mention=False,
     dataset='cwq',
@@ -671,7 +671,7 @@ def validate_data_sequence(
 
 def get_cross_encoder_tsv_max_len(tsv_file):
     tsv_df = pd.read_csv(tsv_file, sep='\t', error_bad_lines=False).dropna()
-    tokenizer = AutoTokenizer.from_pretrained('hfcache/bert-base-uncased')
+    tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
     length_dict = defaultdict(int)
     for idx in tqdm(range(len(tsv_df)), total=len(tsv_df)):
         question = tsv_df.loc[idx, 'question']
@@ -725,7 +725,7 @@ if __name__=='__main__':
                 'data/CWQ/relation_retrieval/bi-encoder/saved_models/mask_mention/CWQ_ep_1.pt',
                 'data/CWQ/relation_retrieval/bi-encoder/vectors/mask_mention/CWQ_{}_questions.pt'.format(args.split),
                 max_len=32,  # consistent with bi-encoder training script
-                cache_dir='hfcache/bert-base-uncased',
+                cache_dir='bert-base-uncased',
                 add_special_tokens=True,
                 mask_mention=True,
                 dataset=args.dataset.lower()
@@ -737,7 +737,7 @@ if __name__=='__main__':
                 'data/WebQSP/relation_retrieval/bi-encoder/saved_models/rich_relation_3epochs/WebQSP_ep_3.pt',
                 'data/WebQSP/relation_retrieval/bi-encoder/vectors/rich_relation_3epochs/WebQSP_{}_ep3_questions.pt'.format(args.split),
                 max_len=60, # consistent with training scripts, e.g.`run_bi_encoder_WebQSP.sh`
-                cache_dir='hfcache/bert-base-uncased',
+                cache_dir='bert-base-uncased',
                 add_special_tokens=False,
                 mask_mention=False,
                 dataset=args.dataset.lower()

@@ -106,7 +106,7 @@ def register_args(parser):
     )
     parser.add_argument(
         "--cache_dir",
-        default="./hfcache",
+        default=None,
         type=str,
         help="Where do you want to store the pre-trained models downloaded from s3",
     )

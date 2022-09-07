@@ -163,7 +163,7 @@ class CustomDataset(Dataset):
 
 
 class SentencePairClassifier(nn.Module):
-    def __init__(self, bert_model="hfcache/bert-base-uncased", tokenizer=None, freeze_bert=False):
+    def __init__(self, bert_model="bert-base-uncased", tokenizer=None, freeze_bert=False):
         super(SentencePairClassifier, self).__init__()
         #  Instantiating BERT-based model object
         self.bert_layer = AutoModel.from_pretrained(bert_model)

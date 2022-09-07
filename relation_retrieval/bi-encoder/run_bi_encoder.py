@@ -24,7 +24,7 @@ def _parse_args():
     parser.add_argument('--batch_size', default=4, type=int, help="4 for CWQ")
     parser.add_argument('--epochs', default=1, type=int, help="1 for CWQ, 3 for WebQSP")
     parser.add_argument('--log_dir', default='log/', type=str)
-    parser.add_argument('--cache_dir', default='hfcache/bert-base-uncased', type=str)
+    parser.add_argument('--cache_dir', default='bert-base-uncased', type=str)
     args = parser.parse_args()
     return args
 
@@ -83,7 +83,7 @@ def evaluate(model, device, dataloader):
     
 
 class CustomDataset(Dataset):
-    def __init__(self, data, maxlen, tokenizer=None, bert_model='hfcache/bert-base-uncased',  sample_size=100):
+    def __init__(self, data, maxlen, tokenizer=None, bert_model='bert-base-uncased',  sample_size=100):
         self.data = data
         self.sample_size = sample_size
         self.tokenizer = tokenizer if tokenizer is not None else AutoTokenizer.from_pretrained(bert_model)
