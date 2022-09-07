@@ -155,6 +155,10 @@ def entity_relation_linking_evaluation(dataset='CWQ', beam_size=50):
         f.write(f'After multi-task, Entity linking: {after_entity_linking_res}\n')
         f.write(f'Before multi-task, Relation linking: {before_relation_linking_res}\n')
         f.write(f'Before multi-task, Entity linking: {before_entity_linking_res}\n')
+        print(f'After multi-task, Relation linking: {after_relation_linking_res}\n')
+        print(f'After multi-task, Entity linking: {after_entity_linking_res}\n')
+        print(f'Before multi-task, Relation linking: {before_relation_linking_res}\n')
+        print(f'Before multi-task, Entity linking: {before_entity_linking_res}\n')
 
 
 """
