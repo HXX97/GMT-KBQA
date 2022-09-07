@@ -27,7 +27,7 @@ if [ "$ACTION" = "train" ]; then
                             --dataset_type CWQ \
                             --model_save_path ${exp_prefix} \
                             --output_dir ${exp_prefix} \
-                            --cache_dir hfcache/bert-base-uncased \
+                            --cache_dir bert-base-uncased \
                            
 elif [ "$ACTION" = "eval" ]; then
     split=${3:-test}
@@ -43,7 +43,7 @@ elif [ "$ACTION" = "eval" ]; then
                             --dataset_type CWQ \
                             --model_save_path "${exp_prefix}${model_name}" \
                             --output_dir "${exp_prefix}${model_name}_${split}/" \
-                            --cache_dir hfcache/bert-base-uncased \
+                            --cache_dir bert-base-uncased \
 
 elif [ "$ACTION" = "predict" ]; then
     split=${3:-test}
@@ -64,7 +64,7 @@ elif [ "$ACTION" = "predict" ]; then
                             --dataset_type CWQ \
                             --model_save_path "${exp_prefix}${model_name}" \
                             --output_dir "${exp_prefix}${model_name}_${split}/" \
-                            --cache_dir hfcache/bert-base-uncased \
+                            --cache_dir bert-base-uncased \
 
 else
     echo "train or eval or predict"

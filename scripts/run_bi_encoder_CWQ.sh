@@ -22,4 +22,4 @@ python relation_retrieval/bi-encoder/run_bi_encoder.py \
                             --batch_size 4 \
                             --epochs 1 \
                             --log_dir ${log_dir} \
-                            --cache_dir hfcache/bert-base-uncased
+                            --cache_dir bert-base-uncased

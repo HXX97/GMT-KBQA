@@ -24,7 +24,7 @@ if [ "$ACTION" = "train" ]; then
                             --lr 5e-5 \
                             --eval_beams 50 \
                             --iters_to_accumulate 1 \
-                            --pretrained_model_path hfcache/t5-base \
+                            --pretrained_model_path t5-base \
                             --output_dir ${exp_prefix} \
                             --model_save_dir "${exp_prefix}model_saved" \
                             --overwrite_output_dir \
@@ -52,7 +52,7 @@ elif [ "$ACTION" = "eval" -o "$ACTION" = "predict" ]; then
                         --max_src_len 256 \
                         --iters_to_accumulate 1 \
                         --eval_beams ${beam_size} \
-                        --pretrained_model_path hfcache/t5-base \
+                        --pretrained_model_path t5-base \
                         --output_dir ${exp_prefix} \
                         --model_save_dir "${exp_prefix}model_saved" \
                         --normalize_relations \
