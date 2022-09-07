@@ -2,8 +2,7 @@ GMT-KBQA
 ==============================
 
 ## Abstract
-<image src="figures/Overview-new.png">
----
+<image src="figures/overview.png">
 Question answering over knowledge bases (KBQA) for complex questions is a challenging task in natural language processing.
 Recently, generation-based methods that translate natural language questions to executable logical forms have achieved promising performance.
 However, most of the existing methods struggle in handling questions with unseen KB items and novel combinations of relations. 
@@ -183,6 +182,8 @@ Prepare all the input data for our multi-task LF generation model with entities/
 
 - CWQ: Run `python data_process.py merge_all --dataset CWQ --split test[train,dev]` The merged data file will be saved as `data/CWQ/generation/merged/CWQ_test[train,dev].json`.
 - WebQSP: Run `python data_process.py merge_all --dataset WebQSP --split test[train]`. The merged data file will be saved as `data/WebQSP/generation/merged/WebQSP_test[train].json`.
+
+Note that if you retrieve candidate entities by your own, then you need also update `unique_cand_entities` and `in_out_rels_map`. You can do this by deleting cached files `{DATASET}_candidate_entity_ids_unique.json` and `{DATASET}_candidate_entities_in_out_relations.json` downloaded, and then run above commands.
 
 (6) **Generate Logical Forms through multi-task learning**
 
