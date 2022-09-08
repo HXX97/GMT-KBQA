@@ -474,44 +474,48 @@ def get_merged_disambiguated_entities(dataset, split):
         # merge the disambed entities        
         for qid in elq_disamb_ents:
             disamb_entities = {}
-            linked_entity_id_set = set()
-            
-            
+
             facc1_entities = facc1_disamb_ents[qid]
             elq_entities = elq_disamb_ents[qid]
-            
-            for ent in facc1_entities:
-                disamb_entities[ent['mention']]={
-                    "id":ent["id"],
-                    "label":ent["label"],
-                    "mention":ent["mention"],
-                    "perfect_match":ent["perfect_match"]
-                }
-                linked_entity_id_set.add(ent['id'])
 
-            for ent in elq_entities:
-                if ent['id'] not in linked_entity_id_set: 
-                    if ent['mention'] not in disamb_entities:
-                        disamb_entities[ent['mention']]={
-                            "id":ent["id"],
-                            "label":ent["label"],
-                            "mention":ent["mention"],
-                            "perfect_match":ent["perfect_match"]
-                        }
-                        linked_entity_id_set.add(ent['id'])
-                    else:
-                        # same label, different mid                        
-                        if not disamb_entities[ent['mention']]['perfect_match']:
-                            # if not perfect match, pop facc1 result, retain elq result
-                            disamb_entities[ent['mention']]={
+            if dataset.lower() == 'cwq':
+                for ent in facc1_entities:
+                    disamb_entities[ent['id']]={
+                        "id":ent["id"],
+                        "label":ent["label"],
+                        "mention":ent["mention"],
+                        "perfect_match":ent["perfect_match"]
+                    }
+
+                elq_entities = [ent for ent in elq_entities if ent['score'] > -1.5]
+                for ent in elq_entities:
+                    if ent["id"] not in disamb_entities: # different id
+                        if ent["label"]:
+                            disamb_entities[ent['id']] = {
                                 "id":ent["id"],
                                 "label":ent["label"],
                                 "mention":ent["mention"],
                                 "perfect_match":ent["perfect_match"]
                             }
-                            linked_entity_id_set.add(ent['id'])
 
+            elif dataset.lower() == 'webqsp':
+                for ent in elq_entities:
+                    disamb_entities[ent['id']]={
+                        "id":ent["id"],
+                        "label": get_label_with_odbc(ent['id']),
+                        "mention":ent["mention"],
+                        "perfect_match":ent["perfect_match"]
+                    }
                 
+                for ent in facc1_entities:
+                    if ent['id'] not in disamb_entities: # different id
+                        disamb_entities[ent['id']]={
+                            "id":ent["id"],
+                            "label":get_label_with_odbc(ent['id']),
+                            "mention":ent["mention"],
+                            "perfect_match":ent["perfect_match"]
+                        }
+            
             disamb_entities = [ent for (_,ent) in disamb_entities.items()]
 
             disamb_ent_map[qid] = disamb_entities
@@ -521,7 +525,7 @@ def get_merged_disambiguated_entities(dataset, split):
             os.makedirs(disamb_ent_dir)
 
         dump_json(disamb_ent_map, disamb_ent_file, indent=4)
-        
+
         return disamb_ent_map
         
 
