@@ -142,7 +142,7 @@ def main(pred_data, dataset_data):
     print("Average f1 over questions (accuracy): %.3f" % (f1sum / total))
     print("F1 of average recall and average precision: %.3f" % (2 * (recSum / total) * (precSum / total) / (recSum / total + precSum / total)))
     print("True accuracy (ratio of questions answered exactly correctly): %.3f" % (numCorrect / total))
-    res = f'Number of questions:{int(total)}\n, Average precision over questions: {(precSum / total)}\n, Average recall over questions: {(f1sum / total)}\n, Average f1 over questions (accuracy): {(f1sum / total)}\n, F1 of average recall and average precision: {(2 * (recSum / total) * (precSum / total) / (recSum / total + precSum / total))}\n, True accuracy (ratio of questions answered exactly correctly): {(numCorrect / total)}'
+    res = f'Number of questions:{int(total)}\n, Average precision over questions: {(precSum / total)}\n, Average recall over questions: {(recSum / total)}\n, Average f1 over questions (accuracy): {(f1sum / total)}\n, F1 of average recall and average precision: {(2 * (recSum / total) * (precSum / total) / (recSum / total + precSum / total))}\n, True accuracy (ratio of questions answered exactly correctly): {(numCorrect / total)}'
     dirname = os.path.dirname(pred_data)
     filename = os.path.basename(pred_data)
     dump_json(prediction_res, os.path.join(dirname, f'{filename}_new.json'))
