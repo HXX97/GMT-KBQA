@@ -2,7 +2,7 @@ GMT-KBQA
 ==============================
 
 ## Abstract
-<image src="figures/overview.png">
+<image src="./figures/overview.png">
 Question answering over knowledge bases (KBQA) for complex questions is a challenging task in natural language processing.
 Recently, generation-based methods that translate natural language questions to executable logical forms have achieved promising performance.
 However, most of the existing methods struggle in handling questions with unseen KB items and novel combinations of relations. 

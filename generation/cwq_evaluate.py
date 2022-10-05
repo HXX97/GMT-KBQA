@@ -48,6 +48,9 @@ def cwq_evaluate_valid_results(args):
         else:
             gt_answer = set(sparql_executor.execute_query(gt_sparql))
 
+        # for dev split
+        # gt_answer = set([item["answer_id"] for item in example["answers"]])
+
         pred_answer = set(pred_dict.get(qid,{}))
 
         # assert len(pred_answer)>0 and len(gt_answer)>0
