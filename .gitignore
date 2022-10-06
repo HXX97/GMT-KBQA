@@ -145,6 +145,7 @@ data/CWQ
 data/WebQSP
 data/CWQ_uploaded
 data/WebQSP_uploaded
+data/bak
 
 
 
@@ -168,8 +169,6 @@ feature_cache
 exps/
 exps_final/
 
-scripts/bak
-
 WebQSP/
 bak/
 relation_retrieval/bi-encoder/bak
@@ -180,3 +179,4 @@ generation/models/bak
 entity_retrieval/bak
 components/bak
 notes/
+scripts/backup
