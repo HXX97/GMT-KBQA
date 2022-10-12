@@ -6,17 +6,13 @@ from functools import reduce
 from torch.utils.data import DataLoader, Dataset
 from transformers import AutoTokenizer
 import torch
-import faiss
-import numpy
 import pandas as pd
 import argparse
-import random
-import re
 
 from tqdm import tqdm
 
 from biencoder import BiEncoderModule
-from faiss_indexer import DenseFlatIndexer, DenseHNSWFlatIndexer
+from faiss_indexer import DenseFlatIndexer
 
 import os
 import logging
@@ -249,14 +245,10 @@ def retrieve_candidate_relations_cwq(
     entity_linking_path,
     split,
     validation_relations_path=None,
-    relation_rich_map_path=None,
-    source_rich_relation=False,
-    target_rich_relation=True,
     vector_size=768, 
     index_buffer=50000, 
     top_k=200,
     validation_top_k=100,
-    mask_mention=True,
 ):
     """
     validation_relations_path: 2-hop relations from entity, for validation
@@ -264,8 +256,6 @@ def retrieve_candidate_relations_cwq(
     """
     all_relations = load_json(all_relations_path)
     entity_linking_res = load_json(entity_linking_path)
-    if relation_rich_map_path:
-        relation_rich_map = load_json(relation_rich_map_path)
         
     if validation_relations_path:
         validation_relations_map = load_json(validation_relations_path)
@@ -290,17 +280,8 @@ def retrieve_candidate_relations_cwq(
         start = count
         question = input_data[idx]["question"]
         id = input_data[idx]["ID"]
-        if mask_mention:
-            question = question.lower()
-            el_result = entity_linking_res[id] if id in entity_linking_res else {}
-            el_result = {item["id"]: item for item in el_result}
-            for eid in el_result:
-                mention = el_result[eid]["mention"]
-                question = question.replace(mention, BLANK_TOKEN)
-        if source_rich_relation and relation_rich_map:
-            golden_relations = list(set([relation_rich_map[relation] if relation in relation_rich_map else relation for relation in input_data[idx]["gold_relation_map"].keys()]))
-        else:
-            golden_relations = list(set([relation for relation in input_data[idx]["gold_relation_map"].keys()]))
+        
+        golden_relations = list(set([relation for relation in input_data[idx]["gold_relation_map"].keys()]))
         
         if validation_relations_path:
             validation_relations = reduce(
@@ -308,9 +289,6 @@ def retrieve_candidate_relations_cwq(
                 map(lambda item: item['id'], entity_linking_res[id]),
                 []
             )
-
-        if validation_relations_path and relation_rich_map and source_rich_relation:
-            validation_relations = [relation_rich_map[rel] if rel in relation_rich_map else rel for rel in validation_relations]
 
         if validation_relations_path:
             missed_relations = []
@@ -320,11 +298,9 @@ def retrieve_candidate_relations_cwq(
                     print('validation_relations: {}'.format(validation_relations[0]))
                 if pred_relation in validation_relations:
                     if split != 'test' and pred_relation in golden_relations:
-                        pred_relation_rich = relation_rich_map[pred_relation] if (pred_relation in relation_rich_map and target_rich_relation) else pred_relation
-                        samples.append([question, pred_relation_rich, '1'])
+                        samples.append([question, pred_relation, '1'])
                     else:
-                        pred_relation_rich = relation_rich_map[pred_relation] if (pred_relation in relation_rich_map and target_rich_relation) else pred_relation
-                        samples.append([question, pred_relation_rich, '0'])
+                        samples.append([question, pred_relation, '0'])
                     count += 1
                 else:
                     missed_relations.append(pred_relation)
@@ -333,20 +309,16 @@ def retrieve_candidate_relations_cwq(
             if count - start < validation_top_k:
                 for rel in missed_relations[:validation_top_k-(count - start)]:
                     if split != 'test' and rel in golden_relations:
-                        rel_rich = relation_rich_map[rel] if (rel in relation_rich_map and target_rich_relation) else rel
-                        samples.append([question, rel_rich, '1'])
+                        samples.append([question, rel, '1'])
                     else:
-                        rel_rich = relation_rich_map[rel] if (rel in relation_rich_map and target_rich_relation) else rel
-                        samples.append([question, rel_rich, '0'])
+                        samples.append([question, rel, '0'])
                     count += 1
         else:
             for pred_relation in pred_relations[idx]:
                 if split != 'test' and pred_relation in golden_relations:
-                    pred_relation = relation_rich_map[pred_relation] if (pred_relation in relation_rich_map and target_rich_relation) else pred_relation
                     samples.append([question, pred_relation, '1'])
                     count += 1
                 else:
-                    pred_relation = relation_rich_map[pred_relation] if (pred_relation in relation_rich_map and target_rich_relation) else pred_relation
                     samples.append([question, pred_relation, '0'])
                     count += 1
         end = count - 1
@@ -368,29 +340,6 @@ def retrieve_candidate_relations_cwq(
             idx += 1
     
     dump_json(CWQid_index, CWQid_index_path)
-
-
-def calculate_recall_cwq(
-    dataset_file,
-    id_index_path,
-    tsv_file
-):
-    dataset = load_json(dataset_file)
-    dataset = {item["ID"]: item for item in dataset}
-    id_index_map = load_json(id_index_path)
-    df = pd.read_csv(tsv_file, sep='\t', error_bad_lines=False).dropna()
-    r_list = []
-    for idx in tqdm(id_index_map, total=len(id_index_map)):
-        example = dataset[idx]
-        golden_relations = example["gold_relation_map"].keys()
-        start_idx = id_index_map[idx]["start"]
-        end_idx = id_index_map[idx]["end"]
-        pred_relations = df[start_idx:end_idx+1]['relation'].unique().tolist()
-        pred_relations = [rel.split('|')[0] for rel in pred_relations]
-        recall = len(set(pred_relations) & set(golden_relations))/ len(set(golden_relations))
-        r_list.append(recall)
-    
-    print('Recall: {}'.format(sum(r_list)/len(r_list)))
 
 
 def retrieve_cross_encoder_inference_data(
@@ -453,15 +402,11 @@ def retrieve_candidate_relations_webqsp(
     output_path,
     id_index_path,
     split,
-    prominent_type_path=None,
     validation_relations_path=None,
-    relation_rich_map_path=None,
     vector_size=768, 
     index_buffer=50000, 
     top_k=200,
     validation_top_k=100,
-    rich_entity=True,
-    mask_mention=False,
 ):
     """
     validation_relations_path: 1-hop/2-hop relations of linked entities
@@ -471,15 +416,6 @@ def retrieve_candidate_relations_webqsp(
     entity_linking_res = load_json(entity_linking_path)
     entity_linking_res = {item["id"]: item for item in entity_linking_res}
 
-    if prominent_type_path:
-        prominent_type_map = load_json(prominent_type_path)
-    else:
-        prominent_type_map = None
-    if relation_rich_map_path:
-        relation_rich_map = load_json(relation_rich_map_path)
-    else:
-        relation_rich_map = None
-    
     if validation_relations_path:
         validation_relations_map = load_json(validation_relations_path)
     else:
@@ -500,6 +436,7 @@ def retrieve_candidate_relations_webqsp(
     samples = []
     count = 0
     id_index = dict()
+    debug = True
 
     print('split: {}'.format(split))
 
@@ -509,25 +446,9 @@ def retrieve_candidate_relations_webqsp(
         start = count
         question = dataset[idx]["ProcessedQuestion"]
         question = question.lower()
-        if rich_entity:
-            if qid not in entity_linking_res:
-                continue
-            for entity_idx in range(len(entity_linking_res[qid]["freebase_ids"])):
-                entity_id = entity_linking_res[qid]["freebase_ids"][entity_idx]
-                mention = entity_linking_res[qid]['pred_tuples_string'][entity_idx][1]
-                label = entity_linking_res[qid]['pred_tuples_string'][entity_idx][0]
-                prominent_type = prominent_type_map[entity_id][0] if entity_id in prominent_type_map else ''
-                question = question.replace(mention, '|'.join([mention, label, prominent_type]))
-        elif mask_mention:
-            for entity_idx in range(len(entity_linking_res[qid]["freebase_ids"])):
-                mention = entity_linking_res[qid]['pred_tuples_string'][entity_idx][1]
-                question = question.replace(mention, BLANK_TOKEN)
 
         if split != 'test':
-            if relation_rich_map:
-                golden_relations = list(set([relation_rich_map[relation] if relation in relation_rich_map else relation for relation in dataset[idx]["gold_relation_map"].keys()]))
-            else:
-                golden_relations = list(set([relation for relation in dataset[idx]["gold_relation_map"].keys()]))
+            golden_relations = list(set([relation for relation in dataset[idx]["gold_relation_map"].keys()]))
         else:
             golden_relations = None
         
@@ -537,12 +458,13 @@ def retrieve_candidate_relations_webqsp(
                 entity_linking_res[qid]["freebase_ids"],
                 []
             )
-        if validation_relations_map and relation_rich_map:
-            validation_relations = [relation_rich_map[rel] if rel in relation_rich_map else rel for rel in validation_relations]
         
         if validation_relations_map:
             missed_relations = []
             for pred_relation in pred_relations[idx]:
+                if debug:
+                    print(f'pred_relation: {pred_relation}')
+                    print(f'validation_relation: {validation_relations[0]}')
                 if pred_relation in validation_relations:
                     if split != 'test':
                         if pred_relation in golden_relations:
@@ -550,7 +472,6 @@ def retrieve_candidate_relations_webqsp(
                         else:
                             samples.append([question, pred_relation, '0'])
                     else:
-                        # for `test` split, label is set to '0' uniformly
                         samples.append([question, pred_relation, '0'])
                     count += 1
                 else:
@@ -580,15 +501,13 @@ def retrieve_candidate_relations_webqsp(
                     samples.append([question, pred_relation, '0'])
                     count += 1
         
-        # make sure it is normal relation
-        for sample in samples:
-            sample[1] = sample[1].split('|')[0]
-        
         end = count - 1
         id_index[qid] = {
             'start': start,
             'end': end
         }
+
+        debug = False
 
 
     with open(output_path, 'w') as f:
@@ -601,84 +520,6 @@ def retrieve_candidate_relations_webqsp(
             idx += 1
     
     write_json(id_index_path, id_index)
-
-
-def calculate_recall_webqsp(
-    dataset_file,
-    id_index_path,
-    tsv_file
-):
-    dataset = load_json(dataset_file)
-    dataset = {item["QuestionId"]: item for item in dataset}
-    id_index_map = load_json(id_index_path)
-    df = pd.read_csv(tsv_file, sep='\t', error_bad_lines=False).dropna()
-    r_list = []
-    for idx in tqdm(id_index_map, total=len(id_index_map)):
-        example = dataset[idx]
-        golden_relations = example["gold_relation_map"].keys()
-        start_idx = id_index_map[idx]["start"]
-        end_idx = id_index_map[idx]["end"]
-        pred_relations = df[start_idx:end_idx+1]['relation'].unique().tolist()
-        pred_relations = [rel.split('|')[0] for rel in pred_relations]
-        recall = len(set(pred_relations) & set(golden_relations))/ len(set(golden_relations))
-        r_list.append(recall)
-    
-    print('Recall: {}'.format(sum(r_list)/len(r_list)))
-
-def make_partial_train_dev(train_split_path):
-    random.seed(17)
-    data = load_json(train_split_path)["Questions"]
-    random.shuffle(data)
-    ptrain = data[:-200]
-    pdev = data[-200:]
-    print(len(ptrain))
-    print(len(pdev))
-    dump_json(ptrain, f'data/WebQSP/origin/WebQSP.ptrain.json', indent=4)
-    dump_json(pdev, f'data/WebQSP/origin/WebQSP.pdev.json', indent=4)
-
-def split_file(
-    data_path,
-    train_path,
-    dev_path,
-    output_train_path,
-    output_dev_path
-):
-    data = load_json(data_path)
-    qid_data_map = {item["QuestionId"]: item for item in data}
-    prev_train = load_json(train_path)
-    prev_dev = load_json(dev_path)
-
-    # keep question order
-    train_data_with_golden = [qid_data_map[example["QuestionId"]] for example in prev_train]
-    split_dev_with_golden = [qid_data_map[example["QuestionId"]] for example in prev_dev]
-    
-    print('prev_train: {}, new_train: {}'.format(len(prev_train), len(train_data_with_golden)))
-    print('prev_dev: {}, new_dev: {}'.format(len(prev_dev), len(split_dev_with_golden)))
-
-    dump_json(train_data_with_golden, output_train_path)
-    dump_json(split_dev_with_golden, output_dev_path)
-
-def validate_data_sequence(
-    data_path_1,
-    data_path_2,
-):
-    data_1 = load_json(data_path_1)
-    data_2 = load_json(data_path_2)
-    data_1_qids = [example["QuestionId"] for example in data_1]
-    data_2_qids = [example["QuestionId"] for example in data_2]
-    print(data_1_qids == data_2_qids)
-
-
-def get_cross_encoder_tsv_max_len(tsv_file):
-    tsv_df = pd.read_csv(tsv_file, sep='\t', error_bad_lines=False).dropna()
-    tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
-    length_dict = defaultdict(int)
-    for idx in tqdm(range(len(tsv_df)), total=len(tsv_df)):
-        question = tsv_df.loc[idx, 'question']
-        relation = tsv_df.loc[idx, 'relation']
-        tokenized = tokenizer.tokenize(question, relation)
-        length_dict[len(tokenized)] += 1
-    print(collections.OrderedDict(sorted(length_dict.items())))
 
 
 if __name__=='__main__':
@@ -754,19 +595,6 @@ if __name__=='__main__':
                 'data/CWQ/entity_retrieval/disamb_entities/CWQ_merged_{}_disamb_entities.json'.format(args.split),
                 args.split,
                 validation_relations_path='data/CWQ/relation_retrieval/bi-encoder/CWQ.2hopRelations.candEntities.json',
-                relation_rich_map_path='data/common_data/fb_relation_rich_map.json',
-                source_rich_relation=False,
-                target_rich_relation=False,
-                mask_mention=False
-            )
-            calculate_recall_cwq(
-                'data/CWQ/relation_retrieval/bi-encoder/CWQ.{}.goldenRelation.json'.format(args.split),
-                'data/CWQ/relation_retrieval/cross-encoder/mask_mention_1epoch_question_relation/CWQ_{}_id_index_map.json'.format(args.split),
-                'data/CWQ/relation_retrieval/cross-encoder/mask_mention_1epoch_question_relation/CWQ.{}.tsv'.format(args.split),
-            )
-            # Help to decide max length of cross-encoder training, 50 is suggested
-            get_cross_encoder_tsv_max_len(
-                'data/CWQ/relation_retrieval/cross-encoder/mask_mention_1epoch_question_relation/CWQ.test.tsv'
             )
         elif args.dataset.lower() == 'webqsp':
             # Get data for cross-encoder training and validation
@@ -780,18 +608,7 @@ if __name__=='__main__':
                     'data/WebQSP/relation_retrieval/cross-encoder/rich_relation_3epochs_question_relation/WebQSP.{}.tsv'.format(args.split),
                     'data/WebQSP/relation_retrieval/cross-encoder/rich_relation_3epochs_question_relation/WebQSP_{}_id_index_map.json'.format(args.split),
                     args.split,
-                    prominent_type_path=None,
                     validation_relations_path='data/WebQSP/relation_retrieval/cross-encoder/rng_kbqa_linking_results/WebQSP.2hopRelations.rng.elq.candEntities.json',
-                    rich_entity=False,
-                    top_k=200,
-                    validation_top_k=100,
-                    mask_mention=False,
-                )
-
-                calculate_recall_webqsp(
-                    'data/WebQSP/relation_retrieval/bi-encoder/WebQSP.{}.goldenRelation.json'.format(args.split),
-                    'data/WebQSP/relation_retrieval/cross-encoder/rich_relation_3epochs_question_relation/WebQSP_{}_id_index_map.json'.format(args.split),
-                    'data/WebQSP/relation_retrieval/cross-encoder/rich_relation_3epochs_question_relation/WebQSP.{}.tsv'.format(args.split),
                 )
             
             # Get data for cross-encoder inference
@@ -803,16 +620,6 @@ if __name__=='__main__':
                     f'data/WebQSP/relation_retrieval/cross-encoder/rich_relation_3epochs_question_relation/WebQSP.{args.split}.tsv',
                     f'data/WebQSP/relation_retrieval/cross-encoder/rich_relation_3epochs_question_relation/WebQSP_{args.split}_id_index_map.json',
                 )
-                calculate_recall_webqsp(
-                    'data/WebQSP/relation_retrieval/bi-encoder/WebQSP.{}.goldenRelation.json'.format(subsp),
-                    'data/WebQSP/relation_retrieval/cross-encoder/rich_relation_3epochs_question_relation/WebQSP_{}_id_index_map.json'.format(args.split),
-                    'data/WebQSP/relation_retrieval/cross-encoder/rich_relation_3epochs_question_relation/WebQSP.{}.tsv'.format(args.split),
-                )     
-
-            # Help to decide max length of cross-encoder training, 34 is suggested
-            # get_cross_encoder_tsv_max_len(
-            #     'data/WebQSP/relation_retrieval/cross-encoder/rich_relation_3epochs_question_relation/WebQSP.train.tsv'
-            # )
 
 
             
