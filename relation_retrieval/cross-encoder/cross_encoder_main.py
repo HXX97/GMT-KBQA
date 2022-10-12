@@ -39,12 +39,6 @@ def _parse_args():
     return args
 
 
-def read_json(json_path):
-    with open(json_path, 'r') as f:
-        data = json.load(f)
-    return data
-
-
 def data_process(args):
     if args.do_train or args.do_eval:
         if args.dataset_type == 'WebQSP':

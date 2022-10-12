@@ -15,7 +15,6 @@ from generation.models.T5_models_final import (
 from inputDataset.gen_mtl_dataset import MTLGenDataset, MTLGenerationExample
 from components.utils import dump_json, load_json
 from torch.utils.data import DataLoader
-from torch.cuda.amp import autocast, GradScaler
 import torch
 from tqdm import tqdm
 from functools import partial
@@ -66,14 +65,6 @@ def _parse_args():
     parser.add_argument('--dataset_type', default="CWQ", type=str, help="CWQ | WebQSP")
     parser.add_argument('--warmup_epochs', default=0, type=int, help="for concat models, starts concat after warmup_epochs")
     parser.add_argument('--concat_golden', default=False, action='store_true', help="concat golden relations/entities to input")
-    """
-    deprecated
-    """
-    parser.add_argument('--structure_gen_beam_size', default=1, type=int)
-    parser.add_argument('--max_structure_tgt_len', default=70, type=int)
-    parser.add_argument('--structure_sample_size', default=5, type=int, help="number of candidate structures")
-    parser.add_argument('--use_rich_relation', default=False, action='store_true', help="use rich relation for classification")
-    parser.add_argument('--structure_syntax_check', default=False, action='store_true', help="conduct syntax check on structures")
     parser.add_argument('--train_concat_true', default=False, action='store_true', help="only concat true classification results during training")
     args = parser.parse_args()
     return args
@@ -252,7 +243,6 @@ def train_model(args,model,tokenizer,device,train_dataloader,dev_dataloader=None
                                         num_warmup_steps=t_total * warmup_ratio,
                                         num_training_steps=t_total
                                         )
-    # scaler = GradScaler()
     best_loss = np.Inf
     best_epoch = 1
     num_iterations = len(train_dataloader)

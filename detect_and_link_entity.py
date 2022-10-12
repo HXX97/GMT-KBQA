@@ -300,22 +300,7 @@ def dump_entity_linking_results_from_elq_for_WebQSP(split, keep=10):
 
 
 if __name__=='__main__':
-    
-    
-    # question = "what religions are practiced in the country that has the national anthem Afghan National Anthem"
-    # print(get_entity_linking_from_elq(question))
-
-    # question = "china"
-    # el_list = get_entity_linking_from_elq(question)
-    # print(len(el_list))
-    # print(el_list)
-
-    
     args = _parse_args()
-
-    # for debugger to attach
-    # args.server_ip = '0.0.0.0'
-    # args.server_port = 12345
 
     if args.server_ip and args.server_port:
         import ptvsd

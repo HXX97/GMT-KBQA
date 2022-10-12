@@ -1,10 +1,7 @@
 import numpy as np
 import torch
 import torch.nn as nn
-from transformers import T5Config, T5ForConditionalGeneration, AutoTokenizer
-import sys
-sys.path.append('..')
-# from structure_filling_data_process import filter_syntax_error, post_process
+from transformers import T5ForConditionalGeneration, AutoTokenizer
 
 
 def list_reshape(prev_list, dim0, dim1):
@@ -291,7 +288,6 @@ class T5_Multitask_Relation_Concat(nn.Module):
 
         return total_loss
     
-    # TODO:
     def inference(self,
         input_ids_gen=None,
         input_ids_clf=None,
@@ -360,7 +356,6 @@ class T5_Multitask_Relation_Concat(nn.Module):
             # src_encoded['input_ids']: [batch_size, padding_length]
             # [batch_size, num_beams, -1]
             gen_outputs = torch.reshape(gen_outputs,(src_encoded['input_ids'].shape[0],num_beams,-1))
-            # gen_outputs = [p.cpu().numpy() for p in gen_outputs]
 
         return gen_outputs,clf_outputs
 
@@ -458,7 +453,6 @@ class T5_Multitask_Entity_Concat(nn.Module):
 
         # dynamic mini-batch padding
         src_encoded = self.tokenizer.pad({'input_ids': input_ids_gen_concatenated},return_tensors='pt')
-        # TODO, maybe we can change the input according to the classification results
         gen_outputs = self.t5(
             input_ids=src_encoded['input_ids'].to(self.device),
             attention_mask=src_encoded['attention_mask'].to(self.device),
@@ -559,8 +553,6 @@ class T5_MultiTask_Relation_Entity_Concat(nn.Module):
         self.sample_size = sample_size # number of candidate relations and candidate entities
         self.do_lower = do_lower
         self.add_prefix = add_prefix
-        # during training, only concat true classified results(compared with golden labels); during testing, concat normally(anything prev tasks output)
-        # Been proved a bad practice
         self.train_concat_true = train_concat_true
 
         if 't5-large' in pretrained_model_path.lower():
@@ -626,7 +618,6 @@ class T5_MultiTask_Relation_Entity_Concat(nn.Module):
                     cls_labels=torch.reshape(relation_clf_labels, (input_ids_gen.size(0), self.sample_size))
                 )
             else:
-                print('relation train_concat_true: False')
                 filtered_candidate_relations = filter_candidates_by_classification_results(
                     textual_candidate_relations,
                     relation_clf_predict_logits,
@@ -699,7 +690,6 @@ class T5_MultiTask_Relation_Entity_Concat(nn.Module):
                     cls_labels=torch.reshape(entity_clf_labels, (input_ids_gen.size(0), self.sample_size))
                 )
             else:
-                print('entity train_concat_true: False')
                 filtered_candidate_entities = filter_candidates_by_classification_results(
                     rich_textual_candidate_entities_list,
                     entity_clf_predict_logits,
@@ -872,7 +862,6 @@ class T5_MultiTask_Relation_Entity_Concat(nn.Module):
             # src_encoded['input_ids']: [batch_size, padding_length]
             # [batch_size, num_beams, -1]
             gen_outputs = torch.reshape(gen_outputs,(src_encoded['input_ids'].shape[0],num_beams,-1))
-            # gen_outputs = [p.cpu().numpy() for p in gen_outputs]
 
         return gen_outputs, relation_clf_outputs, entity_clf_outputs
 

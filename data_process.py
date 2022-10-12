@@ -743,38 +743,6 @@ def validation_merged_file(prev_file, new_file):
                 assert len(prev[key]) == 10
                 assert len(new[key]) == 10, print(len(new[key]))
 
-def train_dev_split_as_per_files(
-    prev_train_path,
-    split_train_path,
-    split_dev_path,
-    new_folder
-):
-    prev_train = load_json(prev_train_path)
-    split_train = load_json(split_train_path)
-    split_train = {item["QuestionId"]: item for item in split_train}
-    split_train_keys = split_train.keys()
-
-    split_dev = load_json(split_dev_path)
-    split_dev = {item["QuestionId"]: item for item in split_dev}
-    split_dev_keys = split_dev.keys()
-
-    new_train_data = []
-    new_dev_data = []
-    for example in prev_train:
-        qid = example["ID"]
-        if qid not in split_train_keys and qid not in split_dev_keys:
-            print(qid)
-        if qid in split_train_keys:
-            new_train_data.append(example)
-        elif qid in split_dev_keys:
-            new_dev_data.append(example)
-    print('prev_train: {}'.format(len(prev_train)))
-    print('new_train: {}'.format(len(new_train_data)))
-    print('new_dev: {}'.format(len(new_dev_data)))
-    dump_json(prev_train, os.path.join(new_folder, 'WebQSP_train_all.json'))
-    dump_json(new_train_data, os.path.join(new_folder, 'WebQSP_train.json'))
-    dump_json(new_dev_data, os.path.join(new_folder, 'WebQSP_dev.json'))
-
 
 def substitude_relations_in_merged_file_cwq(
     prev_merged_path, 
@@ -859,44 +827,6 @@ if __name__=='__main__':
             extract_entity_relation_type_label_from_dataset_webqsp(dataset=args.dataset, split=args.split)
     else:
         print('usage: data_process.py action [--dataset DATASET] --split SPLIT ')
-
-
-    # for split in ['train', 'test']:
-    #     extract_entity_relation_type_label_from_dataset_webqsp('WebQSP', split)
-
-    # If you would like to substitude candidate relations only, you can refer to functions below
-    # if args.dataset.lower() == 'webqsp':
-    #     print('webqsp')
-    #     for split in ['train', 'test']:
-    #         substitude_relations_in_merged_file(
-    #             f'data/WebQSP/generation/merged_old/WebQSP_{split}.json',
-    #             f'data/WebQSP/generation/merged_test/WebQSP_{split}.json',
-    #             f'data/WebQSP/relation_retrieval/candidate_relations/WebQSP_{split}_2hop_cand_rel_logits.json',
-    #             f'data/WebQSP/relation_retrieval/candidate_relations/WebQSP_{split}_cand_rel_logits.json',
-    #             topk=10
-    #         )
-    #         validation_merged_file(
-    #             f'data/WebQSP/generation/merged_old/WebQSP_{split}.json',
-    #             f'data/WebQSP/generation/merged_test/WebQSP_{split}.json',
-    #         )
-    #     # train_dev_split_as_per_files(
-    #     #     'data/WebQSP/generation/merged_relation_final/WebQSP_train.json',
-    #     #     'data/WebQSP/origin/WebQSP.ptrain.json',
-    #     #     'data/WebQSP/origin/WebQSP.pdev.json',
-    #     #     'data/WebQSP/generation/merged_relation_final/'
-    #     # )
-    # else:
-    #     print('CWQ')
-    #     for split in ['test']:
-    #         substitude_relations_in_merged_file_cwq(
-    #             f'data/CWQ/generation/merged_old/CWQ_{split}.json',
-    #             f'data/CWQ/generation/merged_test/CWQ_{split}.json',
-    #             f'data/CWQ/relation_retrieval/candidate_relations/CWQ_{split}_cand_rel_logits.json'
-    #         )
-    #         validation_merged_file(
-    #             f'data/CWQ/generation/merged_old/CWQ_{split}.json',
-    #             f'data/CWQ/generation/merged_test/CWQ_{split}.json',
-    #         )
 
     # construct_common_data(
     #     'data/common_data/freebase_relations_filtered.json',

@@ -177,46 +177,6 @@ def sample_data_rich_relation(
             writer.writerow([str(idx)] + line)
             idx += 1
 
-# def sample_data_normal(
-#     golden_data_path,
-#     all_relations_path,
-#     output_path, 
-#     sample_size=100
-# ):
-#     all_relations = load_json(all_relations_path)
-#     examples = load_json(golden_data_path)
-
-#     # use qid as identifier
-#     golden_relations_map = {
-#         example["QuestionId"]: list(example["gold_relation_map"].keys())
-#         for example in examples
-#     }
-
-#     qid_example_map = {item["QuestionId"]: item for item in examples}
-
-#     samples = []
-#     for qid in tqdm(golden_relations_map, total=len(golden_relations_map)):
-#         question = qid_example_map[qid]["ProcessedQuestion"].lower()
-#         gold_relations = golden_relations_map[qid]
-#         diff_relations = list(set(all_relations) - set(gold_relations))
-#         negative_relations = random.sample(diff_relations, (sample_size-1) * len(gold_relations))
-#         for idx in range(len(gold_relations)):
-#             sample = []
-#             sample.append([question, gold_relations[idx], '1'])
-#             for n_lab in negative_relations[idx * (sample_size-1): (idx+1) * (sample_size-1)]:
-#                 sample.append([question, n_lab, '0'])
-#             assert len(sample) == sample_size
-#             random.shuffle(sample)
-#             samples.extend(sample)
-
-#     with open(output_path, 'w') as f:
-#         header = ['id', 'question', 'relation', 'label']
-#         writer = csv.writer(f, delimiter='\t')
-#         writer.writerow(header)
-#         idx = 0
-#         for line in samples:
-#             writer.writerow([str(idx)] + line)
-#             idx += 1
 
 def make_partial_train_dev(train_split_path):
     random.seed(17)
@@ -243,19 +203,6 @@ def validate_data_sequence(
     data_2_qids = [example["QuestionId"] for example in data_2]
     print(data_1_qids == data_2_qids)
 
-
-def get_bi_encoder_tsv_max_len(tsv_file):
-    tsv_df = pd.read_csv(tsv_file, delimiter='\t',dtype={"id":int, "question":str, "relation":str, 'label':int})
-    tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
-    length_dict = defaultdict(int)
-    for idx in tqdm(range(len(tsv_df)), total=len(tsv_df)):
-        question = tsv_df.loc[idx, 'question']
-        relation = tsv_df.loc[idx, 'relation']
-        tokenized_question = tokenizer.tokenize(question)
-        length_dict[len(tokenized_question)] += 1
-        tokenized_relation = tokenizer.tokenize(relation)
-        length_dict[len(tokenized_relation)] += 1
-    print(collections.OrderedDict(sorted(length_dict.items())))
 
 def sample_data(dataset, split):
     if dataset.lower() == 'cwq':
@@ -297,10 +244,6 @@ def sample_data(dataset, split):
             )
 
         prepare_2hop_relations(dataset)
-
-        # Utility function, help to set max_len for training bi-encoder
-        # Here the max length suggested is 60
-        # get_bi_encoder_tsv_max_len('data/WebQSP/relation_retrieval/bi-encoder/WebQSP.train.sampled.tsv')
 
 
 def get_unique_entity_ids(

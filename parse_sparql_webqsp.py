@@ -848,38 +848,9 @@ def parse_webqsp_sparql(check_execute_accuracy=False):
 if __name__ == '__main__':
     
     parser = Parser()
-    # parse_res = single_debug_cwq()
-    # print(execute_webq_s_expr(parse_res['SExpr']))
     """
     Since WebQSP may provide multiple `Parses` for each question
     Execution accuracy of generated S-Expression will be verified.
     It will later be used as an filtering condition in step (5).1
     """
     parse_webqsp_sparql(check_execute_accuracy=True)
-
-    
-    # sExpr = '(AND (JOIN government.politician.government_positions_held (JOIN government.government_position_held.from "1987-05-01"^^http://www.w3.org/2001/XMLSchema#dateTime)) (JOIN (R government.government_position_held.office_holder) (AND (TC government.government_position_held.from 2013^^http://www.w3.org/2001/XMLSchema#dateTime) (AND (JOIN government.government_position_held.governmental_body m.07t58) (JOIN (R government.political_district.representatives) m.07z1m)))))'
-    
-    # sExpr = "(JOIN (R government.government_position_held.office_holder) (TC (AND (JOIN government.government_position_held.governmental_body m.07t58) (JOIN (R government.political_district.representatives) m.0d0x8)) government.government_position_held.from NOW))"
-    # sExpr = '(ARGMAX film.editor people.person.height_meters)'
-    # sExpr = '(AND (gt government.government_position_held.from 2009-01-02^^http://www.w3.org/2001/XMLSchema#dateTime) (JOIN (R government.government_position_held.office_holder) (AND (JOIN government.government_position_held.basic_title m.0fkvn) (JOIN (R government.governmental_jurisdiction.governing_officials) m.05r7t))))'
-    
-    # sExpr = '(ARGMAX (AND cvg.computer_game_region (JOIN (R cvg.game_version.regions) (JOIN cvg.game_version.publisher m.0xwj))) (JOIN (R cvg.game_version.regions) cvg.game_version.release_date))'
-    
-    # sExpr = '(JOIN (R people.marriage.spouse) (ARGMAX (AND (JOIN people.marriage.type_of_union m.04ztj) (JOIN (R people.person.spouse_s) m.02pbp9)) people.marriage.to))'
-    
-    # sExpr = '(ARGMIN (JOIN (R influence.influence_node.influenced) m.0f9wd) (JOIN government.politician.government_positions_held government.government_position_held.from) 3)'
-    # sparql_query = lisp_to_sparql(sExpr)
-    # print(sparql_query)
-    
-    # print(execute_query(sparql_query))
-
-    # parse_webqsp_sparql()
-    # parser = Parser()
-    # augment_with_s_expr('train')
-    # augment_with_s_expr('test')
-    # make_orig_partial_train_de-v()
-    # make_partial_train_dev()
-
-    # extract_macro_template('train')
-    # mine_common_type_constraint('train'):
