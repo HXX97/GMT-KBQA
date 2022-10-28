@@ -3,6 +3,7 @@ GMT-KBQA
 
 ## Abstract
 <image src="./figures/overview.png">
+
 Question answering over knowledge bases (KBQA) for complex questions is a challenging task in natural language processing.
 Recently, generation-based methods that translate natural language questions to executable logical forms have achieved promising performance.
 However, most of the existing methods struggle in handling questions with unseen KB items and novel combinations of relations. 
@@ -68,13 +69,27 @@ Furthermore, the detailed evaluation demonstrates that GMT-KBQA benefits from th
 <!-- ### Logical Form Generation via Multi-task Learning for Complex Question Answering over Knowledge Bases -->
 
 This is an original implementation of paper "Logical Form Generation via Multi-task Learning for Complex Question Answering over Knowledge Bases"
-[[Paper PDF](TODO:)]
+[[Paper PDF](https://aclanthology.org/2022.coling-1.145/)]
 
 ## Citation
 ---
 
 ```
-TODO: cite
+@inproceedings{hu-etal-2022-logical,
+    title = "Logical Form Generation via Multi-task Learning for Complex Question Answering over Knowledge Bases",
+    author = "Hu, Xixin  and
+      Wu, Xuan  and
+      Shu, Yiheng  and
+      Qu, Yuzhong",
+    booktitle = "Proceedings of the 29th International Conference on Computational Linguistics",
+    month = oct,
+    year = "2022",
+    address = "Gyeongju, Republic of Korea",
+    publisher = "International Committee on Computational Linguistics",
+    url = "https://aclanthology.org/2022.coling-1.145",
+    pages = "1687--1696",
+    abstract = "Question answering over knowledge bases (KBQA) for complex questions is a challenging task in natural language processing. Recently, generation-based methods that translate natural language questions to executable logical forms have achieved promising performance. These methods use auxiliary information to augment the logical form generation of questions with unseen KB items or novel combinations, but the noise introduced can also leads to more incorrect results. In this work, we propose GMT-KBQA, a Generation-based KBQA method via Multi-Task learning, to better retrieve and utilize auxiliary information. GMT-KBQA first obtains candidate entities and relations through dense retrieval, and then introduces a multi-task model which jointly learns entity disambiguation, relation classification, and logical form generation. Experimental results show that GMT-KBQA achieves state-of-the-art results on both ComplexWebQuestions and WebQuestionsSP datasets. Furthermore, the detailed evaluation demonstrates that GMT-KBQA benefits from the auxiliary tasks and has a strong generalization capability.",
+}
 ```
 
 
@@ -210,3 +225,9 @@ Note that if you retrieve candidate entities by your own, then you need also upd
     - WebQSP: Run `python ablation_exps.py unseen_evaluation --dataset WebQSP --model_type full` to get evaluation result on our full model `GMT-KBQA`. Run `python ablation_exps.py unseen_evaluation --dataset WebQSP --model_type base` to get evaluation result on `T5-base` model.
 3. Error analysis on GMT-KBQA results.
     - Run `python error_analysis.py`.
+
+### Correction
+- We spotted that due to file overwritten, disambiguated entities of WebQSP training set only contains entities from `FACC1` (which should contain merged results of `ELQ` and `FACC1`). Disambiguated entities of WebQSP training set is only used in our model variant `w/Retrieval for WebQSP` shown in `Table 4` in our paper. **Other models and model variants are not influenced.**
+- Influence: For experiment result in `Table 4` of our paper, F1 of `w/Retrieval for WebQSP` dataset should be **73.7%**, still **-1.0%** lower than `T5-base`. **Other experiment results remains unchanged.**
+- Corrected data: We have uploaded a `patch` foloder in [Google Drive](https://drive.google.com/drive/folders/1QT4EG5wxtcLc8_XT5dTZ2WCi1jtByAyf?usp=sharing); download files in this folder and follow the `README.md` to replace previous files. 
+Besides, We have updated the experiment results of `w/Retrieval model variant for WebQSP` dataset also in [Google Drive](https://drive.google.com/drive/folders/1QT4EG5wxtcLc8_XT5dTZ2WCi1jtByAyf?usp=sharing), under `exps/WebQSP_concat_retrieval.tar.gz`. **Still, if you didn't use our model variant w/Retrieval for WebQSP, then there's no need to update data.**
