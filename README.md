@@ -105,7 +105,7 @@ Download the CWQ dataset [here](https://www.dropbox.com/sh/7pkwkrfnwqhsnpo/AACuu
 
 Download the WebQSP dataset from [here](https://www.microsoft.com/en-us/research/publication/the-value-of-semantic-parse-labeling-for-knowledge-base-question-answering-2/) and put them under `data/WebQSP/origin`. The dataset files should be named as `WebQSP.test[train].json`.
 
-Setup Freebase: Both datasets use Freebase as the knowledge source. You may refer to [Freebase Setup](https://github.com/dki-lab/Freebase-Setup) to set up a Virtuoso triplestore service. After starting your virtuoso service, please replace variable `FREEBASE_SPARQL_WRAPPER_URL` and `FREEBASE_ODBC_PORT` in `config.py` with your own.
+Setup Freebase: Both datasets use Freebase as the knowledge source. You may refer to [Freebase Setup](https://github.com/dki-lab/Freebase-Setup) to set up a Virtuoso triplestore service (We use the official data dump of Freebase from [here](https://developers.google.com/freebase)). After starting your virtuoso service, please replace variable `FREEBASE_SPARQL_WRAPPER_URL` and `FREEBASE_ODBC_PORT` in `config.py` with your own.
 
 **Other data, model checkpoints as well as evaluation results can be downloaded [here](https://drive.google.com/drive/folders/1QT4EG5wxtcLc8_XT5dTZ2WCi1jtByAyf?usp=sharing). Please refer to [README_download.md](https://drive.google.com/file/d/1_QKfo5lr0Ht9Fiu51w5tqwUivnxagaF7/view?usp=sharing) and download what you need. Besides, FACC1 mention information can be downloaded following [data/common_data/facc1/README.md](https://github.com/HXX97/GMT-KBQA/blob/main/data/common_data/facc1/README.md)**
 
